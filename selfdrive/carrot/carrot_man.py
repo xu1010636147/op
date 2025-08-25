@@ -1336,10 +1336,10 @@ class CarrotServ:
 
   def _update_sdi(self):
     #sdiBlockType
-    # 1: startOSEPS: 구간단속시작
-    # 2: inOSEPS: 구간단속중
-    # 3: endOSEPS: 구간단속종료
-    # 0:감속안함,1:과속카메라,2:+사고방지턱,3:+이동식카메라
+    # 1: startOSEPS:开始管制区间
+    # 2: inOSEPS:区间管制中
+    # 3: endOSEPS:区间管制结束
+    # 0:不减速;1:超速摄像机;2:+事故防止带;3:+移动式摄像机
     if self.nSdiType in [0,1,2,3,4,7,8, 75, 76] and self.nSdiSpeedLimit > 0 and self.autoNaviSpeedCtrlMode > 0:
       self.xSpdLimit = self.nSdiSpeedLimit * self.autoNaviSpeedSafetyFactor
       self.xSpdDist = self.nSdiDist
@@ -1349,6 +1349,10 @@ class CarrotServ:
         self.xSpdType = 4
       elif self.nSdiType == 7 and self.autoNaviSpeedCtrlMode < 3: #이동식카메라
         self.xSpdLimit = self.xSpdDist = 0
+      #new
+      else:
+        self.xSpdDist = self.nSdiDist - 100
+      #new
     elif (self.nSdiPlusType == 22 or self.nSdiType == 22) and self.roadcate > 1 and self.autoNaviSpeedCtrlMode >= 2: # speed bump, roadcate:0,1: highway
       self.xSpdLimit = self.autoNaviSpeedBumpSpeed
       self.xSpdDist = self.nSdiPlusDist if self.nSdiPlusType == 22 else self.nSdiDist

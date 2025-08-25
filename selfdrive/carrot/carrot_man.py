@@ -987,6 +987,20 @@ class CarrotServ:
     self.nSdiBlockSpeed = 0
     self.nSdiBlockDist = 0
 
+    #new
+    self.nSdiTypeLast = -1
+    self.nSdiSpeedLimitLast = 0
+    self.nSdiSectionLast = 0
+    self.nSdiDistLast = 0
+    self.nSdiBlockTypeLast = -1
+    self.nSdiBlockSpeedLast = 0
+    self.nSdiBlockDistLast = 0
+
+    self.nSdiPlusTypeLast = -1
+    self.autoNaviSpeedCtrlModeLast = -1
+    self.autoNaviSpeedSafetyFactorLast = -1
+    #new
+
     self.nTBTDist = 0
     self.nTBTTurnType = -1
     self.szTBTMainText = ""
@@ -1335,6 +1349,21 @@ class CarrotServ:
     return sdi_types.get(nSdiType, "")
 
   def _update_sdi(self):
+
+    #new
+    if (self.nSdiTypeLast == self.nSdiType and self.nSdiSpeedLimitLast == self.nSdiSpeedLimit and
+      self.nSdiDistLast == self.nSdiDist and self.nSdiPlusTypeLast == self.nSdiPlusType  and
+      self.autoNaviSpeedCtrlModeLast == self.autoNaviSpeedCtrlMode and self.autoNaviSpeedSafetyFactorLast == self.autoNaviSpeedSafetyFactor):
+      return
+
+    self.nSdiTypeLast = self.nSdiType
+    self.nSdiSpeedLimitLast = self.nSdiSpeedLimit
+    self.nSdiDistLast = self.nSdiDist
+    self.nSdiPlusTypeLast = self.nSdiPlusType
+    self.autoNaviSpeedCtrlModeLast = self.autoNaviSpeedCtrlMode
+    self.autoNaviSpeedSafetyFactorLast = self.autoNaviSpeedSafetyFactor
+    #new
+
     #sdiBlockType
     # 1: startOSEPS:开始管制区间
     # 2: inOSEPS:区间管制中
@@ -1344,19 +1373,19 @@ class CarrotServ:
       self.xSpdLimit = self.nSdiSpeedLimit * self.autoNaviSpeedSafetyFactor
       self.xSpdDist = self.nSdiDist
       self.xSpdType = self.nSdiType
-      #TEST
-      print(f"Update Sdi: nSdiType {self.nSdiType}, nSdiDist {self.nSdiDist}, nSdiSpeedLimit {self.nSdiSpeedLimit}, xSpdLimit {self.xSpdLimit}")
-      #TEST
-      if self.nSdiBlockType in [2,3]:
+      if self.nSdiBlockType in [2,3]: #2区间测速起点 3终点
         self.xSpdDist = self.nSdiBlockDist
         self.xSpdType = 4
-      elif self.nSdiType == 7 and self.autoNaviSpeedCtrlMode < 3: #이동식카메라
+      elif self.nSdiType == 7 and self.autoNaviSpeedCtrlMode < 3: #7移动测速, autoNaviSpeedCtrlMode<3表示未设置移动测速限速
         self.xSpdLimit = self.xSpdDist = 0
-      #new
+      #new 人为把测速摄像头的距离减去100m
       else:
-        self.xSpdDist = self.nSdiDist - 100
+        if self.nSdiDist > 100:
+          self.xSpdDist = self.nSdiDist - 100
+        else:
+          self.xSpdDist = 0
       #new
-    elif (self.nSdiPlusType == 22 or self.nSdiType == 22) and self.roadcate > 1 and self.autoNaviSpeedCtrlMode >= 2: # speed bump, roadcate:0,1: highway
+    elif (self.nSdiPlusType == 22 or self.nSdiType == 22) and self.roadcate > 1 and self.autoNaviSpeedCtrlMode >= 2: # 22-speed bump, roadcate:0,1: highway
       self.xSpdLimit = self.autoNaviSpeedBumpSpeed
       self.xSpdDist = self.nSdiPlusDist if self.nSdiPlusType == 22 else self.nSdiDist
       self.xSpdType = 22
@@ -2001,9 +2030,10 @@ class CarrotServ:
       self._update_tbt()
       self._update_sdi()
       print(
-        f"sdi = {self.nSdiType}, {self.nSdiSpeedLimit}, {self.nSdiPlusType}, " +
-        f"tbt = {self.nTBTTurnType}, {self.nTBTDist}, " +
-        f"next = {self.nTBTTurnTypeNext}, {self.nTBTDistNext}"
+        f"sdi = T {self.nSdiType}, S {self.nSdiSpeedLimit}, PS {self.nSdiPlusType}, " +
+        f"spd = T {self.xSpdType}, S {self.xSpdLimit}, D {self.xSpdDist}, " +
+        f"tbt = T {self.nTBTTurnType}, D {self.nTBTDist}, " +
+        f"next = T {self.nTBTTurnTypeNext}, D {self.nTBTDistNext}"
       )
       #print(json)
     else:

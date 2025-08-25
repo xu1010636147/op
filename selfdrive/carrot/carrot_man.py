@@ -1932,8 +1932,8 @@ class CarrotServ:
         elif nRoadLimitSpeed > 120:
           nRoadLimitSpeed = 120
 
-        # ---- 新增逻辑：低速补偿 ----
-        if nRoadLimitSpeed < 60:
+        # 高速公路低限速值处理，低速是自动增加偏移值
+        if nRoadLimitSpeed < 60 and self.roadcate <= 1:  # 高速公路 (0,1: highway)
           if nRoadLimitSpeed <= 40:
             add_val = 15
           else:

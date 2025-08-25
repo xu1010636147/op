@@ -1637,7 +1637,7 @@ class CarrotServ:
 
     sdi_speed = 250
     hda_active = False
-    ### 과속카메라, 사고방지턱
+    ### 超速摄影机和减速带减速处理
     if (self.xSpdDist > 0 or self.xSpdType in [100, 101]) and self.active_carrot > 0:
       safe_sec = self.autoNaviSpeedBumpTime if self.xSpdType == 22 else self.autoNaviSpeedCtrlEnd
       decel = self.autoNaviSpeedDecelRate

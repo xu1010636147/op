@@ -1931,6 +1931,15 @@ class CarrotServ:
           nRoadLimitSpeed = (nRoadLimitSpeed - 20) / 10
         elif nRoadLimitSpeed > 120:
           nRoadLimitSpeed = 120
+
+        # ---- 新增逻辑：低速补偿 ----
+        if nRoadLimitSpeed < 60:
+          if nRoadLimitSpeed <= 40:
+            add_val = 15
+          else:
+            # 在40~60之间，线性从15减小到0
+            add_val = 15 * (60 - nRoadLimitSpeed) / 20.0
+          nRoadLimitSpeed = min(nRoadLimitSpeed + add_val, 60)
       else:
         nRoadLimitSpeed = 30
       #self.nRoadLimitSpeed = nRoadLimitSpeed

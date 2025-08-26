@@ -1749,7 +1749,7 @@ class CarrotServ:
       (sdi_speed, "hda" if hda_active else "bump" if self.xSpdType == 22 else "section" if self.xSpdType == 4 else "police" if self.xSpdType == 100 else "waze" if self.xSpdType == 101 else "cam"),
       (limit_speed, "road"),
     ]
-    if self.turnSpeedControlMode in [1,2]:
+    if self.turnSpeedControlMode in [1,2]: #模式1和2均有视觉转弯控速,autoCurveSpeedLowerLimit为用户设置的最小转弯速度，vturn_speed这视觉计算的限速
       speed_n_sources.append((max(abs(vturn_speed), self.autoCurveSpeedLowerLimit), "vturn"))
 
     route_speed = max(route_speed * self.mapTurnSpeedFactor, self.autoCurveSpeedLowerLimit)

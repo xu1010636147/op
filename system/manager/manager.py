@@ -69,7 +69,7 @@ def get_default_params():
     ("AutoSpeedUptoRoadSpeedLimit", "0"),
     ("AutoRoadSpeedAdjust", "50"),
     ("AutoCurveSpeedLowerLimit", "30"),
-    ("AutoCurveSpeedFactor", "120"),
+    ("AutoCurveSpeedFactor", "100"),
     ("AutoCurveSpeedAggressiveness", "100"),
 
     ("AutoTurnControl", "0"),
@@ -86,7 +86,7 @@ def get_default_params():
     ("AutoRoadSpeedLimitOffset", "-1"),
     ("AutoNaviCountDownMode", "2"),
     ("TurnSpeedControlMode", "1"),
-    ("MapTurnSpeedFactor", "90"),
+    ("MapTurnSpeedFactor", "100"),
     ("StoppingAccel", "0"),
     ("StopDistanceCarrot", "550"),
     ("JLeadFactor3", "0"),

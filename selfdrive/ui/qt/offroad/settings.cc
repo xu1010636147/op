@@ -666,7 +666,7 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   cruiseToggles->addItem(new CValueControl("CruiseSpeedUnitBasic", "按钮：定速单位(基础)", "1:公里/小时, 2:英里/小时", 1, 20, 1));
   cruiseToggles->addItem(new CValueControl("CruiseSpeedUnit", "按钮：定速单位(高级)", "1:公里/小时, 2:英里/小时", 1, 20, 1));
   cruiseToggles->addItem(new CValueControl("CruiseEcoControl", "定速巡航：节能控制(4km/h)", "临时提高设定速度以提高燃油效率", 0, 10, 1));
-  cruiseToggles->addItem(new CValueControl("AutoSpeedUptoRoadSpeedLimit", "定速巡航：可超道路限制的百分比(0%)", "巡航速度可超过道路限制的百分比x%", 0, 200, 10));
+  cruiseToggles->addItem(new CValueControl("AutoSpeedUptoRoadSpeedLimit", "定速巡航：自动提速到道路限速的百分比(0%)", "巡航设定速度自动提升到道路限制的百分比x%，设定速度=道路限速*x%", 0, 200, 10));
   cruiseToggles->addItem(new CValueControl("TFollowGap1", "跟车时间GAP1(110)x0.01s", "", 70, 300, 5));
   cruiseToggles->addItem(new CValueControl("TFollowGap2", "跟车时间GAP2(120)x0.01s", "", 70, 300, 5));
   cruiseToggles->addItem(new CValueControl("TFollowGap3", "跟车时间GAP3(160)x0.01s", "", 70, 300, 5));

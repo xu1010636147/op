@@ -1087,6 +1087,10 @@ class CarrotServ:
 
     self.debugText = ""
 
+    #new
+    self.sameSpiCamFilter = 0
+    #new
+
     self.update_params()
 
   def update_params(self):
@@ -1109,6 +1113,9 @@ class CarrotServ:
     self.is_metric = self.params.get_bool("IsMetric")
     self.autoRoadSpeedLimitOffset = self.params.get_int("AutoRoadSpeedLimitOffset")
 
+    #new
+    self.sameSpiCamFilter = self.params.get_int("SameSpiCamFilter")
+    #new
 
   def _update_cmd(self):
     if self.carrotCmdIndex != self.carrotCmdIndex_last:
@@ -1351,7 +1358,7 @@ class CarrotServ:
   def _update_sdi(self):
 
     #new
-    if True:
+    if self.sameSpiCamFilter:
       if (self.nSdiTypeLast == self.nSdiType and self.nSdiSpeedLimitLast == self.nSdiSpeedLimit and
         self.nSdiDistLast == self.nSdiDist and self.nSdiPlusTypeLast == self.nSdiPlusType  and
         self.autoNaviSpeedCtrlModeLast == self.autoNaviSpeedCtrlMode and self.autoNaviSpeedSafetyFactorLast == self.autoNaviSpeedSafetyFactor):

@@ -853,6 +853,7 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   speedToggles->addItem(new CValueControl("AutoCurveSpeedLowerLimit", "弯道: 最低速度限制(30)", "接近弯道时降低车速, 最低速度", 30, 200, 5));
   speedToggles->addItem(new CValueControl("AutoCurveSpeedFactor", "弯道: 自动控制系数(100%)", "", 50, 300, 1));
   speedToggles->addItem(new CValueControl("AutoCurveSpeedAggressiveness", "弯道: 激进程度(100%)", "", 50, 300, 1));
+  speedToggles->addItem(new CValueControl("SameSpiCamFilter", "相同测速数据过滤(0)", "0:关闭, 1:打开", 0, 1, 1));
   speedToggles->addItem(new CValueControl("AutoRoadSpeedLimitOffset", "道路限速偏移(-1)", "-1:不启用, 道路限速+偏移", -1, 100, 1));
   speedToggles->addItem(new CValueControl("AutoRoadSpeedAdjust", "自动调整道路限速(50%)", "当道路限速发生变化时，按此比例平滑调整到新限速,<0时，则用限速*测速点安全系数或限速+偏移", -1, 100, 5));
   speedToggles->addItem(new CValueControl("AutoNaviSpeedCtrlEnd", "测速点减速结束点(6秒)", "设置减速完成点, 数值越大减速越提前完成", 3, 20, 1));

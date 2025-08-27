@@ -260,7 +260,7 @@ class DesireHelper:
       atc_blinker_state = BLINKER_NONE
       driver_desire_enabled = False
 
-    if self.atc_type != atc_type:
+    if self.atc_type != atc_type: #在初始化函数中self.atc_type=""，所以如果第一次atc_type被置为有效类型(如for right)时，atc_desire_enabled为False
       atc_desire_enabled = False
 
     self.atc_type = atc_type
@@ -289,7 +289,7 @@ class DesireHelper:
       self.object_detected_count = 0
 
     #lane_available_trigger = not self.lane_available_last and lane_available
-    lane_change_available = (lane_available or edge_available) and lane_line_info < 20 # lane_line_info가 20보다 작으면 흰색라인임.
+    lane_change_available = (lane_available or edge_available) and lane_line_info < 20 # lane_line_info小于20为白色虚线。
     lane_available_trigger = False
     lane_width_diff = self.lane_width_left_diff if atc_blinker_state == BLINKER_LEFT else self.lane_width_right_diff
     distance_to_road_edge = self.distance_to_road_edge_left if atc_blinker_state == BLINKER_LEFT else self.distance_to_road_edge_right
@@ -337,12 +337,12 @@ class DesireHelper:
 
         # 如果不是最后车道(如果侧面有车道)，ATC就不会自动启动。
         #self.auto_lane_change_enable = False if lane_exist_counter > 0 else True
-        # new修改自动变道启用逻辑
+        # new修改自动变道启用逻辑，lane_exist_counter表示车道线存在的时间，lane_change_available表示可以变道
         if self.autoTurnInNotRoadEdge > 0:
-          self.auto_lane_change_enable = True
-        else: #new
+          self.auto_lane_change_enable = True if lane_change_available else False #符合虚线变道条件
+        else:
           self.auto_lane_change_enable = False if lane_exist_counter > 0 or lane_change_available else True
-
+        #new
 
       # LaneChangeState.preLaneChange
       elif self.lane_change_state == LaneChangeState.preLaneChange:
@@ -358,30 +358,32 @@ class DesireHelper:
         torque_applied = carstate.steeringPressed and torque_cond
         blindspot_detected = blindspot_cond
 
+        #int(2.0 / DT_MDL) 实际上是 2秒内连续帧的计数阈值, 如果 lane_exist_counter < 2秒的帧数 → 说明侧边车道线检测不到或存在不稳定
+        #说明车道线不可见或者车道线不稳定，则允许自动变道
         if not lane_available or lane_exist_counter < int(2.0 / DT_MDL): #lane_exist_counter > int(0.2 / DT_MDL) and not lane_change_available:
           self.auto_lane_change_enable = True
 
-        if blindspot_detected and not ignore_bsd:
-          self.blindspot_detected_counter = int(1.5 / DT_MDL)
-          # BSD검출시.. 아래 두줄로 자동차선변경 해제함.. 위험해서 자동차선변경기능은 안하는걸로...
+        if blindspot_detected and not ignore_bsd: #检测到盲区有车并且不忽略BSD，否则self.blindspot_detected_counter为0
+          self.blindspot_detected_counter = int(1.5 / DT_MDL) #盲区检测1.5秒
+          # BSD检测…以下两行解除机动车道变更…太危险了，我就不帮你变道了
           #self.lane_change_state = LaneChangeState.off
           #self.lane_change_direction = LaneChangeDirection.none
         if not desire_enabled or below_lane_change_speed:
           self.lane_change_state = LaneChangeState.off
           self.lane_change_direction = LaneChangeDirection.none
         else:
-          if lane_change_available and self.lane_change_delay == 0:
-            if self.blindspot_detected_counter > 0 and not ignore_bsd:  # BSD검출시
+          if lane_change_available and self.lane_change_delay == 0: #允许变道并且没有延时时间要求
+            if self.blindspot_detected_counter > 0 and not ignore_bsd:  # bsd盲区检测次数还大于0
               if torque_applied and not block_lanechange_bsd:
                 self.lane_change_state = LaneChangeState.laneChangeStarting
-            elif self.laneChangeNeedTorque > 0: # 조향토크필요
+            elif self.laneChangeNeedTorque > 0: # 需要轻推方向盘变道
               if torque_applied:
                 self.lane_change_state = LaneChangeState.laneChangeStarting
-            elif driver_desire_enabled:
+            elif driver_desire_enabled: #驾驶员打灯变道
               self.lane_change_state = LaneChangeState.laneChangeStarting
-            # ATC작동인경우 차선이 나타나거나 차선이 생기면 차선변경 시작
-            # lane_appeared: 차선이 생기는건 안함.. 위험.
-            elif torque_applied or auto_lane_change_trigger:
+            # 如果ATC启动时出现车道或出现车道，就开始变更车道
+            # lane_appeared: 我不希望有车道危险。
+            elif torque_applied or auto_lane_change_trigger: #auto_lane_change_trigger在self.auto_lane_change_enable成立并且无其实阻止条件是则会为True
               self.lane_change_state = LaneChangeState.laneChangeStarting
 
       # LaneChangeState.laneChangeStarting

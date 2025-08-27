@@ -1090,8 +1090,10 @@ class CarrotServ:
     #new
     self.sameSpiCamFilter = 0
     self.autoTurnDistOffset = 0
-    self.autoHighWayForkDistOffset = 0
-    self.autoForkDistOffset = 0
+    self.autoHighWayForkDistOffset = 1000
+    self.autoForkDistOffset = 50
+    self.autoDoForkDistOffset = 0
+    self.autoHighWayDoForkDistOffset = 0
     self.autoUpRoadLimit = 0
     self.autoUpRoadLimit40KMH = 15
     self.autoUpHighwayRoadLimit = 0
@@ -1124,7 +1126,9 @@ class CarrotServ:
     self.sameSpiCamFilter = self.params.get_int("SameSpiCamFilter")
     self.autoTurnDistOffset = self.params.get_int("AutoTurnDistOffset")
     self.autoForkDistOffset = self.params.get_int("AutoForkDistOffset")
+    self.autoDoForkDistOffset = self.params.get_int("AutoDoForkDistOffset")
     self.autoHighWayForkDistOffset = self.params.get_int("AutoHighWayForkDistOffset")
+    self.autoHighWayDoForkDistOffset = self.params.get_int("AutoHighWayDoForkDistOffset")
     self.autoUpRoadLimit = self.params.get_int("AutoUpRoadLimit")
     self.autoUpRoadLimit40KMH = self.params.get_int("AutoUpRoadLimit40KMH")
     self.autoUpHighwayRoadLimit = self.params.get_int("AutoUpHighwayRoadLimit")
@@ -1502,15 +1506,17 @@ class CarrotServ:
     stop_dist_for_speed = 5
     if self.roadcate > 1:
       start_fork_dist = np.interp(self.nRoadLimitSpeed, [30, 50, 100], [160, 200, 350]) + self.autoForkDistOffset
+      do_fork_dist = fork_dist_for_speed + self.autoDoForkDistOffset
     else:
       start_fork_dist = np.interp(self.nRoadLimitSpeed, [30, 50, 100], [160, 200, 350]) + self.autoHighWayForkDistOffset
+      do_fork_dist = fork_dist_for_speed + self.autoHighWayDoForkDistOffset
     start_turn_dist = np.interp(self.nTBTNextRoadWidth, [5, 10], [43, 60]) + self.autoTurnDistOffset
     turn_info_mapping = {
         1: {"type": "turn left", "speed": turn_speed, "dist": turn_dist_for_speed, "start": start_fork_dist},
         2: {"type": "turn right", "speed": turn_speed, "dist": turn_dist_for_speed, "start": start_fork_dist},
         5: {"type": "straight", "speed": turn_speed, "dist": turn_dist_for_speed, "start": start_turn_dist},
-        3: {"type": "fork left", "speed": fork_speed, "dist": fork_dist_for_speed, "start": start_fork_dist},
-        4: {"type": "fork right", "speed": fork_speed, "dist": fork_dist_for_speed, "start": start_fork_dist},
+        3: {"type": "fork left", "speed": fork_speed, "dist": do_fork_dist, "start": start_fork_dist},
+        4: {"type": "fork right", "speed": fork_speed, "dist": do_fork_dist, "start": start_fork_dist},
         6: {"type": "straight", "speed": fork_speed, "dist": fork_dist_for_speed, "start": start_fork_dist},
         7: {"type": "straight", "speed": stop_speed, "dist": stop_dist_for_speed, "start": 1000},
         8: {"type": "straight", "speed": stop_speed, "dist": stop_dist_for_speed, "start": 1000},
@@ -1535,6 +1541,8 @@ class CarrotServ:
         self.atc_activate_count = max(0, self.atc_activate_count + 1)
       if atc_type in ["turn left", "turn right"] and x_dist_to_turn > start_turn_dist:
         atc_type = "atc left" if atc_type == "turn left" else "atc right" #类型为atc left/right只是进入转弯准备状态，并不是真的在执行转弯
+      elif atc_type in ["fork left", "fork right"] and x_dist_to_turn > do_fork_dist: #说明x_dist_to_turn>do_fork_dist并且说明x_dist_to_turn <=atc_start_dist
+        atc_type = "atc left" if atc_type == "fork left" else "atc right"
     #如果上面的条件都不成立，则atc_type直接就是查表得到的类型，即atc_type = mapping["type"]
 
     if self.autoTurnMapChange > 0 and check_steer:
@@ -1542,12 +1550,12 @@ class CarrotServ:
       #print(f"atc_activate_count: {self.atc_activate_count}")
       if self.atc_activate_count == 2:
         self.carrotCmdIndex += 100
-        self.carrotCmd = "DISPLAY";
-        self.carrotArg = "MAP";
+        self.carrotCmd = "DISPLAY"
+        self.carrotArg = "MAP"
       elif self.atc_activate_count == -50:
         self.carrotCmdIndex += 100
-        self.carrotCmd = "DISPLAY";
-        self.carrotArg = "ROAD";
+        self.carrotCmd = "DISPLAY"
+        self.carrotArg = "ROAD"
 
     #处理在变道过程中，如果用户接管了方向盘，则退出变道
     if check_steer:

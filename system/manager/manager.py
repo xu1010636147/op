@@ -190,6 +190,9 @@ def get_default_params():
     ("AutoForkDistOffset", "0"),
     ("AutoUpRoadLimit40KMH", "15"),
     ("AutoUpHighwayRoadLimit40KMH", "15"),
+    ("RoadType", "-1"),
+    ("AutoCurveSpeedFactorH", "80"),
+    ("AutoCurveSpeedAggressivenessH", "120"),
     # new
   ]
   return default_params

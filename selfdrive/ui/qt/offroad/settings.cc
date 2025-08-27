@@ -850,9 +850,12 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   //startToggles->addItem(new CValueControl("LaneChangeLaneCheck", "变道: 检查车道存在", "(0:否,1:车道,2:+路肩)", 0, 2, 1));
 
   speedToggles = new ListWidget(this);
+  speedToggles->addItem(new CValueControl("RoadType", "手动指定道路类型(-1)", "-1:导航自动识别，0 1:高速, >=2:其它道路", -1, 100, 1));
   speedToggles->addItem(new CValueControl("AutoCurveSpeedLowerLimit", "弯道: 转弯最低降速限制(30)", "用于限制视觉转弯降速和地图转弯降速的最小速度", 30, 200, 5));
   speedToggles->addItem(new CValueControl("AutoCurveSpeedFactor", "弯道: 视觉降速横摆角速度系数(100%)", "模型预测横摆角速度*此系数，系数越大降速越多", 50, 300, 1));
   speedToggles->addItem(new CValueControl("AutoCurveSpeedAggressiveness", "弯道: 视觉降速目标横向加速度系数(100%)", "目标横向加速度*此系数，系数越小降速越多", 50, 300, 1));
+  speedToggles->addItem(new CValueControl("AutoCurveSpeedFactorH", "高速弯道: 视觉降速横摆角速度系数(100%)", "模型预测横摆角速度*此系数，系数越大降速越多", 50, 300, 1));
+  speedToggles->addItem(new CValueControl("AutoCurveSpeedAggressivenessH", "高速弯道: 视觉降速目标横向加速度系数(100%)", "目标横向加速度*此系数，系数越小降速越多", 50, 300, 1));
   speedToggles->addItem(new CValueControl("SameSpiCamFilter", "过滤相同的测速数据(0)", "0:关闭, 1:打开", 0, 1, 1));
   speedToggles->addItem(new CValueControl("AutoRoadSpeedLimitOffset", "道路限速偏移(-1)", "-1:不启用(如果不想道路限速生效,设置为-1), 其他值:限速=道路限速+此偏移值", -1, 100, 1));
   speedToggles->addItem(new CValueControl("AutoRoadSpeedAdjust", "自动调整道路限速(50%)", "当道路限速发生变化时，按此比例平滑调整到新限速,<0时，则用限速*测速点安全系数或限速+偏移", -1, 100, 5));

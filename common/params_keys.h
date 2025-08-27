@@ -301,5 +301,8 @@ inline static std::unordered_map<std::string, uint32_t> keys = {
     {"AutoForkDistOffset", PERSISTENT},
     {"AutoUpRoadLimit40KMH", PERSISTENT},
     {"AutoUpHighwayRoadLimit40KMH", PERSISTENT},
+    {"RoadType", PERSISTENT},
+    {"AutoCurveSpeedFactorH", PERSISTENT},
+    {"AutoCurveSpeedAggressivenessH", PERSISTENT},
     //new
 };

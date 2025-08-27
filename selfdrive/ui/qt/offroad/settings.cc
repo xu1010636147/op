@@ -874,7 +874,7 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   speedToggles->addItem(new CValueControl("AutoTurnMapChange", "ATC 自动地图切换(0)", "", 0, 1, 1));
   //new
   speedToggles->addItem(new CValueControl("AutoHighWayForkDistOffset", "ATC 高速匝道提前变道距离(0m)", "提前自动变道至最左或最右车道的距离", 0, 2000, 5));
-  speedToggles->addItem(new CValueControl("AutoForkDistOffset", "ATC 公路提前变道距离(0m)", "提前自动变道至最左或最右车道的距离", 0, 500, 5));
+  speedToggles->addItem(new CValueControl("AutoForkDistOffset", "ATC 公路提前变道距离(0m)", "提前自动变道至最左或最右车道的距离", 0, 2000, 5));
   speedToggles->addItem(new CValueControl("AutoTurnDistOffset", "ATC 自动转弯距离偏移(0m)", "设置距离偏移，可以让自动转弯提前", -100, 200, 1));
   speedToggles->addItem(new CValueControl("AutoTurnInNotRoadEdge", "ATC 在中间车道允许自动变道(0)", "0-关闭，1-允许在非侧边车道进行自动变道", 0, 1, 1));
   speedToggles->addItem(new CValueControl("ContinuousLaneChange", "ATC 允许自动连续变道(0)", "0-关闭，1-允许连续变多条车道", 0, 1, 1));

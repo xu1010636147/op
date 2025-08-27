@@ -311,23 +311,23 @@ class DesireHelper:
       self.desireLog = f"L:{self.auto_lane_change_enable},{auto_lane_change_blocked},E:{lane_available},{edge_available},A:{lane_available_trigger},{lane_appeared},{lane_width_diff:.1f},{lane_width_side:.1f},{distance_to_road_edge:.1f}={auto_lane_change_trigger}"
 
     if not lateral_active or self.lane_change_timer > LANE_CHANGE_TIME_MAX:
-      #print("Desire canceled")
+      print("Desire canceled")
       self.lane_change_state = LaneChangeState.off
       self.lane_change_direction = LaneChangeDirection.none
       self.turn_direction = TurnDirection.none
     elif desire_enabled and ((below_lane_change_speed and not carstate.standstill and self.enable_turn_desires) or self.turn_desire_state):
-      #print("Desire Turning")
+      print("Desire Turning")
       self.lane_change_state = LaneChangeState.off
       self.turn_direction = TurnDirection.turnLeft if blinker_state == BLINKER_LEFT else TurnDirection.turnRight
       self.lane_change_direction = self.turn_direction #LaneChangeDirection.none
       desire_enabled = False
-    elif self.desire_disable_count > 0: # Turn 후 일정시간 동안 차선변경 불가능
-      #print("Desire after turning")
+    elif self.desire_disable_count > 0: # Turn后一段时间内无法变更车道
+      print("Desire after turning")
       self.lane_change_state = LaneChangeState.off
       self.lane_change_direction = LaneChangeDirection.none
       self.turn_direction = TurnDirection.none
     else:
-      #print(f"Desire LaneChange below={below_lane_change_speed}, lane_change_state={self.lane_change_state}, desire_enabled={desire_enabled},{self.prev_desire_enabled} ")
+      print(f"Desire LaneChange below={below_lane_change_speed}, lane_change_state={self.lane_change_state}, desire_enabled={desire_enabled},{self.prev_desire_enabled} ")
       self.turn_direction = TurnDirection.none
       # LaneChangeState.off
       if self.lane_change_state == LaneChangeState.off and desire_enabled and not self.prev_desire_enabled and not below_lane_change_speed:
@@ -344,6 +344,8 @@ class DesireHelper:
         else:
           self.auto_lane_change_enable = False if lane_exist_counter > 0 or lane_change_available else True
         #new
+
+        print(f"auto_lane_change_enable={self.auto_lane_change_enable}, lane_exist_counter={lane_exist_counter}, lane_change_available={lane_change_available}")
 
       # LaneChangeState.preLaneChange
       elif self.lane_change_state == LaneChangeState.preLaneChange:
@@ -373,6 +375,8 @@ class DesireHelper:
           self.lane_change_state = LaneChangeState.off
           self.lane_change_direction = LaneChangeDirection.none
         else:
+          print(f"lane_change_available={lane_change_available}, auto_lane_change_trigger={auto_lane_change_trigger}, lane_change_delay={self.lane_change_delay}")
+
           if lane_change_available and self.lane_change_delay == 0: #允许变道并且没有延时时间要求
             if self.blindspot_detected_counter > 0 and not ignore_bsd:  # bsd盲区检测次数还大于0
               if torque_applied and not block_lanechange_bsd:
@@ -396,6 +400,8 @@ class DesireHelper:
         if lane_change_prob < 0.02 and self.lane_change_ll_prob < 0.01:
           self.lane_change_state = LaneChangeState.laneChangeFinishing
 
+        print(f"lane_change_ll_prob={self.lane_change_ll_prob}, lane_change_prob={lane_change_prob}")
+
       # LaneChangeState.laneChangeFinishing
       elif self.lane_change_state == LaneChangeState.laneChangeFinishing:
         # fade in laneline over 1s
@@ -407,6 +413,8 @@ class DesireHelper:
             self.lane_change_state = LaneChangeState.preLaneChange
           else:
             self.lane_change_state = LaneChangeState.off
+
+        print(f"lane_change_ll_prob={self.lane_change_ll_prob}, lane_change_direction={self.lane_change_direction}, lane_change_state={self.lane_change_state}")
 
     if self.lane_change_state in (LaneChangeState.off, LaneChangeState.preLaneChange):
       self.lane_change_timer = 0.0

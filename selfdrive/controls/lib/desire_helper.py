@@ -339,7 +339,8 @@ class DesireHelper:
         #self.auto_lane_change_enable = False if lane_exist_counter > 0 else True
         # new修改自动变道启用逻辑，lane_exist_counter表示车道线存在的时间，lane_change_available表示可以变道
         if self.autoTurnInNotRoadEdge > 0:
-          self.auto_lane_change_enable = True if lane_change_available else False #符合虚线变道条件
+          #self.auto_lane_change_enable = True if lane_change_available else False #符合虚线变道条件
+          self.auto_lane_change_enable = True
         else:
           self.auto_lane_change_enable = False if lane_exist_counter > 0 or lane_change_available else True
         #new
@@ -416,10 +417,7 @@ class DesireHelper:
     self.lane_available_last = lane_available
     self.edge_available_last = edge_available
 
-    #new
-    if not self.allowContinuousLaneChange:
-    #new
-     self.prev_desire_enabled = desire_enabled
+    self.prev_desire_enabled = desire_enabled
 
     steering_pressed = carstate.steeringPressed and \
                      ((carstate.steeringTorque < 0 and blinker_state == BLINKER_LEFT) or (carstate.steeringTorque > 0 and blinker_state == BLINKER_RIGHT))

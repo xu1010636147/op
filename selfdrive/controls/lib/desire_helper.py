@@ -275,7 +275,7 @@ class DesireHelper:
       lane_exist_counter = self.lane_exist_left_count.counter if blinker_state == BLINKER_LEFT else self.lane_exist_right_count.counter
       lane_available = self.available_left_lane if blinker_state == BLINKER_LEFT else self.available_right_lane
       edge_available = self.available_left_edge if blinker_state == BLINKER_LEFT else self.available_right_edge
-      lane_appeared = lane_exist_counter == int(0.2 / DT_MDL)
+      lane_appeared = lane_exist_counter == int(0.2 / DT_MDL) #车道线存在时间等于0.2秒代表有新车道线出现
 
       radar = radarState.leadLeft if blinker_state == BLINKER_LEFT else radarState.leadRight
       side_object_dist = radar.dRel + radar.vLead * 4.0 if radar.status else 255
@@ -414,6 +414,10 @@ class DesireHelper:
           if desire_enabled:
             self.lane_change_state = LaneChangeState.preLaneChange
           else:
+            self.lane_change_state = LaneChangeState.off
+
+          #new 如果不允许连续变道，则改为LaneChangeState.off状态
+          if self.allowContinuousLaneChange == 0 and self.autoTurnInNotRoadEdge == 1 and (not driver_desire_enabled and atc_desire_enabled):
             self.lane_change_state = LaneChangeState.off
 
         print(f"+++Finishing: ll_prob={self.lane_change_ll_prob}, dir={self.lane_change_direction}, lane_change_state={self.lane_change_state}")

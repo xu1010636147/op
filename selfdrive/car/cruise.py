@@ -443,7 +443,7 @@ class VCruiseCarrot:
   def _carrot_command(self, v_cruise_kph, button_type, long_pressed):
     if self.carrot_cmd_index_last != self.carrot_cmd_index:
       self.carrot_cmd_index_last = self.carrot_cmd_index
-      print(f"Carrot command(cruise.py): {self.carrot_cmd} {self.carrot_arg}")
+      #print(f"Carrot command(cruise.py): {self.carrot_cmd} {self.carrot_arg}")
       if self.carrot_cmd == "CRUISE":
         if self.carrot_arg == "OFF":
           self._cruise_control(-2, -1, "Cruise off (carrot command)")
@@ -470,8 +470,8 @@ class VCruiseCarrot:
           speed_kph = int(self.carrot_arg)
           if 0 < speed_kph < 200:
             v_cruise_kph = speed_kph
-            self._add_log(f"Cruise speed set to {v_cruise_kph} (carrot command)")       
-    
+            self._add_log(f"Cruise speed set to {v_cruise_kph} (carrot command)")
+
     return v_cruise_kph, button_type, long_pressed
 
   def _update_cruise_buttons(self, CS, CC, v_cruise_kph):
@@ -548,7 +548,7 @@ class VCruiseCarrot:
         else:
           if False: #CC.enabled and self._paddle_decel_active:  # 수정필요...
             self._paddle_decel_active = False
-          else:          
+          else:
             self._paddle_decel_active = True
         print("lfaButton")
       elif button_type == ButtonType.cancel:
@@ -722,7 +722,7 @@ class VCruiseCarrot:
           if self.xState == 3:  # 감속중
             v_cruise_kph = self.v_ego_kph_set
           self._cruise_control(1, 0, "Cruise on (traffic sign)")
-        elif 0 < self.d_rel < 20: 
+        elif 0 < self.d_rel < 20:
           # v_cruise_kph = self.v_ego_kph_set # 전방에 차가 가까이 있을때, 기존속도 유지
           self._cruise_control(1, -1 if self.v_ego_kph_set < 1 else 0, "Cruise on (lead car)")
 
@@ -753,7 +753,7 @@ class VCruiseCarrot:
         elif self.d_rel > 0:
           self._paddle_decel_active = False
           v_cruise_kph = self.v_ego_kph_set
-          
+
 
     if self._gas_pressed_count > self._gas_tok_timer:
       if CS.aEgo < -0.5:

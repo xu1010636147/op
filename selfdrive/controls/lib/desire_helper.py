@@ -268,6 +268,7 @@ class DesireHelper:
     desire_enabled = driver_desire_enabled or atc_desire_enabled
     blinker_state = driver_blinker_state if driver_desire_enabled else atc_blinker_state
 
+    #目前只有现代的carState里有这个leftLaneLine/rightLaneLine，但是大部车没有这个信息，包括Santa Fe，所以lane_line_info
     lane_line_info = carstate.leftLaneLine if blinker_state == BLINKER_LEFT else carstate.rightLaneLine
 
     if desire_enabled:
@@ -289,12 +290,12 @@ class DesireHelper:
       self.object_detected_count = 0
 
     #lane_available_trigger = not self.lane_available_last and lane_available
-    lane_change_available = (lane_available or edge_available) and lane_line_info < 20 # lane_line_info小于20为白色虚线。
+    lane_change_available = (lane_available or edge_available) and lane_line_info < 20 # lane_line_info小于20为白色虚线(注：SantaFe没有这个车道线识别功能)。
     lane_available_trigger = False
     lane_width_diff = self.lane_width_left_diff if atc_blinker_state == BLINKER_LEFT else self.lane_width_right_diff
     distance_to_road_edge = self.distance_to_road_edge_left if atc_blinker_state == BLINKER_LEFT else self.distance_to_road_edge_right
     lane_width_side = self.lane_width_left if atc_blinker_state == BLINKER_LEFT else self.lane_width_right
-    if lane_width_diff > 0.8 and (lane_width_side < distance_to_road_edge): #车辆侧边的车道宽度小于到道路边缘的距离，并且相邻的两个车道宽度差值要大于0.8m
+    if (lane_width_diff > 0.8 or self.autoTurnInNotRoadEdge > 0) and (lane_width_side < distance_to_road_edge): #车辆侧边的车道宽度小于到道路边缘的距离，并且相邻的两个车道宽度差值要大于0.8m
       lane_available_trigger = True
     edge_availabled = not self.edge_available_last and edge_available
     side_object_detected = self.object_detected_count > -0.3 / DT_MDL
@@ -308,9 +309,7 @@ class DesireHelper:
       #如果自动转弯要求是左变道，但是用户没有打左转向灯，那么会阻止自动变道
       auto_lane_change_blocked = ((atc_blinker_state == BLINKER_LEFT) and (driver_blinker_state != BLINKER_LEFT))
       #auto_lane_change_trigger = not auto_lane_change_blocked and edge_available and (lane_available_trigger or edge_availabled or lane_appeared) and not side_object_detected
-      #auto_lane_change_trigger = self.auto_lane_change_enable and not auto_lane_change_blocked and edge_available and (lane_available_trigger or lane_appeared) and not side_object_detected
-      auto_lane_change_trigger = self.auto_lane_change_enable and not auto_lane_change_blocked and edge_available and (
-        self.autoTurnInNotRoadEdge > 0 or lane_available_trigger or lane_appeared) and not side_object_detected
+      auto_lane_change_trigger = self.auto_lane_change_enable and not auto_lane_change_blocked and edge_available and (lane_available_trigger or lane_appeared) and not side_object_detected
       self.desireLog = f"L:{self.auto_lane_change_enable},{auto_lane_change_blocked},E:{lane_available},{edge_available},A:{lane_available_trigger},{lane_appeared},{lane_width_diff:.1f},{lane_width_side:.1f},{distance_to_road_edge:.1f}={auto_lane_change_trigger}"
       print(self.desireLog)
 

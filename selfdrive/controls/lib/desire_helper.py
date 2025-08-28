@@ -151,6 +151,7 @@ class DesireHelper:
     #new
     self.allowContinuousLaneChange = 0
     self.autoTurnInNotRoadEdge = 0
+    self.atc_turn_cnt = 2
     #new
 
   def check_lane_state(self, modeldata):
@@ -262,6 +263,7 @@ class DesireHelper:
 
     if self.atc_type != atc_type: #在初始化函数中self.atc_type=""，所以如果第一次atc_type被置为有效类型(如for right)时，atc_desire_enabled为False
       atc_desire_enabled = False
+      self.atc_turn_cnt = 2
 
     self.atc_type = atc_type
 
@@ -417,9 +419,16 @@ class DesireHelper:
           else:
             self.lane_change_state = LaneChangeState.off
 
-          #new 如果不允许连续变道，则改为LaneChangeState.off状态
-          if self.allowContinuousLaneChange == 0 and self.autoTurnInNotRoadEdge == 1 and (not driver_desire_enabled and atc_desire_enabled):
-            self.lane_change_state = LaneChangeState.off
+          #new 如果不允许连续变道，则改为LaneChangeState.off状态，如果允许连续变道，变道次数完成后则不再允许变道
+          if atc_type in ["atc left", "atc right"]:
+            if self.autoTurnInNotRoadEdge == 1 and (not driver_desire_enabled and atc_desire_enabled):
+              if self.allowContinuousLaneChange == 0:
+                self.lane_change_state = LaneChangeState.off
+              else:
+                if self.atc_turn_cnt > 0:
+                  self.atc_turn_cnt -= 1
+                if self.atc_turn_cnt == 0:
+                  self.lane_change_state = LaneChangeState.off
 
         print(f"+++Finishing: ll_prob={self.lane_change_ll_prob}, dir={self.lane_change_direction}, lane_change_state={self.lane_change_state}")
 

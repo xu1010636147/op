@@ -211,14 +211,14 @@ class DesireHelper:
     self.check_desire_state(modeldata)
 
     #### check driver's blinker state
-    driver_blinker_state = carstate.leftBlinker * 1 + carstate.rightBlinker * 2
+    driver_blinker_state = carstate.leftBlinker * 1 + carstate.rightBlinker * 2 #来自车辆的转向灯数据，1-左转身灯，2-右转向灯，3左右均有
     driver_blinker_changed = driver_blinker_state != self.driver_blinker_state
     self.driver_blinker_state = driver_blinker_state
-    driver_desire_enabled = driver_blinker_state in [BLINKER_LEFT, BLINKER_RIGHT]
-    if self.laneChangeNeedTorque < 0: # 운전자가 깜박이 켜도 차선변경 안함.
+    driver_desire_enabled = driver_blinker_state in [BLINKER_LEFT, BLINKER_RIGHT] #driver_desire_enabled表示司机有手动打灯
+    if self.laneChangeNeedTorque < 0: # "变道扭矩需求"如果设置为-1，即使打灯了也不会变更车道。
       driver_desire_enabled = False
 
-    ignore_bsd = True if self.laneChangeBsd < 0 else False
+    ignore_bsd = True if self.laneChangeBsd < 0 else False #laneChangeBsd设置为-1表示忽略BSD盲区检测
     block_lanechange_bsd = True if self.laneChangeBsd == 1 else False
 
     self.blindspot_detected_counter = max(0, self.blindspot_detected_counter - 1)

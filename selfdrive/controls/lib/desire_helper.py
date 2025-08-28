@@ -109,6 +109,9 @@ class DesireHelper:
     self.lane_width_right = 0
     self.lane_width_left_diff = 0
     self.lane_width_right_diff = 0
+    self.lane_width_curr = 0
+    self.lane_width_left_curr_diff = 3.5
+    self.lane_width_right_curr_diff = 3.5
     self.distance_to_road_edge_left = 0
     self.distance_to_road_edge_right = 0
     self.distance_to_road_edge_left_far = 0
@@ -117,6 +120,7 @@ class DesireHelper:
 
     self.lane_exist_left_count = ExistCounter()
     self.lane_exist_right_count = ExistCounter()
+    self.lane_exist_curr_count = ExistCounter()
     self.lane_width_left_count = ExistCounter()
     self.lane_width_right_count = ExistCounter()
     self.road_edge_left_count = ExistCounter()
@@ -127,6 +131,7 @@ class DesireHelper:
     self.available_right_edge = False
     self.lane_width_left_queue = deque(maxlen=int(1.0/DT_MDL))
     self.lane_width_right_queue = deque(maxlen=int(1.0/DT_MDL))
+    self.lane_width_curr_queue = deque(maxlen=int(1.0 / DT_MDL))
 
     self.lane_available_last = False
     self.edge_available_last = False
@@ -151,29 +156,57 @@ class DesireHelper:
     #new
     self.allowContinuousLaneChange = 0
     self.autoTurnInNotRoadEdge = 0
-    self.atc_turn_cnt = 2
+    self.continuousLaneChangeCnt = 0
+    self.atc_turn_cnt = 0
     #new
 
   def check_lane_state(self, modeldata):
+    #self.distance_to_road_edge_left/self.distance_to_road_edge_right 车辆当前位置到1秒前方车道中心线到道路边缘的距离。
+    #self.distance_to_road_edge_left_far/self.distance_to_road_edge_right_far 车辆当前位置到2秒前方车道中心线到道路边缘的距离
+    #modeldata.laneLines[0] - 左侧外车道线（左侧车道的外边界）
+    #modeldata.laneLines[1] - 当前车道的左边界线
+    #modeldata.laneLines[2] - 当前车道的右边界线
+    #modeldata.laneLines[3] - 右侧外车道线（右侧车道的外边界）
+    #modeldata.roadEdges[0] - 左侧道路边缘数据
+    #modeldata.roadEdges[1] - 右侧道路边缘数据
+    #modeldata.laneLineProbs[x]为车道线的置信度，一般大于0.5则认为有车道线
+    #置信度大于0.5，则lane_prob_left/lane_prob_right为True
     lane_width_left, self.distance_to_road_edge_left, self.distance_to_road_edge_left_far, lane_prob_left = calculate_lane_width(modeldata.laneLines[0], modeldata.laneLineProbs[0],
                                                                                                  modeldata.laneLines[1], modeldata.roadEdges[0])
     lane_width_right, self.distance_to_road_edge_right, self.distance_to_road_edge_right_far, lane_prob_right = calculate_lane_width(modeldata.laneLines[3], modeldata.laneLineProbs[3],
                                                                                                     modeldata.laneLines[2], modeldata.roadEdges[1])
+    lane_width_curr, _, _, _ = calculate_lane_width(modeldata.laneLines[1], modeldata.laneLineProbs[1], modeldata.laneLines[2], modeldata.roadEdges[0])
+
+    #左右侧车道存在计数
     self.lane_exist_left_count.update(lane_prob_left)
     self.lane_exist_right_count.update(lane_prob_right)
+    self.lane_exist_curr_count.update(modeldata.laneLineProbs[1] > 0.5 and modeldata.laneLineProbs[2] > 0.5)
 
+    #对左右车道的宽度进行滤波
     self.lane_width_left_queue.append(lane_width_left)
     self.lane_width_right_queue.append(lane_width_right)
+    self.lane_width_curr_queue.append(lane_width_curr)
+
     self.lane_width_left = np.mean(self.lane_width_left_queue)
     self.lane_width_right = np.mean(self.lane_width_right_queue)
+    self.lane_width_curr = np.mean(self.lane_width_curr_queue)
+
+    #self.lane_width_left_diff - 左侧车道宽度的变化量
+    #[-1]为最新的入列的车道宽度，[0]为最旧的车道宽度，一般width_left_diff>0.5表示车道正在变宽(一般这种情况是出现了新的车道)
     self.lane_width_left_diff = self.lane_width_left_queue[-1] - self.lane_width_left_queue[0]
     self.lane_width_right_diff = self.lane_width_right_queue[-1] - self.lane_width_right_queue[0]
 
+    #当前车道和侧面车道宽度的差值
+    self.lane_width_left_curr_diff =  self.lane_width_curr - self.lane_width_left
+    self.lane_width_right_curr_diff = self.lane_width_curr - self.lane_width_right
+
+    #车道宽度和到路沿距离大于2.5m的次数
     min_lane_width = 2.5
     self.lane_width_left_count.update(self.lane_width_left > min_lane_width)
     self.lane_width_right_count.update(self.lane_width_right > min_lane_width)
     self.road_edge_left_count.update(self.distance_to_road_edge_left > min_lane_width)
     self.road_edge_right_count.update(self.distance_to_road_edge_right > min_lane_width)
+    #当大于2.5米的次数超过0.2秒时，则认为车道或路沿存在
     available_count = int(0.2 / DT_MDL)
     self.available_left_lane = self.lane_width_left_count.counter > available_count
     self.available_right_lane = self.lane_width_right_count.counter > available_count
@@ -181,10 +214,13 @@ class DesireHelper:
     self.available_right_edge = self.road_edge_right_count.counter > available_count and self.distance_to_road_edge_right_far > min_lane_width
 
   def check_desire_state(self, modeldata):
+    #这个机制确保车辆在完成转向操作后有一个安全的缓冲期，避免在转向过程中或刚完成转向时进行车道变更
+    #desire_state[1] - 左转意图 (desireStateTurnLeft)
+    #desire_state[2] - 右转意图 (desireStateTurnRight)
     desire_state  = modeldata.meta.desireState
-    self.turn_desire_state = (desire_state[1] + desire_state[2]) > 0.1
+    self.turn_desire_state = (desire_state[1] + desire_state[2]) > 0.1 #两个值之和大于0.1表示检测到转向意图
     if self.turn_desire_state:
-      self.desire_disable_count = int(2.0/DT_MDL)
+      self.desire_disable_count = int(2.0/DT_MDL) #转向2秒后才允许变道
     else:
       self.desire_disable_count = max(0, self.desire_disable_count - 1)
     #print(f"desire_state = {desire_state}, turn_desire_state = {self.turn_desire_state}, disable_count = {self.desire_disable_count}")
@@ -198,6 +234,7 @@ class DesireHelper:
       #new
       self.allowContinuousLaneChange = self.params.get_int("ContinuousLaneChange")
       self.autoTurnInNotRoadEdge = self.params.get_int("AutoTurnInNotRoadEdge")
+      self.continuousLaneChangeCnt = self.params.get_int("ContinuousLaneChangeCnt")
       #new
     self.frame += 1
 
@@ -209,76 +246,87 @@ class DesireHelper:
 
     ##### check lane state
     self.check_lane_state(modeldata)
-    self.check_desire_state(modeldata)
+    self.check_desire_state(modeldata) #此函数会控制 self.desire_disable_count 的数值
 
     #### check driver's blinker state
     driver_blinker_state = carstate.leftBlinker * 1 + carstate.rightBlinker * 2 #来自车辆的转向灯数据，1-左转身灯，2-右转向灯，3左右均有
     driver_blinker_changed = driver_blinker_state != self.driver_blinker_state
-    self.driver_blinker_state = driver_blinker_state
+    self.driver_blinker_state = driver_blinker_state #驾驶员转向灯状态
     driver_desire_enabled = driver_blinker_state in [BLINKER_LEFT, BLINKER_RIGHT] #driver_desire_enabled表示司机有手动打灯
     if self.laneChangeNeedTorque < 0: # "变道扭矩需求"如果设置为-1，即使打灯了也不会变更车道。
       driver_desire_enabled = False
 
+    #盲区检查状态处理
     ignore_bsd = True if self.laneChangeBsd < 0 else False #laneChangeBsd设置为-1表示忽略BSD盲区检测
-    block_lanechange_bsd = True if self.laneChangeBsd == 1 else False
+    block_lanechange_bsd = True if self.laneChangeBsd == 1 else False #检查是否设置了盲区阻止变道
 
-    self.blindspot_detected_counter = max(0, self.blindspot_detected_counter - 1)
+    self.blindspot_detected_counter = max(0, self.blindspot_detected_counter - 1) #BSD盲区检测倒计时计数
 
     ##### check ATC's blinker state
-    atc_type = carrotMan.atcType
+    atc_left_right = False
+    atc_type = carrotMan.atcType #carrotMan.atcType来自carrot_man.py的update_auto_turn函数状态
     atc_blinker_state = BLINKER_NONE
-    if self.carrot_lane_change_count > 0:
+    if self.carrot_lane_change_count > 0: #carrotCmd为"LANECHANGE"是的0.2秒计数
       atc_blinker_state = self.carrot_blinker_state
-    elif carrotMan.carrotCmdIndex != self.carrot_cmd_index_last and carrotMan.carrotCmd == "LANECHANGE": #来自app的命令
+    elif carrotMan.carrotCmdIndex != self.carrot_cmd_index_last and carrotMan.carrotCmd == "LANECHANGE": #来自app的变道命令
       self.carrot_cmd_index_last = carrotMan.carrotCmdIndex
       self.carrot_lane_change_count = int(0.2 / DT_MDL)
       #print(f"---Desire lanechange: {carrotMan.carrotArg}")
       self.carrot_blinker_state = BLINKER_LEFT if carrotMan.carrotArg == "LEFT" else BLINKER_RIGHT
-    elif atc_type in ["turn left", "turn right"]: #来自carrot_man.py的update_auto_turn函数
+    elif atc_type in ["turn left", "turn right"]: #来自carrot_man.py的update_auto_turn函数，转弯请求
       if self.atc_active != 2:
         below_lane_change_speed = True
         self.lane_change_timer = 0.0
         atc_blinker_state = BLINKER_LEFT if atc_type == "turn left" else BLINKER_RIGHT
         self.atc_active = 1
         self.blinker_ignore = False
-    elif atc_type in ["fork left", "fork right", "atc left", "atc right"]: #来自carrot_man.py的update_auto_turn函数
+    elif atc_type in ["fork left", "fork right"]: #来自carrot_man.py的update_auto_turn函数，变道请求
       if self.atc_active != 2:
         below_lane_change_speed = False
-        atc_blinker_state = BLINKER_LEFT if atc_type in ["fork left", "atc left"] else BLINKER_RIGHT
+        atc_blinker_state = BLINKER_LEFT if atc_type in ["fork left"] else BLINKER_RIGHT
         self.atc_active = 1
+    elif atc_type in ["atc left", "atc right"]: #来自carrot_man.py的update_auto_turn函数，变道请求
+      if self.atc_active != 2:
+        below_lane_change_speed = False
+        atc_blinker_state = BLINKER_LEFT if atc_type in ["atc left"] else BLINKER_RIGHT
+        self.atc_active = 1
+        atc_left_right = True
     else:
       self.atc_active = 0
-    #检测并解决驾驶员转向灯与ATC系统转向灯的冲突，系统和驾驶员打的转向灯不同，则优先驾驶员
+
+    #自动转弯方向和驾驶员打的转向灯不同，则优先驾驶员
     if driver_blinker_state != BLINKER_NONE and atc_blinker_state != BLINKER_NONE and driver_blinker_state != atc_blinker_state:
       atc_blinker_state = BLINKER_NONE
       self.atc_active = 2
-    atc_desire_enabled = atc_blinker_state in [BLINKER_LEFT, BLINKER_RIGHT]
+    atc_desire_enabled = atc_blinker_state in [BLINKER_LEFT, BLINKER_RIGHT] #自动转弯控制需求
 
     if driver_blinker_state == BLINKER_NONE:
       self.blinker_ignore = False
-    if self.blinker_ignore:
+    if self.blinker_ignore: #如果用户在控制方向盘，则self.blinker_ignore会为True
       driver_blinker_state = BLINKER_NONE
       atc_blinker_state = BLINKER_NONE
       driver_desire_enabled = False
 
-    if self.atc_type != atc_type: #在初始化函数中self.atc_type=""，所以如果第一次atc_type被置为有效类型(如for right)时，atc_desire_enabled为False
-      atc_desire_enabled = False
-      self.atc_turn_cnt = 2
+    if self.atc_type != atc_type: #为里的判断主要是用于在atc_type类型变化时用于重置状态
+      atc_desire_enabled = False #atc类型不同时，重置自动转弯需求
+      self.atc_turn_cnt = self.continuousLaneChangeCnt #重置允许连续变道次数
 
     self.atc_type = atc_type
 
-    desire_enabled = driver_desire_enabled or atc_desire_enabled
-    blinker_state = driver_blinker_state if driver_desire_enabled else atc_blinker_state
+    desire_enabled = driver_desire_enabled or atc_desire_enabled #变道请求
+    blinker_state = driver_blinker_state if driver_desire_enabled else atc_blinker_state #根据是谁打的灯选择转向灯状态
 
-    #目前只有现代的carState里有这个leftLaneLine/rightLaneLine，但是大部车没有这个信息，包括Santa Fe，所以lane_line_info
+    #目前只有现代的carState里有这个leftLaneLine/rightLaneLine，但是大部车没有这个信息，包括Santa Fe，所以lane_line_info为0
     lane_line_info = carstate.leftLaneLine if blinker_state == BLINKER_LEFT else carstate.rightLaneLine
 
     if desire_enabled:
-      lane_exist_counter = self.lane_exist_left_count.counter if blinker_state == BLINKER_LEFT else self.lane_exist_right_count.counter
-      lane_available = self.available_left_lane if blinker_state == BLINKER_LEFT else self.available_right_lane
-      edge_available = self.available_left_edge if blinker_state == BLINKER_LEFT else self.available_right_edge
+      lane_exist_counter = self.lane_exist_left_count.counter if blinker_state == BLINKER_LEFT else self.lane_exist_right_count.counter #左侧或右侧车道存在的时间
+      lane_available = self.available_left_lane if blinker_state == BLINKER_LEFT else self.available_right_lane #车道存在标志
+      edge_available = self.available_left_edge if blinker_state == BLINKER_LEFT else self.available_right_edge #路缘存在标志
       lane_appeared = lane_exist_counter == int(0.2 / DT_MDL) #车道线存在时间等于0.2秒代表有新车道线出现
+      curr_lane_width_diff = self.lane_width_left_curr_diff if blinker_state == BLINKER_LEFT else self.lane_width_right_curr_diff #当前车道宽度和旁边车道宽度的差值
 
+      #使用雷达检测左前方和右前方的车辆状态，判断变道是否存在危险，无有效雷达时则认为侧面无车
       radar = radarState.leadLeft if blinker_state == BLINKER_LEFT else radarState.leadRight
       side_object_dist = radar.dRel + radar.vLead * 4.0 if radar.status else 255
       object_detected = side_object_dist < v_ego * 3.0
@@ -290,22 +338,28 @@ class DesireHelper:
       edge_available = True
       lane_appeared = False
       self.object_detected_count = 0
+      curr_lane_width_diff = 3.5
 
     #lane_available_trigger = not self.lane_available_last and lane_available
     lane_change_available = (lane_available or edge_available) and lane_line_info < 20 # lane_line_info小于20为白色虚线(注：SantaFe没有这个车道线识别功能)。
     lane_available_trigger = False
-    lane_width_diff = self.lane_width_left_diff if atc_blinker_state == BLINKER_LEFT else self.lane_width_right_diff
-    distance_to_road_edge = self.distance_to_road_edge_left if atc_blinker_state == BLINKER_LEFT else self.distance_to_road_edge_right
-    lane_width_side = self.lane_width_left if atc_blinker_state == BLINKER_LEFT else self.lane_width_right
+    lane_width_diff = self.lane_width_left_diff if atc_blinker_state == BLINKER_LEFT else self.lane_width_right_diff #lane_width_diff为1秒内侧面车道变宽的宽度，说明可能的新的车道增加
+    distance_to_road_edge = self.distance_to_road_edge_left if atc_blinker_state == BLINKER_LEFT else self.distance_to_road_edge_right #当前车道线到道路边缘的距离
+    lane_width_side = self.lane_width_left if atc_blinker_state == BLINKER_LEFT else self.lane_width_right #左侧或右侧车道的宽度
+
+    # 侧面车道的宽度小于距离道路边缘的宽度，并且宽度在1少内变宽了0.8米以上(说明可能有新车道出现，即新车道在变大)
     #if lane_width_diff > 0.8 and (lane_width_side < distance_to_road_edge):
-    if (lane_width_diff > 0.8 or (self.autoTurnInNotRoadEdge > 0 and lane_width_diff > -0.2)) and (lane_width_side < distance_to_road_edge): #车辆侧边的车道宽度小于到道路边缘的距离，并且相邻的两个车道宽度差值要大于0.8m
+    if not atc_left_right and lane_width_diff > 0.5 and (lane_width_side < distance_to_road_edge):
+      lane_available_trigger = True
+    #if (lane_width_diff > 0.5 or (self.autoTurnInNotRoadEdge > 0 and round(curr_lane_width_diff,1) < 0.3 )) and (lane_width_side < distance_to_road_edge):
+    elif atc_left_right and (lane_width_diff > 0.5 or (self.autoTurnInNotRoadEdge > 0 and curr_lane_width_diff < 0.3)) and (lane_width_side < distance_to_road_edge):
       lane_available_trigger = True
     edge_availabled = not self.edge_available_last and edge_available
-    side_object_detected = self.object_detected_count > -0.3 / DT_MDL
-    lane_appeared = lane_appeared and distance_to_road_edge < 4.0
+    side_object_detected = self.object_detected_count > -0.3 / DT_MDL #是否检测到侧面前方有可能会发生危险的车辆（需要雷达支持探测左右两侧前方的车辆）
+    lane_appeared = lane_appeared and distance_to_road_edge < 4.0 #新车道出现还要附加个距离道路边缘小于4米的条件
 
 
-    if self.carrot_lane_change_count > 0:
+    if self.carrot_lane_change_count > 0: #些计数为carrorMan发送过来的LANECHANGE触发的变道
       auto_lane_change_blocked = False
       auto_lane_change_trigger = lane_change_available
     else:
@@ -313,7 +367,7 @@ class DesireHelper:
       auto_lane_change_blocked = ((atc_blinker_state == BLINKER_LEFT) and (driver_blinker_state != BLINKER_LEFT))
       #auto_lane_change_trigger = not auto_lane_change_blocked and edge_available and (lane_available_trigger or edge_availabled or lane_appeared) and not side_object_detected
       auto_lane_change_trigger = self.auto_lane_change_enable and not auto_lane_change_blocked and edge_available and (lane_available_trigger or lane_appeared) and not side_object_detected
-      self.desireLog = f"L:{self.auto_lane_change_enable},{auto_lane_change_blocked},E:{lane_available},{edge_available},A:{lane_available_trigger},{lane_appeared},{lane_width_diff:.1f},{lane_width_side:.1f},{distance_to_road_edge:.1f}={auto_lane_change_trigger}"
+      self.desireLog = f"L:{self.auto_lane_change_enable},{auto_lane_change_blocked},E:{lane_available},{edge_available},A:{lane_available_trigger},{lane_appeared},{lane_width_diff:.1f},{lane_width_side:.1f},{distance_to_road_edge:.1f},{self.lane_width_curr:.1f}={auto_lane_change_trigger}"
       print(self.desireLog)
 
     if not lateral_active or self.lane_change_timer > LANE_CHANGE_TIME_MAX:
@@ -327,7 +381,7 @@ class DesireHelper:
       self.turn_direction = TurnDirection.turnLeft if blinker_state == BLINKER_LEFT else TurnDirection.turnRight
       self.lane_change_direction = self.turn_direction #LaneChangeDirection.none
       desire_enabled = False
-    elif self.desire_disable_count > 0: # Turn后一段时间内无法变更车道
+    elif self.desire_disable_count > 0: # Turn后一段时间内无法变更车道,此变量在check_desire_state函数里计算，如果车辆在转弯，则一直把desire_disable_count设置为2秒的计数值
       #print("---Desire after turning")
       self.lane_change_state = LaneChangeState.off
       self.lane_change_direction = LaneChangeDirection.none
@@ -414,16 +468,17 @@ class DesireHelper:
 
         if self.lane_change_ll_prob > 0.99:
           self.lane_change_direction = LaneChangeDirection.none
-          if desire_enabled:
+          if desire_enabled: #如果变道需求还在，则重新进入preLaneChange状态
             self.lane_change_state = LaneChangeState.preLaneChange
           else:
             self.lane_change_state = LaneChangeState.off
 
           #new 如果不允许连续变道，则改为LaneChangeState.off状态，如果允许连续变道，变道次数完成后则不再允许变道
-          if atc_type in ["atc left", "atc right"]:
-            if self.autoTurnInNotRoadEdge == 1 and (not driver_desire_enabled and atc_desire_enabled):
-              if self.allowContinuousLaneChange == 0:
+          if atc_left_right: #属于变道
+            if self.autoTurnInNotRoadEdge > 0 and (not driver_desire_enabled and atc_desire_enabled): #属于系统自动变道
+              if self.allowContinuousLaneChange == 0: #不允许连续变道
                 self.lane_change_state = LaneChangeState.off
+                self.atc_turn_cnt = 0
               else:
                 if self.atc_turn_cnt > 0:
                   self.atc_turn_cnt -= 1

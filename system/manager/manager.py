@@ -82,7 +82,7 @@ def get_default_params():
     ("AutoNaviSpeedBumpTime", "1"),
     ("AutoNaviSpeedBumpSpeed", "35"),
     ("AutoNaviSpeedSafetyFactor", "105"),
-    ("AutoNaviSpeedDecelRate", "120"),
+    ("AutoNaviSpeedDecelRate", "80"),
     ("AutoRoadSpeedLimitOffset", "-1"),
     ("AutoNaviCountDownMode", "2"),
     ("TurnSpeedControlMode", "1"),

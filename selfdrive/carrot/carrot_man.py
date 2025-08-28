@@ -1984,7 +1984,7 @@ class CarrotServ:
       self.carrotCmdIndex = self.carrotIndex
       self.carrotCmd = json.get("carrotCmd")
       self.carrotArg = json.get("carrotArg")
-      print(f"carrotCmd = {self.carrotCmd}, {self.carrotArg}")
+      #print(f"carrotCmd = {self.carrotCmd}, {self.carrotArg}")
 
     self.active_count = 80
     now = time.monotonic()

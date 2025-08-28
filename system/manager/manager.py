@@ -189,6 +189,7 @@ def get_default_params():
     ("AutoUpHighwayRoadLimit", "1"),
     ("AutoHighWayForkDistOffset", "1000"),
     ("AutoHighWayDoForkDistOffset", "0"),
+    ("AutoHighWayForkDecalRate", "70"),
     ("AutoForkDistOffset", "50"),
     ("AutoDoForkDistOffset", "0"),
     ("AutoUpRoadLimit40KMH", "15"),

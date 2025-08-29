@@ -58,16 +58,28 @@ def calculate_lane_width_frog(lane, current_lane, road_edge):
   return min(distance_to_lane, distance_to_road_edge), distance_to_road_edge
 
 def calculate_lane_width(lane, lane_prob, current_lane, road_edge):
-  t = 1.0 # 약 1초 앞의 차선.
+  t = 1.0 # 约1秒前的车道
   current_lane_y = np.interp(t, ModelConstants.T_IDXS, current_lane.y)
   lane_y = np.interp(t, ModelConstants.T_IDXS, lane.y)
   distance_to_lane = abs(current_lane_y - lane_y)
+  #new 计算2秒外的车道宽度
+  current_lane_y_far = np.interp(2.0, ModelConstants.T_IDXS, current_lane.y)
+  lane_y_far = np.interp(2.0, ModelConstants.T_IDXS, lane.y)
+  distance_to_lane_far = abs(current_lane_y_far - lane_y_far)
+  #new
   #if lane_prob < 0.3:# 차선이 없으면 없는것으로 간주시킴.
   #  distance_to_lane = min(2.0, distance_to_lane)
   road_edge_y = np.interp(t, ModelConstants.T_IDXS, road_edge.y)
   distance_to_road_edge = abs(current_lane_y - road_edge_y)
   distance_to_road_edge_far = abs(current_lane_y - np.interp(2.0, ModelConstants.T_IDXS, road_edge.y))
-  return min(distance_to_lane, distance_to_road_edge), distance_to_road_edge, distance_to_road_edge_far, lane_prob > 0.5
+  return min(distance_to_lane, distance_to_road_edge), distance_to_road_edge, distance_to_road_edge_far, lane_prob > 0.5, distance_to_lane_far
+
+def calculate_lane_width_only(lane, current_lane):
+  t = 1.0 # 约1秒前的车道
+  current_lane_y = np.interp(t, ModelConstants.T_IDXS, current_lane.y)
+  lane_y = np.interp(t, ModelConstants.T_IDXS, lane.y)
+  distance_to_lane = abs(current_lane_y - lane_y)
+  return distance_to_lane
 
 class ExistCounter:
   def __init__(self):
@@ -109,6 +121,10 @@ class DesireHelper:
     self.lane_width_right = 0
     self.lane_width_left_diff = 0
     self.lane_width_right_diff = 0
+    #self.lane_width_left_far = 0
+    #self.lane_width_right_far = 0
+    self.lane_width_left_far_diff = 0
+    self.lane_width_right_far_diff = 0
     self.lane_width_curr = 0
     self.lane_width_left_curr_diff = 3.5
     self.lane_width_right_curr_diff = 3.5
@@ -132,6 +148,8 @@ class DesireHelper:
     self.lane_width_left_queue = deque(maxlen=int(1.0/DT_MDL))
     self.lane_width_right_queue = deque(maxlen=int(1.0/DT_MDL))
     self.lane_width_curr_queue = deque(maxlen=int(1.0 / DT_MDL))
+    self.lane_width_left_far_queue = deque(maxlen=int(1.0/DT_MDL))
+    self.lane_width_right_far_queue = deque(maxlen=int(1.0/DT_MDL))
 
     self.lane_available_last = False
     self.edge_available_last = False
@@ -171,11 +189,11 @@ class DesireHelper:
     #modeldata.roadEdges[1] - 右侧道路边缘数据
     #modeldata.laneLineProbs[x]为车道线的置信度，一般大于0.5则认为有车道线
     #置信度大于0.5，则lane_prob_left/lane_prob_right为True
-    lane_width_left, self.distance_to_road_edge_left, self.distance_to_road_edge_left_far, lane_prob_left = calculate_lane_width(modeldata.laneLines[0], modeldata.laneLineProbs[0],
+    lane_width_left, self.distance_to_road_edge_left, self.distance_to_road_edge_left_far, lane_prob_left, lane_width_left_far = calculate_lane_width(modeldata.laneLines[0], modeldata.laneLineProbs[0],
                                                                                                  modeldata.laneLines[1], modeldata.roadEdges[0])
-    lane_width_right, self.distance_to_road_edge_right, self.distance_to_road_edge_right_far, lane_prob_right = calculate_lane_width(modeldata.laneLines[3], modeldata.laneLineProbs[3],
+    lane_width_right, self.distance_to_road_edge_right, self.distance_to_road_edge_right_far, lane_prob_right, lane_width_right_far = calculate_lane_width(modeldata.laneLines[3], modeldata.laneLineProbs[3],
                                                                                                     modeldata.laneLines[2], modeldata.roadEdges[1])
-    lane_width_curr, _, _, _ = calculate_lane_width(modeldata.laneLines[1], modeldata.laneLineProbs[1], modeldata.laneLines[2], modeldata.roadEdges[0])
+    lane_width_curr = calculate_lane_width_only(modeldata.laneLines[1], modeldata.laneLines[2])
 
     #左右侧车道存在计数
     self.lane_exist_left_count.update(lane_prob_left)
@@ -186,15 +204,21 @@ class DesireHelper:
     self.lane_width_left_queue.append(lane_width_left)
     self.lane_width_right_queue.append(lane_width_right)
     self.lane_width_curr_queue.append(lane_width_curr)
+    self.lane_width_left_far_queue.append(lane_width_left_far)
+    self.lane_width_right_far_queue.append(lane_width_right_far)
 
     self.lane_width_left = np.mean(self.lane_width_left_queue)
     self.lane_width_right = np.mean(self.lane_width_right_queue)
     self.lane_width_curr = np.mean(self.lane_width_curr_queue)
+    #self.lane_width_left_far = np.mean(self.lane_width_left_far_queue)
+    #self.lane_width_right_far = np.mean(self.lane_width_right_far_queue)
 
     #self.lane_width_left_diff - 左侧车道宽度的变化量
     #[-1]为最新的入列的车道宽度，[0]为最旧的车道宽度，一般width_left_diff>0.5表示车道正在变宽(一般这种情况是出现了新的车道)
     self.lane_width_left_diff = self.lane_width_left_queue[-1] - self.lane_width_left_queue[0]
     self.lane_width_right_diff = self.lane_width_right_queue[-1] - self.lane_width_right_queue[0]
+    self.lane_width_left_far_diff = self.lane_width_left_far_queue[-1] - self.lane_width_left_far_queue[0]
+    self.lane_width_right_far_diff = self.lane_width_right_far_queue[-1] - self.lane_width_right_far_queue[0]
 
     #当前车道和侧面车道宽度的差值
     self.lane_width_left_curr_diff =  self.lane_width_curr - self.lane_width_left
@@ -344,15 +368,16 @@ class DesireHelper:
     lane_change_available = (lane_available or edge_available) and lane_line_info < 20 # lane_line_info小于20为白色虚线(注：SantaFe没有这个车道线识别功能)。
     lane_available_trigger = False
     lane_width_diff = self.lane_width_left_diff if atc_blinker_state == BLINKER_LEFT else self.lane_width_right_diff #lane_width_diff为1秒内侧面车道变宽的宽度，说明可能的新的车道增加
+    lane_width_far_diff = self.lane_width_left_far_diff if atc_blinker_state == BLINKER_LEFT else self.lane_width_right_far_diff
     distance_to_road_edge = self.distance_to_road_edge_left if atc_blinker_state == BLINKER_LEFT else self.distance_to_road_edge_right #当前车道线到道路边缘的距离
     lane_width_side = self.lane_width_left if atc_blinker_state == BLINKER_LEFT else self.lane_width_right #左侧或右侧车道的宽度
 
     # 侧面车道的宽度小于距离道路边缘的宽度，并且宽度在1少内变宽了0.8米以上(说明可能有新车道出现，即新车道在变大)
     #if lane_width_diff > 0.8 and (lane_width_side < distance_to_road_edge):
-    if not atc_left_right and lane_width_diff > 0.5 and (lane_width_side < distance_to_road_edge):
+    if not atc_left_right and (lane_width_diff > 0.5 or lane_width_far_diff > 0.5) and (lane_width_side < distance_to_road_edge):
       lane_available_trigger = True
     #if (lane_width_diff > 0.5 or (self.autoTurnInNotRoadEdge > 0 and round(curr_lane_width_diff,1) < 0.3 )) and (lane_width_side < distance_to_road_edge):
-    elif atc_left_right and (lane_width_diff > 0.5 or (self.autoTurnInNotRoadEdge > 0 and curr_lane_width_diff < 0.3 and self.atc_turn_cnt >= 0)) and (lane_width_side < distance_to_road_edge):
+    elif atc_left_right and (lane_width_diff > 0.5 or lane_width_far_diff > 0.5 or (self.autoTurnInNotRoadEdge > 0 and curr_lane_width_diff < 0.3 and self.atc_turn_cnt >= 0)) and (lane_width_side < distance_to_road_edge):
       lane_available_trigger = True
     edge_availabled = not self.edge_available_last and edge_available
     side_object_detected = self.object_detected_count > -0.3 / DT_MDL #是否检测到侧面前方有可能会发生危险的车辆（需要雷达支持探测左右两侧前方的车辆）
@@ -367,7 +392,7 @@ class DesireHelper:
       auto_lane_change_blocked = ((atc_blinker_state == BLINKER_LEFT) and (driver_blinker_state != BLINKER_LEFT))
       #auto_lane_change_trigger = not auto_lane_change_blocked and edge_available and (lane_available_trigger or edge_availabled or lane_appeared) and not side_object_detected
       auto_lane_change_trigger = self.auto_lane_change_enable and not auto_lane_change_blocked and edge_available and (lane_available_trigger or lane_appeared) and not side_object_detected
-      self.desireLog = f"L:{self.auto_lane_change_enable},{auto_lane_change_blocked},E:{lane_available},{edge_available},A:{lane_available_trigger},{lane_appeared},{lane_width_diff:.1f},{lane_width_side:.1f},{distance_to_road_edge:.1f},{self.lane_width_curr:.1f}={auto_lane_change_trigger}"
+      self.desireLog = f"L:{self.atc_turn_cnt},{self.auto_lane_change_enable},{auto_lane_change_blocked},E:{lane_available},{edge_available},A:{lane_available_trigger},{lane_appeared},{lane_width_far_diff:.1f},{lane_width_diff:.1f},{lane_width_side:.1f},{distance_to_road_edge:.1f},{self.lane_width_curr:.1f}={auto_lane_change_trigger}"
       print(self.desireLog)
 
     if not lateral_active or self.lane_change_timer > LANE_CHANGE_TIME_MAX:

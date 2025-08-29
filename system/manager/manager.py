@@ -190,6 +190,7 @@ def get_default_params():
     ("AutoHighWayForkDistOffset", "1000"),
     ("AutoHighWayDoForkDistOffset", "0"),
     ("AutoHighWayForkDecalRate", "70"),
+    ("AutoHighWayForkSpeedMin", "60"),
     ("AutoForkDistOffset", "50"),
     ("AutoDoForkDistOffset", "0"),
     ("AutoUpRoadLimit40KMH", "15"),

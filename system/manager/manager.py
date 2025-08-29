@@ -185,6 +185,7 @@ def get_default_params():
     ("AutoTurnInNotRoadEdge", "1"),
     ("ContinuousLaneChange", "0"),
     ("ContinuousLaneChangeCnt", "1"),
+    ("AutoTurnLeft", "1"),
     ("AutoUpRoadLimit", "1"),
     ("AutoUpHighwayRoadLimit", "1"),
     ("AutoHighWayForkDistOffset", "1000"),

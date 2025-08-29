@@ -395,10 +395,10 @@ class DesireHelper:
 
     # 侧面车道的宽度小于距离道路边缘的宽度，并且宽度在1少内变宽了0.8米以上(说明可能有新车道出现，即新车道在变大)
     #if lane_width_diff > 0.8 and (lane_width_side < distance_to_road_edge):
-    if not atc_left_right and lane_width_diff > 0.8 and (lane_width_side < distance_to_road_edge):
+    if not atc_left_right and lane_width_far_diff > 0.8 and (lane_width_side < distance_to_road_edge):
       lane_available_trigger = True
     #if (lane_width_diff > 0.5 or (self.autoTurnInNotRoadEdge > 0 and round(curr_lane_width_diff,1) < 0.3 )) and (lane_width_side < distance_to_road_edge):
-    elif atc_left_right and (lane_width_diff > 0.8 or (self.autoTurnInNotRoadEdge > 0 and curr_lane_width_diff < 0.3 and lane_width_far_diff >= 0 and self.atc_turn_cnt >= 0)) and (lane_width_side < distance_to_road_edge):
+    elif atc_left_right and (lane_width_far_diff > 0.8 or (self.autoTurnInNotRoadEdge > 0 and curr_lane_width_diff < 0.3 and lane_width_far_diff >= 0 and self.atc_turn_cnt >= 0)) and (lane_width_side < distance_to_road_edge):
       lane_available_trigger = True
     edge_availabled = not self.edge_available_last and edge_available
     side_object_detected = self.object_detected_count > -0.3 / DT_MDL #是否检测到侧面前方有可能会发生危险的车辆（需要雷达支持探测左右两侧前方的车辆）

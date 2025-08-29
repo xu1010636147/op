@@ -183,6 +183,7 @@ class DesireHelper:
     self.autoDoForkDistOffset = 0
     self.autoHighWayDoForkDistOffset = 0
     self.roadType = -1
+    self.autoTurnLeft = 0
     #new
 
   def check_lane_state(self, modeldata, v_ego):
@@ -280,6 +281,7 @@ class DesireHelper:
       self.autoDoForkDistOffset = self.params.get_int("AutoDoForkDistOffset")
       self.autoHighWayDoForkDistOffset = self.params.get_int("AutoHighWayDoForkDistOffset")
       self.roadType = self.params.get_int("RoadType")
+      self.autoTurnLeft = self.params.get_int("AutoTurnLeft")
       #new
     self.frame += 1
 
@@ -410,7 +412,7 @@ class DesireHelper:
       auto_lane_change_trigger = lane_change_available
     else:
       #如果自动转弯要求是左变道，但是用户没有打左转向灯，那么会阻止自动变道
-      auto_lane_change_blocked = ((atc_blinker_state == BLINKER_LEFT) and (driver_blinker_state != BLINKER_LEFT))
+      auto_lane_change_blocked = ((atc_blinker_state == BLINKER_LEFT) and (driver_blinker_state != BLINKER_LEFT) and self.autoTurnLeft == 0) #增加可以设置允许左变道
       #auto_lane_change_trigger = not auto_lane_change_blocked and edge_available and (lane_available_trigger or edge_availabled or lane_appeared) and not side_object_detected
       auto_lane_change_trigger = self.auto_lane_change_enable and not auto_lane_change_blocked and edge_available and (lane_available_trigger or lane_appeared) and not side_object_detected
       self.desireLog = f"D:{lane_width_far_diff:.1f},{lane_width_diff:.1f},{lane_width_side:.1f},{distance_to_road_edge:.1f},{self.lane_width_curr:.1f}={auto_lane_change_trigger},T:{self.atc_turn_cnt},L:{self.auto_lane_change_enable},{auto_lane_change_blocked},E:{lane_available},{edge_available},A:{lane_available_trigger},{lane_appeared}"

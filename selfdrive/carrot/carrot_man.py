@@ -2111,7 +2111,7 @@ class CarrotServ:
       self._update_sdi()
       print(
         f"sdi = T {self.nSdiType}, S {self.nSdiSpeedLimit}, PS {self.nSdiPlusType}, " +
-        f"spd = T {self.xSpdType}, S {self.xSpdLimit}, D {self.xSpdDist}, RC {self.roadcate}, xRC {self.xroadcate}, " +
+        f"spd = T {self.xSpdType}, S {self.xSpdLimit}, D {self.xSpdDist:.1f}, RC {self.roadcate}, xRC {self.xroadcate}, " +
         f"tbt = T {self.nTBTTurnType}, D {self.nTBTDist}, " +
         f"xtbt = xT {self.xTurnInfo}, xD {self.xDistToTurn}, " +
         f"next = T {self.nTBTTurnTypeNext}, D {self.nTBTDistNext}"

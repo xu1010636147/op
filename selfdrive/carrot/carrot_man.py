@@ -1108,6 +1108,24 @@ class CarrotServ:
     self.debugText = ""
 
     #new
+    self.autoNaviSpeedBumpSpeed = 35.
+    self.autoNaviSpeedBumpTime = 1
+    self.autoNaviSpeedCtrlEnd = 7
+    self.autoNaviSpeedCtrlMode = 3
+    self.autoNaviSpeedSafetyFactor = 1.05
+    self.autoNaviSpeedDecelRate = 0.8
+    self.autoNaviCountDownMode = 2
+    self.turnSpeedControlMode = 1
+    self.mapTurnSpeedFactor = 1.
+    self.autoTurnControlSpeedTurn = 20
+    self.autoTurnMapChange = 0
+    self.autoTurnControl = 2
+    self.autoTurnControlTurnEnd = 6
+    # self.autoNaviSpeedDecelRate = 0.8
+    self.autoCurveSpeedLowerLimit = 30
+    self.is_metric = True
+    self.autoRoadSpeedLimitOffset = -1
+
     self.sameSpiCamFilter = 0
     self.autoTurnDistOffset = 0
     self.autoHighWayForkDistOffset = 1000
@@ -1124,46 +1142,52 @@ class CarrotServ:
     self.xroadcate = 8
     self.autoHighWayForkDecalRate = 100
     self.autoHighWayForkSpeedMin = 60
+    self.showDebugLog = 0
+    self.param_frame = 0
     #new
 
     self.update_params()
 
   def update_params(self):
-    self.autoNaviSpeedBumpSpeed = float(self.params.get_int("AutoNaviSpeedBumpSpeed"))
-    self.autoNaviSpeedBumpTime = float(self.params.get_int("AutoNaviSpeedBumpTime"))
-    self.autoNaviSpeedCtrlEnd = float(self.params.get_int("AutoNaviSpeedCtrlEnd"))
-    self.autoNaviSpeedCtrlMode = self.params.get_int("AutoNaviSpeedCtrlMode")
-    self.autoNaviSpeedSafetyFactor = float(self.params.get_int("AutoNaviSpeedSafetyFactor")) * 0.01
-    self.autoNaviSpeedDecelRate = float(self.params.get_int("AutoNaviSpeedDecelRate")) * 0.01
-    self.autoNaviCountDownMode = self.params.get_int("AutoNaviCountDownMode")
-    self.turnSpeedControlMode= self.params.get_int("TurnSpeedControlMode")
-    self.mapTurnSpeedFactor= self.params.get_float("MapTurnSpeedFactor") * 0.01
+    if (self.param_frame % 10) == 0:
+      self.autoNaviSpeedBumpSpeed = float(self.params.get_int("AutoNaviSpeedBumpSpeed"))
+      self.autoNaviSpeedBumpTime = float(self.params.get_int("AutoNaviSpeedBumpTime"))
+      self.autoNaviSpeedCtrlEnd = float(self.params.get_int("AutoNaviSpeedCtrlEnd"))
+      self.autoNaviSpeedCtrlMode = self.params.get_int("AutoNaviSpeedCtrlMode")
+      self.autoNaviSpeedSafetyFactor = float(self.params.get_int("AutoNaviSpeedSafetyFactor")) * 0.01
+      self.autoNaviSpeedDecelRate = float(self.params.get_int("AutoNaviSpeedDecelRate")) * 0.01
+      self.autoNaviCountDownMode = self.params.get_int("AutoNaviCountDownMode")
+      self.turnSpeedControlMode= self.params.get_int("TurnSpeedControlMode")
+      self.mapTurnSpeedFactor= self.params.get_float("MapTurnSpeedFactor") * 0.01
 
-    self.autoTurnControlSpeedTurn = self.params.get_int("AutoTurnControlSpeedTurn")
-    self.autoTurnMapChange = self.params.get_int("AutoTurnMapChange")
-    self.autoTurnControl = self.params.get_int("AutoTurnControl")
-    self.autoTurnControlTurnEnd = self.params.get_int("AutoTurnControlTurnEnd")
-    #self.autoNaviSpeedDecelRate = float(self.params.get_int("AutoNaviSpeedDecelRate")) * 0.01
-    self.autoCurveSpeedLowerLimit = int(self.params.get("AutoCurveSpeedLowerLimit"))
-    self.is_metric = self.params.get_bool("IsMetric")
-    self.autoRoadSpeedLimitOffset = self.params.get_int("AutoRoadSpeedLimitOffset")
+      self.autoTurnControlSpeedTurn = self.params.get_int("AutoTurnControlSpeedTurn")
+      self.autoTurnMapChange = self.params.get_int("AutoTurnMapChange")
+      self.autoTurnControl = self.params.get_int("AutoTurnControl")
+      self.autoTurnControlTurnEnd = self.params.get_int("AutoTurnControlTurnEnd")
+      #self.autoNaviSpeedDecelRate = float(self.params.get_int("AutoNaviSpeedDecelRate")) * 0.01
+      self.autoCurveSpeedLowerLimit = int(self.params.get("AutoCurveSpeedLowerLimit"))
+      self.is_metric = self.params.get_bool("IsMetric")
+      self.autoRoadSpeedLimitOffset = self.params.get_int("AutoRoadSpeedLimitOffset")
 
-    #new
-    self.sameSpiCamFilter = self.params.get_int("SameSpiCamFilter")
-    self.autoTurnDistOffset = self.params.get_int("AutoTurnDistOffset")
-    self.autoForkDistOffset = self.params.get_int("AutoForkDistOffset")
-    #self.autoDoForkDistOffset = self.params.get_int("AutoDoForkDistOffset")
-    self.autoDoForkBlinkerDist = self.params.get_int("AutoDoForkBlinkerDist")
-    self.autoHighWayForkDistOffset = self.params.get_int("AutoHighWayForkDistOffset")
-    #self.autoHighWayDoForkDistOffset = self.params.get_int("AutoHighWayDoForkDistOffset")
-    self.autoHighWayDoForkBlinkerDist = self.params.get_int("AutoHighWayDoForkBlinkerDist")
-    self.autoUpRoadLimit = self.params.get_int("AutoUpRoadLimit")
-    self.autoUpRoadLimit40KMH = self.params.get_int("AutoUpRoadLimit40KMH")
-    self.autoUpHighwayRoadLimit = self.params.get_int("AutoUpHighwayRoadLimit")
-    self.autoUpHighwayRoadLimit40KMH = self.params.get_int("AutoUpHighwayRoadLimit40KMH")
-    self.roadType = self.params.get_int("RoadType")
-    self.autoHighWayForkDecalRate = float(self.params.get_int("AutoHighWayForkDecalRate")) * 0.01
-    self.autoHighWayForkSpeedMin = self.params.get_int("AutoHighWayForkSpeedMin")
+      #new
+      self.sameSpiCamFilter = self.params.get_int("SameSpiCamFilter")
+      self.autoTurnDistOffset = self.params.get_int("AutoTurnDistOffset")
+      self.autoForkDistOffset = self.params.get_int("AutoForkDistOffset")
+      #self.autoDoForkDistOffset = self.params.get_int("AutoDoForkDistOffset")
+      self.autoDoForkBlinkerDist = self.params.get_int("AutoDoForkBlinkerDist")
+      self.autoHighWayForkDistOffset = self.params.get_int("AutoHighWayForkDistOffset")
+      #self.autoHighWayDoForkDistOffset = self.params.get_int("AutoHighWayDoForkDistOffset")
+      self.autoHighWayDoForkBlinkerDist = self.params.get_int("AutoHighWayDoForkBlinkerDist")
+      self.autoUpRoadLimit = self.params.get_int("AutoUpRoadLimit")
+      self.autoUpRoadLimit40KMH = self.params.get_int("AutoUpRoadLimit40KMH")
+      self.autoUpHighwayRoadLimit = self.params.get_int("AutoUpHighwayRoadLimit")
+      self.autoUpHighwayRoadLimit40KMH = self.params.get_int("AutoUpHighwayRoadLimit40KMH")
+      self.roadType = self.params.get_int("RoadType")
+      self.autoHighWayForkDecalRate = float(self.params.get_int("AutoHighWayForkDecalRate")) * 0.01
+      self.autoHighWayForkSpeedMin = self.params.get_int("AutoHighWayForkSpeedMin")
+      self.showDebugLog = self.params.get_int("ShowDebugLog")
+
+    self.param_frame += 1
     #new
 
   def _update_cmd(self):
@@ -2121,13 +2145,14 @@ class CarrotServ:
       self.nPosSpeed = float(json.get("nPosSpeed", self.nPosSpeed))
       self._update_tbt()
       self._update_sdi()
-      print(
-        f"sdi = T {self.nSdiType}, S {self.nSdiSpeedLimit}, PS {self.nSdiPlusType}, " +
-        f"spd = T {self.xSpdType}, S {self.xSpdLimit}, D {self.xSpdDist:.1f}, RC {self.roadcate}, xRC {self.xroadcate}, " +
-        f"tbt = T {self.nTBTTurnType}, D {self.nTBTDist}, " +
-        f"xtbt = xT {self.xTurnInfo}, xD {self.xDistToTurn}, " +
-        f"next = T {self.nTBTTurnTypeNext}, D {self.nTBTDistNext}"
-      )
+      if (self.showDebugLog & 1) > 0:
+        print(
+          f"sdi = T {self.nSdiType}, S {self.nSdiSpeedLimit}, PS {self.nSdiPlusType}, " +
+          f"spd = T {self.xSpdType}, S {self.xSpdLimit}, D {self.xSpdDist:.1f}, RC {self.roadcate}, xRC {self.xroadcate}, " +
+          f"tbt = T {self.nTBTTurnType}, D {self.nTBTDist}, " +
+          f"xtbt = xT {self.xTurnInfo}, xD {self.xDistToTurn}, " +
+          f"next = T {self.nTBTTurnTypeNext}, D {self.nTBTDistNext}"
+        )
       #print(json)
     else:
       #print(json)

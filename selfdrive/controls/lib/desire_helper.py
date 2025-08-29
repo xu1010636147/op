@@ -352,7 +352,7 @@ class DesireHelper:
     if not atc_left_right and lane_width_diff > 0.5 and (lane_width_side < distance_to_road_edge):
       lane_available_trigger = True
     #if (lane_width_diff > 0.5 or (self.autoTurnInNotRoadEdge > 0 and round(curr_lane_width_diff,1) < 0.3 )) and (lane_width_side < distance_to_road_edge):
-    elif atc_left_right and (lane_width_diff > 0.5 or (self.autoTurnInNotRoadEdge > 0 and curr_lane_width_diff < 0.3)) and (lane_width_side < distance_to_road_edge):
+    elif atc_left_right and (lane_width_diff > 0.5 or (self.autoTurnInNotRoadEdge > 0 and curr_lane_width_diff < 0.3 and self.atc_turn_cnt >= 0)) and (lane_width_side < distance_to_road_edge):
       lane_available_trigger = True
     edge_availabled = not self.edge_available_last and edge_available
     side_object_detected = self.object_detected_count > -0.3 / DT_MDL #是否检测到侧面前方有可能会发生危险的车辆（需要雷达支持探测左右两侧前方的车辆）
@@ -479,13 +479,10 @@ class DesireHelper:
           if atc_left_right: #属于变道
             if self.autoTurnInNotRoadEdge > 0 and (not driver_desire_enabled and atc_desire_enabled): #属于系统自动变道
               if self.allowContinuousLaneChange == 0: #不允许连续变道
-                #self.lane_change_state = LaneChangeState.off
-                self.atc_turn_cnt = 0
+                self.atc_turn_cnt = -1
               else:
-                if self.atc_turn_cnt > 1:
+                if self.atc_turn_cnt >= 0:
                   self.atc_turn_cnt -= 1
-                #if self.atc_turn_cnt == 0:
-                #  self.lane_change_state = LaneChangeState.off
 
         print(f"+++Finishing: ll_prob={self.lane_change_ll_prob}, dir={self.lane_change_direction}, lane_change_state={self.lane_change_state}")
 

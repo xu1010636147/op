@@ -1112,8 +1112,10 @@ class CarrotServ:
     self.autoTurnDistOffset = 0
     self.autoHighWayForkDistOffset = 1000
     self.autoForkDistOffset = 50
-    self.autoDoForkDistOffset = 0
-    self.autoHighWayDoForkDistOffset = 0
+    #self.autoDoForkDistOffset = 0
+    self.autoDoForkBlinkerDist = 0
+    #self.autoHighWayDoForkDistOffset = 0
+    self.autoHighWayDoForkBlinkerDist = 0
     self.autoUpRoadLimit = 0
     self.autoUpRoadLimit40KMH = 15
     self.autoUpHighwayRoadLimit = 0
@@ -1150,9 +1152,11 @@ class CarrotServ:
     self.sameSpiCamFilter = self.params.get_int("SameSpiCamFilter")
     self.autoTurnDistOffset = self.params.get_int("AutoTurnDistOffset")
     self.autoForkDistOffset = self.params.get_int("AutoForkDistOffset")
-    self.autoDoForkDistOffset = self.params.get_int("AutoDoForkDistOffset")
+    #self.autoDoForkDistOffset = self.params.get_int("AutoDoForkDistOffset")
+    self.autoDoForkBlinkerDist = self.params.get_int("AutoDoForkBlinkerDist")
     self.autoHighWayForkDistOffset = self.params.get_int("AutoHighWayForkDistOffset")
-    self.autoHighWayDoForkDistOffset = self.params.get_int("AutoHighWayDoForkDistOffset")
+    #self.autoHighWayDoForkDistOffset = self.params.get_int("AutoHighWayDoForkDistOffset")
+    self.autoHighWayDoForkBlinkerDist = self.params.get_int("AutoHighWayDoForkBlinkerDist")
     self.autoUpRoadLimit = self.params.get_int("AutoUpRoadLimit")
     self.autoUpRoadLimit40KMH = self.params.get_int("AutoUpRoadLimit40KMH")
     self.autoUpHighwayRoadLimit = self.params.get_int("AutoUpHighwayRoadLimit")
@@ -1542,10 +1546,10 @@ class CarrotServ:
     stop_dist_for_speed = 5
     if self.xroadcate > 1:
       start_fork_dist = np.interp(self.nRoadLimitSpeed, [30, 50, 100], [160, 200, 350]) + self.autoForkDistOffset
-      do_fork_dist = fork_dist_for_speed + self.autoDoForkDistOffset
+      do_fork_dist = fork_dist_for_speed + self.autoDoForkBlinkerDist
     else:
       start_fork_dist = np.interp(self.nRoadLimitSpeed, [30, 50, 100], [160, 200, 350]) + self.autoHighWayForkDistOffset
-      do_fork_dist = fork_dist_for_speed + self.autoHighWayDoForkDistOffset
+      do_fork_dist = fork_dist_for_speed + self.autoHighWayDoForkBlinkerDist
     start_turn_dist = np.interp(self.nTBTNextRoadWidth, [5, 10], [43, 60]) + self.autoTurnDistOffset
     turn_info_mapping = {
         1: {"type": "turn left", "speed": turn_speed, "dist": turn_dist_for_speed, "start": start_fork_dist},

@@ -389,7 +389,8 @@ class DesireHelper:
     else:
       print(f"---Desire LaneChange below={below_lane_change_speed}, lane_change_state={self.lane_change_state}, desire_enabled={desire_enabled},{self.prev_desire_enabled} ")
       self.turn_direction = TurnDirection.none
-      # LaneChangeState.off
+      # =============LaneChangeState.off=============
+      # 不管是驾驶员还是系统自动打的灯，流程都会到这里，desire_enabled为True
       if self.lane_change_state == LaneChangeState.off and desire_enabled and not self.prev_desire_enabled and not below_lane_change_speed:
         self.lane_change_state = LaneChangeState.preLaneChange
         self.lane_change_ll_prob = 1.0
@@ -406,7 +407,7 @@ class DesireHelper:
         print(f"+++Init: auto_lane_change_enable={self.auto_lane_change_enable}, lane_exist_counter={lane_exist_counter}, lane_change_available={lane_change_available}")
         #new
 
-      # LaneChangeState.preLaneChange
+      # =============LaneChangeState.preLaneChange==============
       elif self.lane_change_state == LaneChangeState.preLaneChange:
         # Set lane change direction
         self.lane_change_direction = LaneChangeDirection.left if \
@@ -436,6 +437,7 @@ class DesireHelper:
         else:
           print(f"+++Pre: lane_change_available={lane_change_available}, auto_lane_change_trigger={auto_lane_change_trigger}, torque_applied={torque_applied}")
 
+          #此处根据条件决定是否进入开始变道或转弯的流程，lane_change_available为真时表示旁边车道或者路沿的宽度稳定大于2.5米
           if lane_change_available and self.lane_change_delay == 0: #允许变道并且没有延时时间要求
             if self.blindspot_detected_counter > 0 and not ignore_bsd:  # bsd盲区检测次数还大于0
               if torque_applied and not block_lanechange_bsd:
@@ -443,14 +445,14 @@ class DesireHelper:
             elif self.laneChangeNeedTorque > 0: # 需要轻推方向盘变道
               if torque_applied:
                 self.lane_change_state = LaneChangeState.laneChangeStarting
-            elif driver_desire_enabled: #驾驶员打灯变道
+            elif driver_desire_enabled: #驾驶员打灯变道，直接进入LaneChangeState.laneChangeStarting
               self.lane_change_state = LaneChangeState.laneChangeStarting
             # 如果ATC启动时出现车道或出现车道，就开始变更车道
             # lane_appeared: 我不希望有车道危险。
             elif torque_applied or auto_lane_change_trigger: #auto_lane_change_trigger在self.auto_lane_change_enable成立并且无其实阻止条件是则会为True
               self.lane_change_state = LaneChangeState.laneChangeStarting
 
-      # LaneChangeState.laneChangeStarting
+      # =============LaneChangeState.laneChangeStarting=============
       elif self.lane_change_state == LaneChangeState.laneChangeStarting:
         # fade out over .5s
         self.lane_change_ll_prob = max(self.lane_change_ll_prob - 2 * DT_MDL, 0.0)
@@ -461,7 +463,7 @@ class DesireHelper:
 
         print(f"+++Starting: ll_prob={self.lane_change_ll_prob:.1f}, prob={lane_change_prob:.1f}")
 
-      # LaneChangeState.laneChangeFinishing
+      # =============LaneChangeState.laneChangeFinishing=============
       elif self.lane_change_state == LaneChangeState.laneChangeFinishing:
         # fade in laneline over 1s
         self.lane_change_ll_prob = min(self.lane_change_ll_prob + DT_MDL, 1.0)
@@ -477,13 +479,13 @@ class DesireHelper:
           if atc_left_right: #属于变道
             if self.autoTurnInNotRoadEdge > 0 and (not driver_desire_enabled and atc_desire_enabled): #属于系统自动变道
               if self.allowContinuousLaneChange == 0: #不允许连续变道
-                self.lane_change_state = LaneChangeState.off
+                #self.lane_change_state = LaneChangeState.off
                 self.atc_turn_cnt = 0
               else:
-                if self.atc_turn_cnt > 0:
+                if self.atc_turn_cnt > 1:
                   self.atc_turn_cnt -= 1
-                if self.atc_turn_cnt == 0:
-                  self.lane_change_state = LaneChangeState.off
+                #if self.atc_turn_cnt == 0:
+                #  self.lane_change_state = LaneChangeState.off
 
         print(f"+++Finishing: ll_prob={self.lane_change_ll_prob}, dir={self.lane_change_direction}, lane_change_state={self.lane_change_state}")
 

@@ -1570,8 +1570,9 @@ class CarrotServ:
       elif atc_type in ["fork left", "fork right"]: #说明x_dist_to_turn>do_fork_dist并且说明x_dist_to_turn <=atc_start_dist
         if x_dist_to_turn > do_fork_dist: #距离大于进入匝道口距离
           atc_type = "atc left" if atc_type == "fork left" else "atc right"
-        elif self.autoHighWayForkDecalRate > 0: #设置了进匝道前降速
-          atc_speed = atc_speed*self.autoHighWayForkDecalRate
+        elif self.autoHighWayForkDecalRate > 0: #设置了进匝道前降速比率
+          if atc_speed > 60: #只有车速大于60时才允许降速
+            atc_speed = max(60, atc_speed*self.autoHighWayForkDecalRate)
     #如果上面的条件都不成立，则atc_type直接就是查表得到的类型，即atc_type = mapping["type"]
 
     if self.autoTurnMapChange > 0 and check_steer:

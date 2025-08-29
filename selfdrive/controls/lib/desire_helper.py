@@ -509,7 +509,7 @@ class DesireHelper:
                 if self.atc_turn_cnt >= 0:
                   self.atc_turn_cnt -= 1
 
-        print(f"+++Finishing: ll_prob={self.lane_change_ll_prob}, dir={self.lane_change_direction}, lane_change_state={self.lane_change_state}")
+        print(f"+++Finishing: ll_prob={self.lane_change_ll_prob:.1f}, dir={self.lane_change_direction}, lane_change_state={self.lane_change_state}")
 
     if self.lane_change_state in (LaneChangeState.off, LaneChangeState.preLaneChange):
       self.lane_change_timer = 0.0

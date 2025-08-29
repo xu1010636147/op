@@ -730,6 +730,7 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   //latLongToggles->addItem(new CValueControl("CruiseMinVals", "DECEL:(120)", "Sets the deceleration rate.(x0.01m/s^2)", 50, 250, 5));
 
   dispToggles = new ListWidget(this);
+  dispToggles->addItem(new CValueControl("ShowDebugLog", "调试日志", "值的每个位代表一种日志,bit0-导航信息,bit1-变道请求,bit2-变道状态机,bit4-变道状态信息", 0, 255, 1));
   dispToggles->addItem(new CValueControl("ShowDebugUI", "调试信息", "", 0, 2, 1));
   dispToggles->addItem(new CValueControl("ShowTpms", "胎压信息", "", 0, 3, 1));
   dispToggles->addItem(new CValueControl("ShowDateTime", "时间信息", "0:无,1:时间/日期,2:仅时间,3:仅日期", 0, 3, 1));

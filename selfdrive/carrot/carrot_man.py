@@ -1621,10 +1621,10 @@ class CarrotServ:
       if atc_type in ["turn left", "turn right"] and x_dist_to_turn > start_turn_dist:
         atc_type = "atc left" if atc_type == "turn left" else "atc right" #类型为atc left/right只是进入转弯准备状态，并不是真的在执行转弯
       elif atc_type in ["fork left", "fork right"]: #说明x_dist_to_turn>do_fork_dist并且说明x_dist_to_turn <=atc_start_dist
-        atc_dist = do_speed_decal_dist #替换减速距离
+        #atc_dist = do_speed_decal_dist #替换减速距离
         if x_dist_to_turn > do_fork_dist: #距离大于进入匝道口距离
           atc_type = "atc left" if atc_type == "fork left" else "atc right"
-        if x_dist_to_turn < do_speed_decal_dist: #距离路口的距离已经小于要开始减速的距离了
+        if x_dist_to_turn < do_speed_decal_dist: #距离路口的距离小于设定值时要开始减速了
           if auto_decel_rate > 0: #设置了减速比率
             if atc_speed > decel_speed_min: #只有车速大于60时才允许降速
               atc_speed = max(decel_speed_min, atc_speed*auto_decel_rate)

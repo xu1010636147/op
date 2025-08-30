@@ -186,8 +186,8 @@ class DesireHelper:
     self.continuousLaneChangeCnt = 0
     self.continuousLaneChangeInterval = 5
     self.atc_turn_cnt = 0
-    self.autoDoForkDistOffset = 0
-    self.autoHighWayDoForkDistOffset = 0
+    self.autoDoForkCheckDist = 2
+    self.autoDoForkCheckDistH = 3
     self.roadType = -1
     self.autoTurnLeft = 0
     self.showDebugLog = 0
@@ -203,9 +203,9 @@ class DesireHelper:
   def check_lane_state(self, modeldata, v_ego):
     #根据距离计算需要提前的时间
     if 0 <= self.roadType <= 1:
-      do_fork_dist = self.autoHighWayDoForkDistOffset
+      do_fork_dist = self.autoDoForkCheckDistH
     else:
-      do_fork_dist = self.autoDoForkDistOffset
+      do_fork_dist = self.autoDoForkCheckDist
     if v_ego > 0:
       t_offset = do_fork_dist/v_ego
       t_offset = min(1, t_offset)
@@ -297,8 +297,8 @@ class DesireHelper:
       self.autoTurnInNotRoadEdge = self.params.get_int("AutoTurnInNotRoadEdge")
       self.continuousLaneChangeCnt = self.params.get_int("ContinuousLaneChangeCnt")
       self.continuousLaneChangeInterval = self.params.get_int("ContinuousLaneChangeInterval")
-      self.autoDoForkDistOffset = self.params.get_int("AutoDoForkDistOffset")
-      self.autoHighWayDoForkDistOffset = self.params.get_int("AutoHighWayDoForkDistOffset")
+      self.autoDoForkCheckDist = self.params.get_int("AutoDoForkCheckDist")
+      self.autoDoForkCheckDistH = self.params.get_int("AutoDoForkCheckDistH")
       self.roadType = self.params.get_int("RoadType")
       self.autoTurnLeft = self.params.get_int("AutoTurnLeft")
       self.showDebugLog = self.params.get_int("ShowDebugLog")

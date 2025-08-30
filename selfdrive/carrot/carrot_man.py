@@ -1128,20 +1128,24 @@ class CarrotServ:
 
     self.sameSpiCamFilter = 0
     self.autoTurnDistOffset = 0
-    self.autoHighWayForkDistOffset = 1000
-    self.autoForkDistOffset = 50
-    #self.autoDoForkDistOffset = 0
-    self.autoDoForkBlinkerDist = 0
-    #self.autoHighWayDoForkDistOffset = 0
-    self.autoHighWayDoForkBlinkerDist = 0
+    self.autoForkDistOffsetH = 1000
+    self.autoDoForkDecalDistH = 50
+    self.autoDoForkDecalDist = 20
+    self.autoForkDistOffset = 30
+    #self.autoDoForkCheckDistH = 0
+    self.autoDoForkBlinkerDist = 5
+    #self.autoDoForkCheckDistH = 0
+    self.autoDoForkBlinkerDistH = 10
     self.autoUpRoadLimit = 0
     self.autoUpRoadLimit40KMH = 15
     self.autoUpHighwayRoadLimit = 0
     self.autoUpHighwayRoadLimit40KMH = 15
     self.roadType = -1
     self.xroadcate = 8
-    self.autoHighWayForkDecalRate = 100
-    self.autoHighWayForkSpeedMin = 60
+    self.autoForkDecalRateH = 80
+    self.autoForkSpeedMinH = 60
+    self.autoForkDecalRate = 80
+    self.autoForkSpeedMin = 45
     self.showDebugLog = 0
     self.param_frame = 0
     #new
@@ -1173,18 +1177,22 @@ class CarrotServ:
       self.sameSpiCamFilter = self.params.get_int("SameSpiCamFilter")
       self.autoTurnDistOffset = self.params.get_int("AutoTurnDistOffset")
       self.autoForkDistOffset = self.params.get_int("AutoForkDistOffset")
-      #self.autoDoForkDistOffset = self.params.get_int("AutoDoForkDistOffset")
+      #self.autoDoForkCheckDist = self.params.get_int("AutoDoForkCheckDist")
       self.autoDoForkBlinkerDist = self.params.get_int("AutoDoForkBlinkerDist")
-      self.autoHighWayForkDistOffset = self.params.get_int("AutoHighWayForkDistOffset")
-      #self.autoHighWayDoForkDistOffset = self.params.get_int("AutoHighWayDoForkDistOffset")
-      self.autoHighWayDoForkBlinkerDist = self.params.get_int("AutoHighWayDoForkBlinkerDist")
+      self.autoForkDistOffsetH = self.params.get_int("AutoForkDistOffsetH")
+      self.autoDoForkDecalDistH = self.params.get_int("AutoDoForkDecalDistH")
+      self.autoDoForkDecalDist = self.params.get_int("AutoDoForkDecalDist")
+      #self.autoDoForkCheckDistH = self.params.get_int("AutoDoForkCheckDistH")
+      self.autoDoForkBlinkerDistH = self.params.get_int("AutoDoForkBlinkerDistH")
       self.autoUpRoadLimit = self.params.get_int("AutoUpRoadLimit")
       self.autoUpRoadLimit40KMH = self.params.get_int("AutoUpRoadLimit40KMH")
       self.autoUpHighwayRoadLimit = self.params.get_int("AutoUpHighwayRoadLimit")
       self.autoUpHighwayRoadLimit40KMH = self.params.get_int("AutoUpHighwayRoadLimit40KMH")
       self.roadType = self.params.get_int("RoadType")
-      self.autoHighWayForkDecalRate = float(self.params.get_int("AutoHighWayForkDecalRate")) * 0.01
-      self.autoHighWayForkSpeedMin = self.params.get_int("AutoHighWayForkSpeedMin")
+      self.autoForkDecalRateH = float(self.params.get_int("AutoForkDecalRateH")) * 0.01
+      self.autoForkSpeedMinH = self.params.get_int("AutoForkSpeedMinH")
+      self.autoForkDecalRate = float(self.params.get_int("AutoForkDecalRate")) * 0.01
+      self.autoForkSpeedMin = self.params.get_int("AutoForkSpeedMin")
       self.showDebugLog = self.params.get_int("ShowDebugLog")
 
     self.param_frame += 1
@@ -1571,9 +1579,16 @@ class CarrotServ:
     if self.xroadcate > 1:
       start_fork_dist = np.interp(self.nRoadLimitSpeed, [30, 50, 100], [160, 200, 350]) + self.autoForkDistOffset
       do_fork_dist = fork_dist_for_speed + self.autoDoForkBlinkerDist
+      do_speed_decal_dist = fork_dist_for_speed + self.autoDoForkDecalDist
+      auto_decel_rate = self.autoForkDecalRate
+      decel_speed_min = self.autoForkSpeedMin
     else:
-      start_fork_dist = np.interp(self.nRoadLimitSpeed, [30, 50, 100], [160, 200, 350]) + self.autoHighWayForkDistOffset
-      do_fork_dist = fork_dist_for_speed + self.autoHighWayDoForkBlinkerDist
+      start_fork_dist = np.interp(self.nRoadLimitSpeed, [30, 50, 100], [160, 200, 350]) + self.autoForkDistOffsetH
+      do_fork_dist = fork_dist_for_speed + self.autoDoForkBlinkerDistH
+      do_speed_decal_dist = fork_dist_for_speed + self.autoDoForkDecalDistH
+      auto_decel_rate = self.autoForkDecalRateH
+      decel_speed_min = self.autoForkSpeedMinH
+
     start_turn_dist = np.interp(self.nTBTNextRoadWidth, [5, 10], [43, 60]) + self.autoTurnDistOffset
     turn_info_mapping = {
         1: {"type": "turn left", "speed": turn_speed, "dist": turn_dist_for_speed, "start": start_fork_dist},
@@ -1606,11 +1621,13 @@ class CarrotServ:
       if atc_type in ["turn left", "turn right"] and x_dist_to_turn > start_turn_dist:
         atc_type = "atc left" if atc_type == "turn left" else "atc right" #类型为atc left/right只是进入转弯准备状态，并不是真的在执行转弯
       elif atc_type in ["fork left", "fork right"]: #说明x_dist_to_turn>do_fork_dist并且说明x_dist_to_turn <=atc_start_dist
+        atc_dist = do_speed_decal_dist #替换减速距离
         if x_dist_to_turn > do_fork_dist: #距离大于进入匝道口距离
           atc_type = "atc left" if atc_type == "fork left" else "atc right"
-        elif self.autoHighWayForkDecalRate > 0: #设置了进匝道前降速比率
-          if atc_speed > self.autoHighWayForkSpeedMin: #只有车速大于60时才允许降速
-            atc_speed = max(self.autoHighWayForkSpeedMin, atc_speed*self.autoHighWayForkDecalRate)
+        if x_dist_to_turn < do_speed_decal_dist: #距离路口的距离已经小于要开始减速的距离了
+          if auto_decel_rate > 0: #设置了减速比率
+            if atc_speed > decel_speed_min: #只有车速大于60时才允许降速
+              atc_speed = max(decel_speed_min, atc_speed*auto_decel_rate)
     #如果上面的条件都不成立，则atc_type直接就是查表得到的类型，即atc_type = mapping["type"]
 
     if self.autoTurnMapChange > 0 and check_steer:

@@ -821,10 +821,10 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
 
 
   startToggles->addItem(selectCarBtn);
-  startToggles->addItem(new CValueControl("HyundaiCameraSCC", "现代: 摄像头SCC", "1:连接SCC的CAN线到摄像头, 2:同步定速状态, 3:原厂长控，胜达设置为0", 0, 3, 1));
-  startToggles->addItem(new CValueControl("CanfdHDA2", "CANFD: HDA2 模式", "1:HDA2, 2:HDA2+盲点监测，胜达设置为2", 0, 2, 1));
-  startToggles->addItem(new CValueControl("EnableRadarTracks", "启用雷达追踪", "1:启用雷达追踪, -1,2:禁用 (始终使用HKG SCC雷达)，胜达设置为1", -1, 2, 1));
-  startToggles->addItem(new CValueControl("AutoCruiseControl", "自动巡航控制", "自动巡航总开关,0-关,>1开,>1 softmode1 否则softmode2", 0, 3, 1));
+  startToggles->addItem(new CValueControl("HyundaiCameraSCC", "现代: 摄像头SCC(0)", "1:连接SCC的CAN线到摄像头, 2:同步定速状态, 3:原厂长控，不是用摄像头实现SCC的均设置为0", 0, 3, 1));
+  startToggles->addItem(new CValueControl("CanfdHDA2", "CANFD: HDA2 模式", "1:HDA2, 2:HDA2+盲点监测, 一般非CanFD车型设置为0", 0, 2, 1));
+  startToggles->addItem(new CValueControl("EnableRadarTracks", "启用雷达追踪(1)", "1:启用雷达追踪, -1,2:禁用 (始终使用HKG SCC雷达)，胜达设置为1", -1, 2, 1));
+  startToggles->addItem(new CValueControl("AutoCruiseControl", "自动巡航控制(0)", "自动巡航总开关,0-关,>1开,>1 softmode1 否则softmode2", 0, 3, 1));
   startToggles->addItem(new CValueControl("CruiseOnDist", "定速: 自动开启距离(0cm)", "当油门/刹车未踩下时，前车靠近自动开启定速", 0, 2500, 50));
   startToggles->addItem(new CValueControl("AutoEngage", "车辆启动时自动开启的功能", "1:车道保持启用, 2:车道保持+定速启用", 0, 2, 1));
   startToggles->addItem(new CValueControl("AutoGasTokSpeed", "轻踩油门开启巡航的速度", "当车速大于此速度时，轻点油门可自动开启巡航，前提是'自动巡航控制'必须要打开", 0, 200, 5));
@@ -874,15 +874,21 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   speedToggles->addItem(new CValueControl("AutoTurnControlTurnEnd", "ATC: 转弯控制距离时间(6)", "距离=速度*时间", 0, 30, 1));
   speedToggles->addItem(new CValueControl("AutoTurnMapChange", "ATC 自动地图切换(0)", "", 0, 1, 1));
   //new
-  speedToggles->addItem(new CValueControl("AutoHighWayDoForkBlinkerDist", "ATC 高速进匝道口提前打灯的距离(50m)", "在距离匝道口多少米时提前打转向灯", 0, 500, 5));
-  speedToggles->addItem(new CValueControl("AutoHighWayDoForkDistOffset", "ATC 高速进匝道口距离(10m)", "在距离匝道口多少米时打方向盘进匝道", 0, 200, 5));
-  speedToggles->addItem(new CValueControl("AutoHighWayForkDecalRate", "ATC 高速进匝道口前降速比率(70%)", "在进匝道口把车速降至道路限速的比率,0表示关闭此功能", 0, 100, 5));
-  speedToggles->addItem(new CValueControl("AutoHighWayForkSpeedMin", "ATC 高速进匝道口前降速最低速度(60)", "在进匝道口前允许把车速降至的最低速度，低于此速度时则不再继续降低", 0, 100, 5));
-  speedToggles->addItem(new CValueControl("AutoHighWayForkDistOffset", "ATC 高速提前变道距离(1000m)", "高速上提前自动变道至最左或最右车道的距离", 0, 2000, 5));
-  speedToggles->addItem(new CValueControl("AutoDoForkBlinkerDist", "ATC 公路进分叉口提前打灯距离(10m)", "在距离分叉口多少米时提前打转向灯", 0, 500, 5));
-  speedToggles->addItem(new CValueControl("AutoDoForkDistOffset", "ATC 公路进分叉口距离(0m)", "在距离分叉口多少米时打方向盘进叉路", 0, 200, 5));
-  speedToggles->addItem(new CValueControl("AutoForkDistOffset", "ATC 公路提前变道距离(50m)", "公路上提前自动变道至最左或最右车道的距离", 0, 2000, 5));
-  speedToggles->addItem(new CValueControl("AutoTurnDistOffset", "ATC 自动转弯距离偏移(0m)", "设置距离偏移，可以让自动转弯提前", -100, 200, 1));
+  speedToggles->addItem(new CValueControl("AutoForkDistOffsetH", "H 高速提前变道靠边的距离(1000m)", "在距离匝道口多少米时开始变道到最侧面车道", 0, 2000, 5));
+  speedToggles->addItem(new CValueControl("AutoDoForkDecalDistH", "H 高速进匝道口提前减速的距离(50m)", "在距离匝道口多少米时开始减速", 0, 500, 5));
+  speedToggles->addItem(new CValueControl("AutoDoForkBlinkerDistH", "H 高速进匝道口提前打灯的距离(10m)", "在距离匝道口多少米时开始打转身灯准备变道，但不是一定会立即变道，还需要等匝道出现的条件成立", 0, 200, 2));
+  speedToggles->addItem(new CValueControl("AutoDoForkCheckDistH", "H 高速提前识别出现匝道口的距离(3m)", "在靠近匝道口时提前识别匝道口出现的距离，是在模型预留的轨迹上提前检测的距离", 0, 100, 1));
+  speedToggles->addItem(new CValueControl("AutoForkDecalRateH", "H 高速进匝道口前降速比率(80%)", "在进匝道口把车速降至道路限速的比率,0表示关闭此功能", 0, 100, 5));
+  speedToggles->addItem(new CValueControl("AutoForkSpeedMinH", "H 高速进匝道口前降速最低速度(60)", "在进匝道口前允许把车速降至的最低速度，低于此速度时则不再继续降低", 0, 100, 5));
+
+  speedToggles->addItem(new CValueControl("AutoForkDistOffset", "L 公路提前变道靠边的距离(30m)", "在距离公路分叉口多少米时开始变道到最侧面车道", 0, 1000, 5));
+  speedToggles->addItem(new CValueControl("AutoDoForkDecalDist", "L 公路进分叉口提前减速的距离(20m)", "在距离公路分叉口多少米时开始减速", 0, 500, 5));
+  speedToggles->addItem(new CValueControl("AutoDoForkBlinkerDist", "L 公路进分叉口提前打灯距离(5m)", "在距离公路分叉口多少米时提前打转向灯准备变道，但不是一定会立即变道，还需要等分叉口出现的条件成立", 0, 200, 1));
+  speedToggles->addItem(new CValueControl("AutoDoForkCheckDist", "L 公路提前识别出现分叉口的距离(2m)", "在靠近公路分叉口时提前识别分叉口出现的距离，是在模型预留的轨迹上提前检测的距离", 0, 100, 1));
+  speedToggles->addItem(new CValueControl("AutoForkDecalRate", "L 公路进分叉口前降速比率(80%)", "在进公路分叉口时把车速降至道路限速的比率,0表示关闭此功能", 0, 100, 5));
+  speedToggles->addItem(new CValueControl("AutoForkSpeedMin", "L 公路进分叉口前降速最低速度(45)", "在进公路分叉口时前允许把车速降至的最低速度，低于此速度时则不再继续降低", 0, 100, 5));
+
+  speedToggles->addItem(new CValueControl("AutoTurnDistOffset", "ATC 自动转弯距离偏移(0m)", "提前自动转弯的距离，一般为0，仅针对转弯类型(非变道)", -100, 200, 1));
   speedToggles->addItem(new CValueControl("AutoTurnInNotRoadEdge", "ATC 允许在非侧边车道时自动变道(0)", "0-不允许在非侧边车道自动变道，1-允许", 0, 1, 1));
   speedToggles->addItem(new CValueControl("ContinuousLaneChange", "ATC 允许自动连续变道(0)", "0-关闭，1-允许连续变多条车道", 0, 1, 1));
   speedToggles->addItem(new CValueControl("ContinuousLaneChangeCnt", "ATC 允许连续变道次数(x+1)", "允许连续变道的次数=x+1次", 0, 4, 1));
@@ -891,7 +897,7 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   speedToggles->addItem(new CValueControl("AutoUpRoadLimit", "自动提高低于60km/h的公路限速(0)", "0-关闭，1-当普通公路限速低于60时，会把道路限速加上提速偏移值", 0, 1, 1));
   speedToggles->addItem(new CValueControl("AutoUpRoadLimit40KMH", "低于40km/h的公路提速偏移(15km/h)", "允许提高限速时，会把道路限速加上此提速偏移值", 0, 50, 1));
   speedToggles->addItem(new CValueControl("AutoUpHighwayRoadLimit", "自动提高低于60km/h的匝道限速(0)", "0-关闭，1-当高速公路限速低于60时，会把道路限速加上提速偏移值", 0, 1, 1));
-  speedToggles->addItem(new CValueControl("AutoUpHighwayRoadLimit40KMH", "低于40km/h的匝道提速偏移(15km/h)", "允许提高限速时，会把道路限速加上此提速偏移值", 0, 50, 1));
+  speedToggles->addItem(new CValueControl("AutoUpHighwayRoadLimit40KMH", "低于40km/h的匝道提速偏移(20km/h)", "允许提高限速时，会把道路限速加上此提速偏移值", 0, 50, 1));
 
   toggles_layout->addWidget(cruiseToggles);
   toggles_layout->addWidget(latLongToggles);

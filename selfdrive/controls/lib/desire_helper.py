@@ -420,7 +420,7 @@ class DesireHelper:
     elif (atc_left_right #为左右提前变道请求
           and (self.autoTurnInNotRoadEdge > 0 #允许在非侧边车道变道
                and curr_lane_width_diff < 0.3 #旁边车道不能比当前车道小于0.3m
-               and lane_width_far_diff >= 0 #旁边车道不允许在变小
+               and lane_width_far_diff >= -0.1 #旁边车道不允许在变小
                and self.atc_turn_cnt >= 0 #还有剩余变道次数
                and ((atc_blinker_state == BLINKER_RIGHT and self.roadType == 1 and not last_lane) #有应急车道的高速右变道限制，不允许变道到最后一条车道(应急车道)上
                     or (atc_blinker_state != BLINKER_RIGHT or self.roadType != 1)) #不是右变道或者在无应急车道的道路则允许变道

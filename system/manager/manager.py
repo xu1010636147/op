@@ -197,6 +197,8 @@ def get_default_params():
     ("AutoDoForkBlinkerDistH", "10"),
     ("AutoForkDecalRateH", "80"),
     ("AutoForkSpeedMinH", "60"),
+    ("AutoForkDecalRate", "80"),
+    ("AutoForkSpeedMin", "45"),
     ("AutoForkDistOffset", "30"),
     ("AutoDoForkCheckDist", "2"),
     ("AutoDoForkBlinkerDist", "5"),

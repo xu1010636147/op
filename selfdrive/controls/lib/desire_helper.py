@@ -169,6 +169,7 @@ class DesireHelper:
     self.lane_change_delay = 0.0
     self.driver_blinker_state = BLINKER_NONE
     self.atc_type = ""
+    self.atc_blinker_state = BLINKER_NONE
 
     self.carrot_lane_change_count = 0
     self.carrot_cmd_index_last = 0
@@ -183,13 +184,21 @@ class DesireHelper:
     self.allowContinuousLaneChange = 0
     self.autoTurnInNotRoadEdge = 0
     self.continuousLaneChangeCnt = 0
+    self.continuousLaneChangeInterval = 5
     self.atc_turn_cnt = 0
     self.autoDoForkDistOffset = 0
     self.autoHighWayDoForkDistOffset = 0
     self.roadType = -1
     self.autoTurnLeft = 0
     self.showDebugLog = 0
+    self.autoNaviCountDownMode = 0
+    self.lane_change_disable_count = 0
+    self.lane_change_disable = False
     #new
+
+  def lane_change_audio(self, turn):
+    return
+    # 创建并发送 audioLaneChange 事件
 
   def check_lane_state(self, modeldata, v_ego):
     #根据距离计算需要提前的时间
@@ -287,16 +296,19 @@ class DesireHelper:
       self.allowContinuousLaneChange = self.params.get_int("ContinuousLaneChange")
       self.autoTurnInNotRoadEdge = self.params.get_int("AutoTurnInNotRoadEdge")
       self.continuousLaneChangeCnt = self.params.get_int("ContinuousLaneChangeCnt")
+      self.continuousLaneChangeInterval = self.params.get_int("ContinuousLaneChangeInterval")
       self.autoDoForkDistOffset = self.params.get_int("AutoDoForkDistOffset")
       self.autoHighWayDoForkDistOffset = self.params.get_int("AutoHighWayDoForkDistOffset")
       self.roadType = self.params.get_int("RoadType")
       self.autoTurnLeft = self.params.get_int("AutoTurnLeft")
       self.showDebugLog = self.params.get_int("ShowDebugLog")
+      self.autoNaviCountDownMode = self.params.get_int("AutoNaviCountDownMode")
       #new
     self.frame += 1
 
     self.carrot_lane_change_count = max(0, self.carrot_lane_change_count - 1)
     self.lane_change_delay = max(0, self.lane_change_delay - DT_MDL)
+    self.lane_change_disable_count = max(0, self.lane_change_disable_count - DT_MDL)
 
     v_ego = carstate.vEgo
     below_lane_change_speed = v_ego < LANE_CHANGE_SPEED_MIN
@@ -367,8 +379,11 @@ class DesireHelper:
     if self.atc_type != atc_type: #为里的判断主要是用于在atc_type类型变化时用于重置状态
       atc_desire_enabled = False #atc类型不同时，重置自动转弯需求
       self.atc_turn_cnt = self.continuousLaneChangeCnt #重置允许连续变道次数
+      self.lane_change_disable_count = 0  # 重置连续变道延时
+      self.lane_change_disable = False # 重置禁止变道的标志
 
     self.atc_type = atc_type
+    self.atc_blinker_state = atc_blinker_state
 
     desire_enabled = driver_desire_enabled or atc_desire_enabled #变道请求
     blinker_state = driver_blinker_state if driver_desire_enabled else atc_blinker_state #根据是谁打的灯选择转向灯状态
@@ -481,6 +496,8 @@ class DesireHelper:
         else:
           self.auto_lane_change_enable = False if lane_exist_counter > 0 or lane_change_available else True
 
+        self.lane_change_disable_count = 0 #重置连续变道延时
+        self.lane_change_disable = False
         if (self.showDebugLog and 4) > 0:
           print(f"---Init: enable={self.auto_lane_change_enable}, exist_cnt={lane_exist_counter}, available={lane_change_available}")
         #new
@@ -529,7 +546,26 @@ class DesireHelper:
             # 如果ATC启动时出现车道或出现车道，就开始变更车道
             # lane_appeared: 我不希望有车道危险。
             elif torque_applied or auto_lane_change_trigger: #auto_lane_change_trigger在self.auto_lane_change_enable成立并且无其实阻止条件是则会为True
+              if torque_applied: #如果用户施加了扭矩，则立即变道
+                self.lane_change_state = LaneChangeState.laneChangeStarting
+              else:
+                if self.continuousLaneChangeInterval == 0 or self.lane_change_disable_count == 0 or not atc_left_right: #变道不延时或者延时已结束或者为非act_left_right，则立即变道
+                  self.lane_change_state = LaneChangeState.laneChangeStarting
+                  self.lane_change_audio(not atc_left_right)  # 语音播报, atc_left_right报变道，其它报转弯
+                elif not self.lane_change_disable: #已经设置过延时了
+                  self.lane_change_disable_count = self.continuousLaneChangeInterval
+                  self.lane_change_disable = True
+                  self.lane_change_audio(False) #语音播报变道
+                elif self.lane_change_disable_count == 0: #延时已结束，立即变道
+                  self.lane_change_state = LaneChangeState.laneChangeStarting
+                  self.lane_change_audio(False)  # 语音播报
+            elif self.lane_change_disable and self.lane_change_disable_count == 0: #已经开启了计时，并且延时已结束，立即变道
               self.lane_change_state = LaneChangeState.laneChangeStarting
+              self.lane_change_audio(False)  # 语音播报
+
+            if self.lane_change_state == LaneChangeState.laneChangeStarting:
+              self.lane_change_disable_count = 0
+              self.lane_change_disable = False
 
       # =============LaneChangeState.laneChangeStarting=============
       elif self.lane_change_state == LaneChangeState.laneChangeStarting:
@@ -563,6 +599,9 @@ class DesireHelper:
               else:
                 if self.atc_turn_cnt >= 0:
                   self.atc_turn_cnt -= 1
+
+          self.lane_change_disable_count = 0 #重置连续变道延时
+          self.lane_change_disable = False
 
         if (self.showDebugLog and 4) > 0:
           print(f"---Finishing: ll_prob={self.lane_change_ll_prob:.1f}, dir={self.lane_change_direction}, lane_change_state={self.lane_change_state}")

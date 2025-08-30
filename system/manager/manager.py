@@ -183,7 +183,7 @@ def get_default_params():
     # new
     ("SameSpiCamFilter", "0"),
     ("AutoTurnDistOffset", "0"),
-    ("AutoTurnInNotRoadEdge", "1"),
+    ("AutoTurnInNotRoadEdge", "0"),
     ("ContinuousLaneChange", "0"),
     ("ContinuousLaneChangeCnt", "1"),
     ("ContinuousLaneChangeInterval", "5"),

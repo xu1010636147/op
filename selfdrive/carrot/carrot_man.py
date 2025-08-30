@@ -2150,7 +2150,7 @@ class CarrotServ:
           f"sdi = T {self.nSdiType}, S {self.nSdiSpeedLimit}, PS {self.nSdiPlusType}, " +
           f"spd = T {self.xSpdType}, S {self.xSpdLimit}, D {self.xSpdDist:.1f}, RC {self.roadcate}, xRC {self.xroadcate}, " +
           f"tbt = T {self.nTBTTurnType}, D {self.nTBTDist}, " +
-          f"xtbt = xT {self.xTurnInfo}, xD {self.xDistToTurn}, " +
+          f"xtbt = xT {self.xTurnInfo}, xD {self.xDistToTurn:.1f}, " +
           f"next = T {self.nTBTTurnTypeNext}, D {self.nTBTDistNext}"
         )
       #print(json)

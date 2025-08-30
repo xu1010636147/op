@@ -134,6 +134,8 @@ class DesireHelper:
     self.lane_width_right_curr_diff = 3.5
     self.distance_to_road_edge_left = 0
     self.distance_to_road_edge_right = 0
+    self.distance_to_road_edge_left_avg = 0
+    self.distance_to_road_edge_right_avg = 0
     self.distance_to_road_edge_left_far = 0
     self.distance_to_road_edge_right_far = 0
     self.blinker_ignore = False
@@ -154,6 +156,8 @@ class DesireHelper:
     self.lane_width_curr_queue = deque(maxlen=int(1.0 / DT_MDL))
     self.lane_width_left_far_queue = deque(maxlen=int(1.0/DT_MDL))
     self.lane_width_right_far_queue = deque(maxlen=int(1.0/DT_MDL))
+    self.distance_to_road_edge_left_queue = deque(maxlen=int(1.0 / DT_MDL))
+    self.distance_to_road_edge_right_queue = deque(maxlen=int(1.0 / DT_MDL))
 
     self.lane_available_last = False
     self.edge_available_last = False
@@ -226,12 +230,16 @@ class DesireHelper:
     self.lane_width_curr_queue.append(lane_width_curr)
     self.lane_width_left_far_queue.append(lane_width_left_far)
     self.lane_width_right_far_queue.append(lane_width_right_far)
+    self.distance_to_road_edge_left_queue.append(self.distance_to_road_edge_left)
+    self.distance_to_road_edge_right_queue.append(self.distance_to_road_edge_right)
 
     self.lane_width_left = np.mean(self.lane_width_left_queue)
     self.lane_width_right = np.mean(self.lane_width_right_queue)
     self.lane_width_curr = np.mean(self.lane_width_curr_queue)
     #self.lane_width_left_far = np.mean(self.lane_width_left_far_queue)
     #self.lane_width_right_far = np.mean(self.lane_width_right_far_queue)
+    self.distance_to_road_edge_left_avg = np.mean(self.distance_to_road_edge_left_queue)
+    self.distance_to_road_edge_right_avg = np.mean(self.distance_to_road_edge_right_queue)
 
     #self.lane_width_left_diff - 左侧车道宽度的变化量
     #[-1]为最新的入列的车道宽度，[0]为最旧的车道宽度，一般width_left_diff>0.5表示车道正在变宽(一般这种情况是出现了新的车道)

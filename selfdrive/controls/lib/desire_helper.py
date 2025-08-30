@@ -404,13 +404,29 @@ class DesireHelper:
     lane_width_far_diff = self.lane_width_left_far_diff if atc_blinker_state == BLINKER_LEFT else self.lane_width_right_far_diff
     distance_to_road_edge = self.distance_to_road_edge_left if atc_blinker_state == BLINKER_LEFT else self.distance_to_road_edge_right #当前车道线到道路边缘的距离
     lane_width_side = self.lane_width_left if atc_blinker_state == BLINKER_LEFT else self.lane_width_right #左侧或右侧车道的宽度
+    distance_to_road_edge_avg = self.distance_to_road_edge_left_avg if atc_blinker_state == BLINKER_LEFT else self.distance_to_road_edge_right_avg  # 当前车道线到道路边缘的平均值距离
+
+    #判断侧面是否为最后一条车道
+    last_lane = True
+    land_width_diff = distance_to_road_edge_avg - lane_width_side #计算距离边缘的宽度与侧面车道宽度的差值，如果大于2.5m则认为侧面不止一条车道
+    if land_width_diff > 2.0: #到路沿的距离比侧面车道还宽2米，说明侧面除了正常车道外，还有一条应急车道或正常道路
+      last_lane = False #侧面非最后一条车道
 
     # 侧面车道的宽度小于距离道路边缘的宽度，并且宽度在1少内变宽了0.8米以上(说明可能有新车道出现，即新车道在变大)
     #if lane_width_diff > 0.8 and (lane_width_side < distance_to_road_edge):
-    if not atc_left_right and lane_width_far_diff > 0.8 and (lane_width_side < distance_to_road_edge):
+    if lane_width_far_diff > 0.8 and (lane_width_side < distance_to_road_edge): #所有变道类型，只要出现新车道，则允许变道，且不受变道次数的限制
       lane_available_trigger = True
     #if (lane_width_diff > 0.5 or (self.autoTurnInNotRoadEdge > 0 and round(curr_lane_width_diff,1) < 0.3 )) and (lane_width_side < distance_to_road_edge):
-    elif atc_left_right and (lane_width_far_diff > 0.8 or (self.autoTurnInNotRoadEdge > 0 and curr_lane_width_diff < 0.3 and lane_width_far_diff >= 0 and self.atc_turn_cnt >= 0)) and (lane_width_side < distance_to_road_edge):
+    elif (atc_left_right #为左右提前变道请求
+          and (self.autoTurnInNotRoadEdge > 0 #允许在非侧边车道变道
+               and curr_lane_width_diff < 0.3 #旁边车道不能比当前车道小于0.3m
+               and lane_width_far_diff >= 0 #旁边车道不允许在变小
+               and self.atc_turn_cnt >= 0 #还有剩余变道次数
+               and ((atc_blinker_state == BLINKER_RIGHT and self.roadType == 1 and not last_lane) #有应急车道的高速右变道限制，不允许变道到最后一条车道(应急车道)上
+                    or (atc_blinker_state != BLINKER_RIGHT or self.roadType != 1)) #不是右变道或者在无应急车道的道路则允许变道
+               )
+          and (lane_width_side < distance_to_road_edge) #侧面车道的宽度要大于路沿宽度
+         ):
       lane_available_trigger = True
     edge_availabled = not self.edge_available_last and edge_available
     side_object_detected = self.object_detected_count > -0.3 / DT_MDL #是否检测到侧面前方有可能会发生危险的车辆（需要雷达支持探测左右两侧前方的车辆）
@@ -425,7 +441,7 @@ class DesireHelper:
       auto_lane_change_blocked = ((atc_blinker_state == BLINKER_LEFT) and (driver_blinker_state != BLINKER_LEFT) and self.autoTurnLeft == 0) #增加可以设置允许左变道
       #auto_lane_change_trigger = not auto_lane_change_blocked and edge_available and (lane_available_trigger or edge_availabled or lane_appeared) and not side_object_detected
       auto_lane_change_trigger = self.auto_lane_change_enable and not auto_lane_change_blocked and edge_available and (lane_available_trigger or lane_appeared) and not side_object_detected
-      self.desireLog = f"D:{self.lane_width_curr:.1f},{lane_width_side:.1f},{distance_to_road_edge:.1f},{lane_width_diff:.1f},{lane_width_far_diff:.1f}={auto_lane_change_trigger},T:{self.atc_turn_cnt},S:{self.lane_change_state},L:{self.auto_lane_change_enable},{auto_lane_change_blocked},E:{lane_available},{edge_available},A:{lane_available_trigger},{lane_appeared}"
+      self.desireLog = f"D:{self.lane_width_curr:.1f},{lane_width_side:.1f},{distance_to_road_edge_avg:.1f},{lane_width_diff:.1f},{lane_width_far_diff:.1f}={auto_lane_change_trigger},T:{self.atc_turn_cnt},S:{self.lane_change_state},L:{self.auto_lane_change_enable},{auto_lane_change_blocked},E:{lane_available},{edge_available},A:{lane_available_trigger},{lane_appeared}"
       if (self.showDebugLog and 2) > 0:
         print(self.desireLog)
 

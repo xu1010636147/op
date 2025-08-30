@@ -297,6 +297,7 @@ inline static std::unordered_map<std::string, uint32_t> keys = {
     {"AutoTurnInNotRoadEdge", PERSISTENT},
     {"ContinuousLaneChange", PERSISTENT},
     {"ContinuousLaneChangeCnt", PERSISTENT},
+    {"ContinuousLaneChangeInterval", PERSISTENT},
     {"AutoTurnLeft", PERSISTENT},
     {"AutoUpRoadLimit", PERSISTENT},
     {"AutoUpHighwayRoadLimit", PERSISTENT},

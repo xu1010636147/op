@@ -430,7 +430,10 @@ class DesireHelper:
     # 侧面车道的宽度小于距离道路边缘的宽度，并且宽度在1少内变宽了0.8米以上(说明可能有新车道出现，即新车道在变大)
     #if lane_width_diff > 0.8 and (lane_width_side < distance_to_road_edge):
     if lane_width_far_diff > 0.8 and (lane_width_side < distance_to_road_edge): #所有变道类型，只要出现新车道，则允许变道，且不受变道次数的限制
-      lane_available_trigger = True
+      if not atc_left_right:
+        lane_available_trigger = True
+      elif self.atc_turn_cnt >= 0: #还有剩余变道次数
+        lane_available_trigger = True
     #if (lane_width_diff > 0.5 or (self.autoTurnInNotRoadEdge > 0 and round(curr_lane_width_diff,1) < 0.3 )) and (lane_width_side < distance_to_road_edge):
     elif (atc_left_right #为左右提前变道请求
           and (self.autoTurnInNotRoadEdge > 0 #允许在非侧边车道变道
@@ -447,6 +450,9 @@ class DesireHelper:
     side_object_detected = self.object_detected_count > -0.3 / DT_MDL #是否检测到侧面前方有可能会发生危险的车辆（需要雷达支持探测左右两侧前方的车辆）
     lane_appeared = lane_appeared and distance_to_road_edge < 4.0 #新车道出现还要附加个距离道路边缘小于4米的条件
 
+    #在有应急车道的高速公路，侧面只剩最后一条车道(也可能是应急车道)，则清除需要变道的次数
+    if atc_left_right and atc_blinker_state == BLINKER_RIGHT and self.roadType == 1 and last_lane:
+      self.atc_turn_cnt = -1
 
     if self.carrot_lane_change_count > 0: #些计数为carrorMan发送过来的LANECHANGE触发的变道
       auto_lane_change_blocked = False

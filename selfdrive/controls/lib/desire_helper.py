@@ -386,6 +386,8 @@ class DesireHelper:
       self.lane_change_disable = False # 重置禁止变道的标志
       self.lane_cnt_time = self.lane_count_stab_cnt
       self.lane_count_last = -1
+      if (self.showDebugLog and 8) > 0:
+        print(f"---atc_type change={atc_type}")
 
     self.atc_type = atc_type
     self.atc_blinker_state = atc_blinker_state

@@ -543,8 +543,6 @@ class DesireHelper:
                 self.lane_change_state = LaneChangeState.laneChangeStarting
             elif driver_desire_enabled: #驾驶员打灯变道，直接进入LaneChangeState.laneChangeStarting
               self.lane_change_state = LaneChangeState.laneChangeStarting
-            # 如果ATC启动时出现车道或出现车道，就开始变更车道
-            # lane_appeared: 我不希望有车道危险。
             elif torque_applied or auto_lane_change_trigger: #auto_lane_change_trigger在self.auto_lane_change_enable成立并且无其实阻止条件是则会为True
               if torque_applied: #如果用户施加了扭矩，则立即变道
                 self.lane_change_state = LaneChangeState.laneChangeStarting

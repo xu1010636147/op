@@ -192,7 +192,7 @@ class DesireHelper:
     self.autoTurnLeft = 0
     self.showDebugLog = 0
     self.autoNaviCountDownMode = 0
-    self.lane_change_disable_count = 0
+    self.lane_change_disable_count = self.continuousLaneChangeInterval
     self.lane_change_disable = False
     self.lane_cnt_time = -1
     self.lane_count_last = -1
@@ -311,7 +311,8 @@ class DesireHelper:
 
     self.carrot_lane_change_count = max(0, self.carrot_lane_change_count - 1)
     self.lane_change_delay = max(0, self.lane_change_delay - DT_MDL)
-    self.lane_change_disable_count = max(0, self.lane_change_disable_count - DT_MDL)
+    if self.lane_change_disable:
+      self.lane_change_disable_count = max(0, self.lane_change_disable_count - DT_MDL)
 
     v_ego = carstate.vEgo
     below_lane_change_speed = v_ego < LANE_CHANGE_SPEED_MIN
@@ -382,7 +383,7 @@ class DesireHelper:
     if self.atc_type != atc_type: #为里的判断主要是用于在atc_type类型变化时用于重置状态
       atc_desire_enabled = False #atc类型不同时，重置自动转弯需求
       self.atc_turn_cnt = self.continuousLaneChangeCnt #重置允许连续变道次数
-      self.lane_change_disable_count = 0  # 重置连续变道延时
+      self.lane_change_disable_count = self.continuousLaneChangeInterval  # 重置连续变道延时
       self.lane_change_disable = False # 重置禁止变道的标志
       self.lane_cnt_time = self.lane_count_stab_cnt
       self.lane_count_last = -1
@@ -546,7 +547,7 @@ class DesireHelper:
         else:
           self.auto_lane_change_enable = False if lane_exist_counter > 0 or lane_change_available else True
 
-        self.lane_change_disable_count = 0 #重置连续变道延时
+        self.lane_change_disable_count = self.continuousLaneChangeInterval #重置连续变道延时
         self.lane_change_disable = False
         if (self.showDebugLog and 4) > 0:
           print(f"---Init: enable={self.auto_lane_change_enable}, exist_cnt={lane_exist_counter}, available={lane_change_available}")
@@ -606,7 +607,7 @@ class DesireHelper:
                   self.lane_change_state = LaneChangeState.laneChangeStarting
                   trigger_type = 5
                   self.lane_change_audio(not atc_left_right)  # 语音播报, atc_left_right报变道，其它报转弯
-                elif not self.lane_change_disable: #已经设置过延时了
+                elif not self.lane_change_disable: #没有设置过延时
                   self.lane_change_disable_count = self.continuousLaneChangeInterval
                   self.lane_change_disable = True
                   self.lane_change_audio(False) #语音播报变道
@@ -623,7 +624,7 @@ class DesireHelper:
               trigger_type = -5
 
             if self.lane_change_state == LaneChangeState.laneChangeStarting:
-              self.lane_change_disable_count = 0
+              self.lane_change_disable_count = self.continuousLaneChangeInterval
               self.lane_change_disable = False
           else:
             trigger_type = -6
@@ -665,7 +666,7 @@ class DesireHelper:
                 if self.atc_turn_cnt >= 0:
                   self.atc_turn_cnt -= 1
 
-          self.lane_change_disable_count = 0 #重置连续变道延时
+          self.lane_change_disable_count = self.continuousLaneChangeInterval #重置连续变道延时
           self.lane_change_disable = False
 
         if (self.showDebugLog and 4) > 0:

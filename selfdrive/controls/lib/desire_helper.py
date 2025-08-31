@@ -196,6 +196,7 @@ class DesireHelper:
     self.lane_change_disable = False
     self.lane_cnt_time = 0
     self.lane_count_last = -1
+    self.lane_count_stab_cnt = int(5 / DT_MDL)
     #new
 
   def lane_change_audio(self, turn):
@@ -444,7 +445,7 @@ class DesireHelper:
       else:
         self.lane_cnt_time = 0
 
-      if atc_left_right and atc_blinker_state == BLINKER_RIGHT and self.lane_cnt_time > int(5 / DT_MDL): #车道数量稳定时间超过5秒后
+      if atc_left_right and atc_blinker_state == BLINKER_RIGHT and self.lane_cnt_time > self.lane_count_stab_cnt: #车道数量稳定时间超过5秒后
         if self.roadType == 1:
           if lane_count < 2: #带应急车道的高速公路，如果侧面只剩一条应急车道时，关闭自动变道功能
             self.atc_turn_cnt = -1

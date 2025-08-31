@@ -892,7 +892,7 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   speedToggles->addItem(new CValueControl("AutoTurnInNotRoadEdge", "ATC 允许在非侧边车道时自动变道(0)", "0-不允许在非侧边车道自动变道，1-允许", 0, 1, 1));
   speedToggles->addItem(new CValueControl("ContinuousLaneChange", "ATC 允许自动连续变道(0)", "0-关闭，1-允许连续变多条车道", 0, 1, 1));
   speedToggles->addItem(new CValueControl("ContinuousLaneChangeCnt", "ATC 允许连续变道次数(x+1)", "允许连续变道的次数=x+1次", 0, 4, 1));
-  speedToggles->addItem(new CValueControl("ContinuousLaneChangeInterval", "ATC 连续变道时间间隔(5秒)", "变道后允许再次变道的时间间隔(秒)", 0, 30, 1));
+  speedToggles->addItem(new CValueControl("ContinuousLaneChangeInterval", "ATC 连续变道时间间隔(2秒)", "变道后允许再次变道的时间间隔(秒)", 0, 30, 1));
   speedToggles->addItem(new CValueControl("AutoTurnLeft", "ATC 允许自动向左变道(0)", "0-需要驾驶员打左转向灯变道, 1-允许自动左变道", 0, 1, 1));
   speedToggles->addItem(new CValueControl("AutoUpRoadLimit", "自动提高低于60km/h的公路限速(0)", "0-关闭，1-当普通公路限速低于60时，会把道路限速加上提速偏移值", 0, 1, 1));
   speedToggles->addItem(new CValueControl("AutoUpRoadLimit40KMH", "低于40km/h的公路提速偏移(15km/h)", "允许提高限速时，会把道路限速加上此提速偏移值", 0, 50, 1));

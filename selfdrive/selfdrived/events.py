@@ -378,7 +378,7 @@ def car_parser_result(CP: car.CarParams, CS: car.CarState, sm: messaging.SubMast
     results,
     AlertStatus.normal, AlertSize.small,
     Priority.LOW, VisualAlert.none, AudibleAlert.none, 1., creation_delay=1.)
-  
+
 
 EVENTS: dict[int, dict[str, Alert | AlertCallbackType]] = {
   # ********** events with no alerts **********
@@ -1026,6 +1026,9 @@ EVENTS: dict[int, dict[str, Alert | AlertCallbackType]] = {
   },
   EventName.audioLaneChange: {
      ET.WARNING: EngagementAlert(AudibleAlert.laneChange),
+  },
+  EventName.audioPreLaneChange: {
+     ET.WARNING: EngagementAlert(AudibleAlert.preLaneChange),
   },
   EventName.audioTurn: {
      ET.WARNING: EngagementAlert(AudibleAlert.audioTurn),

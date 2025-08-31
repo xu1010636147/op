@@ -194,6 +194,8 @@ class DesireHelper:
     self.autoNaviCountDownMode = 0
     self.lane_change_disable_count = 0
     self.lane_change_disable = False
+    self.lane_cnt_time = 0
+    self.lane_count_last = -1
     #new
 
   def lane_change_audio(self, turn):
@@ -423,9 +425,37 @@ class DesireHelper:
 
     #判断侧面是否为最后一条车道
     last_lane = True
-    land_width_diff = distance_to_road_edge_avg - lane_width_side #计算距离边缘的宽度与侧面车道宽度的差值，如果大于2.5m则认为侧面不止一条车道
-    if land_width_diff > 2.0: #到路沿的距离比侧面车道还宽2米，说明侧面除了正常车道外，还有一条应急车道或正常道路
-      last_lane = False #侧面非最后一条车道
+    if desire_enabled and lane_available and edge_available: #有变道请求，并且有检测到路沿
+      road_edge_width_diff = distance_to_road_edge_avg - lane_width_side #计算距离边缘的宽度与侧面车道宽度的差值，如果大于2.5m则认为侧面不止一条车道
+      if road_edge_width_diff > 1.5: #到路沿的距离比侧面车道还宽1.5米，说明侧面除了正常车道外，还有一条应急车道或正常道路
+        last_lane = False #侧面非最后一条车道
+
+    #在有应急车道的高速公路，侧面只剩最后一条车道(也可能是应急车道)，则清除需要变道的次数
+    if desire_enabled and lane_available and edge_available:
+      road_edge_width_diff = distance_to_road_edge_avg - lane_width_side  # 计算距离边缘的宽度与侧面车道宽度的差值
+      lane_count = 0
+      if road_edge_width_diff > -0.2:
+        lane_count += 1
+      if road_edge_width_diff > 1.5:
+        lane_count += 1
+
+      if self.lane_count_last == lane_count: #当侧面车道数量稳定时，则开始计数
+        self.lane_cnt_time += 1
+      else:
+        self.lane_cnt_time = 0
+
+      if atc_left_right and atc_blinker_state == BLINKER_RIGHT and self.lane_cnt_time > int(5 / DT_MDL): #车道数量稳定时间超过5秒后
+        if self.roadType == 1:
+          if lane_count < 2: #带应急车道的高速公路，如果侧面只剩一条应急车道时，关闭自动变道功能
+            self.atc_turn_cnt = -1
+        else:
+          if lane_count < 1: #不带应急车道的高速公路或者普通公路，如果侧面无任何车道时，关闭自动变道功能
+            self.atc_turn_cnt = -1
+
+      self.lane_count_last = lane_count
+    else:
+      self.lane_cnt_time = 0
+      self.lane_count_last = -1
 
     # 侧面车道的宽度小于距离道路边缘的宽度，并且宽度在1少内变宽了0.8米以上(说明可能有新车道出现，即新车道在变大)
     #if lane_width_diff > 0.8 and (lane_width_side < distance_to_road_edge):
@@ -449,10 +479,6 @@ class DesireHelper:
     edge_availabled = not self.edge_available_last and edge_available
     side_object_detected = self.object_detected_count > -0.3 / DT_MDL #是否检测到侧面前方有可能会发生危险的车辆（需要雷达支持探测左右两侧前方的车辆）
     lane_appeared = lane_appeared and distance_to_road_edge < 4.0 #新车道出现还要附加个距离道路边缘小于4米的条件
-
-    #在有应急车道的高速公路，侧面只剩最后一条车道(也可能是应急车道)，则清除需要变道的次数
-    if atc_left_right and atc_blinker_state == BLINKER_RIGHT and self.roadType == 1 and last_lane:
-      self.atc_turn_cnt = -1
 
     if self.carrot_lane_change_count > 0: #些计数为carrorMan发送过来的LANECHANGE触发的变道
       auto_lane_change_blocked = False

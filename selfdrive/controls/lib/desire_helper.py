@@ -591,7 +591,8 @@ class DesireHelper:
 
           #new 如果不允许连续变道，则改为LaneChangeState.off状态，如果允许连续变道，变道次数完成后则不再允许变道
           if atc_left_right: #属于变道
-            if self.autoTurnInNotRoadEdge > 0 and (not driver_desire_enabled and atc_desire_enabled): #属于系统自动变道
+            #if self.autoTurnInNotRoadEdge > 0 and (not driver_desire_enabled and atc_desire_enabled): #属于系统自动变道
+            if self.autoTurnInNotRoadEdge > 0:
               if self.allowContinuousLaneChange == 0: #不允许连续变道
                 self.atc_turn_cnt = -1
               else:

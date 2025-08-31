@@ -122,7 +122,7 @@ class SelfdriveD:
     self.recalibrating_seen = False
     self.state_machine = StateMachine()
     self.rk = Ratekeeper(100, print_delay_threshold=None)
-    
+
     self.atc_type_last = ""
 
 
@@ -242,7 +242,10 @@ class SelfdriveD:
     if self.sm.alive['carrotMan']:
       atc_type = self.sm['carrotMan'].atcType
       if atc_type != self.atc_type_last:
-        if "prepare" not in atc_type and "prepare" in self.atc_type_last: # fork left/right prepare -> fork left/right
+        if "prepare" not in atc_type and "prepare" in self.atc_type_last: # fork left/right prepare -> atc left/right
+          if "atc" in atc_type:
+            self.events.add(EventName.audioLaneChange)
+        if "atc" not in atc_type and "atc" in self.atc_type_last: # atc left/right -> fork left/right
           if "fork" in atc_type:
             self.events.add(EventName.audioLaneChange)
         elif "prepare" in atc_type:

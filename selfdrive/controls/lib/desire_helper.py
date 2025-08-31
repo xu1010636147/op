@@ -602,7 +602,10 @@ class DesireHelper:
             elif torque_applied or auto_lane_change_trigger: #auto_lane_change_trigger在self.auto_lane_change_enable成立并且无其实阻止条件是则会为True
               if torque_applied: #如果用户施加了扭矩，则立即变道
                 self.lane_change_state = LaneChangeState.laneChangeStarting
-                self.trigger_type = 4
+                if auto_lane_change_trigger:
+                  self.trigger_type = 5
+                else:
+                  self.trigger_type = 4
               else:
                 if self.continuousLaneChangeInterval == 0 or self.lane_change_disable_count == 0 or not atc_left_right: #变道不延时或者延时已结束或者为非act_left_right，则立即变道
                   self.lane_change_state = LaneChangeState.laneChangeStarting
@@ -664,7 +667,7 @@ class DesireHelper:
               if self.allowContinuousLaneChange == 0: #不允许连续变道
                 self.atc_turn_cnt = -1
               else:
-                if self.atc_turn_cnt >= 0:
+                if self.atc_turn_cnt >= 0 and 5 <= self.trigger_type <= 7:
                   self.atc_turn_cnt -= 1
 
           self.lane_change_disable_count = self.continuousLaneChangeInterval #重置连续变道延时

@@ -1075,6 +1075,9 @@ class CarrotServ:
 
     self.xTurnInfo = -1
     self.xDistToTurn = 0
+    self.xDistToTurnNav = 0
+    self.xDistToTurnMax = 0
+    self.xDistToTurnLast = 0
     self.xTurnInfoNext = -1
     self.xDistToTurnNext = 0
 
@@ -1369,6 +1372,7 @@ class CarrotServ:
 
     if self.nTBTDist > 0 and self.xTurnInfo > 0:
       self.xDistToTurn = self.nTBTDist
+      self.xDistToTurnNav = self.nTBTDist
     if self.nTBTDistNext > 0 and self.xTurnInfoNext > 0:
       self.xDistToTurnNext = self.nTBTDistNext + self.nTBTDist
 
@@ -1589,6 +1593,13 @@ class CarrotServ:
       auto_decel_rate = self.autoForkDecalRateH
       decel_speed_min = self.autoForkSpeedMinH
 
+    #对变道和转弯距离作一个限制，不能比最大路口距离的70%还大
+    max_dist = self.xDistToTurnMax*0.7
+    if do_fork_dist > max_dist:
+      do_fork_dist = max_dist
+    if start_fork_dist > max_dist:
+      start_fork_dist = max_dist
+
     start_turn_dist = np.interp(self.nTBTNextRoadWidth, [5, 10], [43, 60]) + self.autoTurnDistOffset
     turn_info_mapping = {
         1: {"type": "turn left", "speed": turn_speed, "dist": turn_dist_for_speed, "start": start_fork_dist},
@@ -1677,6 +1688,7 @@ class CarrotServ:
       if self.active_kisa_count <= 0 and msg_nav.speedLimit > 0:
         self.nRoadLimitSpeed = max(30, round(msg_nav.speedLimit * CV.MS_TO_KPH))
       self.xDistToTurn = int(msg_nav.maneuverDistance)
+      self.xDistToTurnNav = int(msg_nav.maneuverDistance)
       self.szTBTMainText = msg_nav.maneuverPrimaryText
       self.xTurnInfo = -1
       for key, value in nav_type_mapping.items():
@@ -1912,6 +1924,11 @@ class CarrotServ:
 
       self.left_sec = left_sec
 
+    #new
+    if self.xDistToTurnNav > self.xDistToTurnLast: #当距离路口距离比上次大时，则记录为当前最大的路口距离
+      self.xDistToTurnMax = self.xDistToTurnNav
+    self.xDistToTurnLast = self.xDistToTurnNav #当前距离更新到上次距离时
+    #new
 
     self._update_cmd()
     msg = messaging.new_message('carrotMan')

@@ -629,7 +629,7 @@ class DesireHelper:
             trigger_type = -6
 
         if (self.showDebugLog and 4) > 0:
-          print(f"---Pre: A={lane_change_available}, C={auto_lane_change_trigger},{trigger_type},{atc_left_right},{self.lane_change_disable_count},{self.lane_change_disable}, T={torque_applied}")
+          print(f"---Pre: A={lane_change_available}, C={auto_lane_change_trigger},{trigger_type},{atc_left_right},{self.lane_change_disable_count},{self.lane_change_disable},T:{self.continuousLaneChangeInterval}, T={torque_applied}")
 
       # =============LaneChangeState.laneChangeStarting=============
       elif self.lane_change_state == LaneChangeState.laneChangeStarting:

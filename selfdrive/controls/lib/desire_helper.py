@@ -442,7 +442,7 @@ class DesireHelper:
           lane_count = 1
         elif road_edge_width_diff > 1.5:
           lane_count = 2
-      elif lane_available or edge_available: #只有侧面车道或路沿都存在，说明侧面只有一条车道
+      elif lane_available: #只有侧面车道存在，说明侧面只有一条车道
         lane_count = 1
       else:
         self.lane_cnt_time = self.lane_count_stab_cnt

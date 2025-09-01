@@ -207,6 +207,7 @@ def get_default_params():
     ("RoadType", "-1"),
     ("AutoCurveSpeedFactorH", "80"),
     ("AutoCurveSpeedAggressivenessH", "120"),
+    ("NewLaneWidthDiff", "5"),
     # new
   ]
   return default_params

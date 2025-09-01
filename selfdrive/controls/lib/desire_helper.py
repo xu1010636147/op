@@ -186,8 +186,8 @@ class DesireHelper:
     self.continuousLaneChangeCnt = 0
     self.continuousLaneChangeInterval = 2
     self.atc_turn_cnt = 0
-    self.autoDoForkCheckDist = 2
-    self.autoDoForkCheckDistH = 3
+    self.autoDoForkCheckDist = 10
+    self.autoDoForkCheckDistH = 20
     self.roadType = -1
     self.autoTurnLeft = 0
     self.showDebugLog = 0

@@ -1137,9 +1137,9 @@ class CarrotServ:
     self.autoDoForkDecalDist = 20
     self.autoForkDistOffset = 30
     #self.autoDoForkCheckDistH = 0
-    self.autoDoForkBlinkerDist = 5
+    self.autoDoForkBlinkerDist = 15
     #self.autoDoForkCheckDistH = 0
-    self.autoDoForkBlinkerDistH = 10
+    self.autoDoForkBlinkerDistH = 30
     self.autoUpRoadLimit = 0
     self.autoUpRoadLimit40KMH = 15
     self.autoUpHighwayRoadLimit = 0

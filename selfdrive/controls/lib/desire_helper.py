@@ -336,6 +336,12 @@ class DesireHelper:
 
     self.blindspot_detected_counter = max(0, self.blindspot_detected_counter - 1) #BSD盲区检测倒计时计数
 
+    #new 检查可变道的延时时间
+    left_turn_sec = max(0, carrotMan.xLeftTurnSec)  # 到转弯点还需要的时间
+    turn_need_time = (self.continuousLaneChangeCnt+1)*self.continuousLaneChangeInterval + 20  # 计算所有次数需要的延时时间,预留20秒的时间
+    turn_need_time = max(min(left_turn_sec, turn_need_time) - 20, 0)
+    lang_change_interval = min(turn_need_time/(self.continuousLaneChangeCnt+1), self.continuousLaneChangeInterval)
+
     ##### check ATC's blinker state
     atc_left_right = False
     atc_type = carrotMan.atcType #carrotMan.atcType来自carrot_man.py的update_auto_turn函数状态
@@ -384,7 +390,7 @@ class DesireHelper:
     if self.atc_type != atc_type: #为里的判断主要是用于在atc_type类型变化时用于重置状态
       atc_desire_enabled = False #atc类型不同时，重置自动转弯需求
       self.atc_turn_cnt = self.continuousLaneChangeCnt #重置允许连续变道次数
-      self.lane_change_disable_count = self.continuousLaneChangeInterval  # 重置连续变道延时
+      self.lane_change_disable_count = lang_change_interval  # 重置连续变道延时
       self.lane_change_disable = False # 重置禁止变道的标志
       self.lane_cnt_time = self.lane_count_stab_cnt
       self.lane_count_last = -1
@@ -552,7 +558,7 @@ class DesireHelper:
         else:
           self.auto_lane_change_enable = False if lane_exist_counter > 0 or lane_change_available else True
 
-        self.lane_change_disable_count = self.continuousLaneChangeInterval #重置连续变道延时
+        self.lane_change_disable_count = lang_change_interval #重置连续变道延时
         self.lane_change_disable = False
         if (self.showDebugLog and 4) > 0:
           print(f"---Init: enable={self.auto_lane_change_enable}, exist_cnt={lane_exist_counter}, available={lane_change_available}")
@@ -596,7 +602,7 @@ class DesireHelper:
                 self.trigger_type = -2
                 # 如果触发变道条件成立了，虽然盲区还在，但是可以开启倒计时，盲区消失后则可立即变道
                 if auto_lane_change_trigger and not self.lane_change_disable:
-                  self.lane_change_disable_count = self.continuousLaneChangeInterval
+                  self.lane_change_disable_count = lang_change_interval
                   self.lane_change_disable = True
             elif self.laneChangeNeedTorque > 0: # 需要轻推方向盘变道
               if torque_applied:
@@ -615,12 +621,12 @@ class DesireHelper:
                 else:
                   self.trigger_type = 5
               else:
-                if self.continuousLaneChangeInterval == 0 or self.lane_change_disable_count == 0 or not atc_left_right: #变道不延时或者延时已结束或者为非act_left_right，则立即变道
+                if lang_change_interval < 0.5 or self.lane_change_disable_count == 0 or not atc_left_right: #变道不延时或者延时已结束或者为非act_left_right，则立即变道
                   self.lane_change_state = LaneChangeState.laneChangeStarting
                   self.trigger_type = 6
                   self.lane_change_audio(not atc_left_right)  # 语音播报, atc_left_right报变道，其它报转弯
                 elif not self.lane_change_disable: #没有设置过延时
-                  self.lane_change_disable_count = self.continuousLaneChangeInterval
+                  self.lane_change_disable_count = lang_change_interval
                   self.lane_change_disable = True
                   self.lane_change_audio(False) #语音播报变道
                   self.trigger_type = -4
@@ -636,13 +642,13 @@ class DesireHelper:
               self.trigger_type = -5
 
             if self.lane_change_state == LaneChangeState.laneChangeStarting:
-              self.lane_change_disable_count = self.continuousLaneChangeInterval
+              self.lane_change_disable_count = lang_change_interval
               self.lane_change_disable = False
           else:
             self.trigger_type = -6
 
         if (self.showDebugLog and 4) > 0:
-          print(f"---Pre: A={lane_change_available}, C={auto_lane_change_trigger},{self.trigger_type},{atc_left_right},{self.lane_change_disable_count},{self.lane_change_disable},T:{self.continuousLaneChangeInterval}, T={torque_applied}")
+          print(f"---Pre: A={lane_change_available}, C={auto_lane_change_trigger},{self.trigger_type},{atc_left_right},{self.lane_change_disable_count},{self.lane_change_disable},T:{lang_change_interval}, T={torque_applied}")
 
       # =============LaneChangeState.laneChangeStarting=============
       elif self.lane_change_state == LaneChangeState.laneChangeStarting:
@@ -678,7 +684,7 @@ class DesireHelper:
                 if self.atc_turn_cnt >= 0 and 5 <= self.trigger_type <= 7:
                   self.atc_turn_cnt -= 1
 
-          self.lane_change_disable_count = self.continuousLaneChangeInterval #重置连续变道延时
+          self.lane_change_disable_count = lang_change_interval #重置连续变道延时
           self.lane_change_disable = False
 
         if (self.showDebugLog and 4) > 0:

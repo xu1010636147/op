@@ -594,6 +594,10 @@ class DesireHelper:
                 self.trigger_type = 1
               else:
                 self.trigger_type = -2
+                # 如果触发变道条件成立了，虽然盲区还在，但是可以开启倒计时，盲区消失后则可立即变道
+                if auto_lane_change_trigger and not self.lane_change_disable:
+                  self.lane_change_disable_count = self.continuousLaneChangeInterval
+                  self.lane_change_disable = True
             elif self.laneChangeNeedTorque > 0: # 需要轻推方向盘变道
               if torque_applied:
                 self.lane_change_state = LaneChangeState.laneChangeStarting
@@ -604,16 +608,16 @@ class DesireHelper:
               self.lane_change_state = LaneChangeState.laneChangeStarting
               self.trigger_type = 3
             elif torque_applied or auto_lane_change_trigger: #auto_lane_change_trigger在self.auto_lane_change_enable成立并且无其实阻止条件是则会为True
-              if torque_applied: #如果用户施加了扭矩，则立即变道
+              if torque_applied: #如果用户施加了扭矩，则立即变道（不执行延时）
                 self.lane_change_state = LaneChangeState.laneChangeStarting
                 if auto_lane_change_trigger:
-                  self.trigger_type = 5
-                else:
                   self.trigger_type = 4
+                else:
+                  self.trigger_type = 5
               else:
                 if self.continuousLaneChangeInterval == 0 or self.lane_change_disable_count == 0 or not atc_left_right: #变道不延时或者延时已结束或者为非act_left_right，则立即变道
                   self.lane_change_state = LaneChangeState.laneChangeStarting
-                  self.trigger_type = 5
+                  self.trigger_type = 6
                   self.lane_change_audio(not atc_left_right)  # 语音播报, atc_left_right报变道，其它报转弯
                 elif not self.lane_change_disable: #没有设置过延时
                   self.lane_change_disable_count = self.continuousLaneChangeInterval
@@ -622,12 +626,12 @@ class DesireHelper:
                   self.trigger_type = -4
                 elif self.lane_change_disable_count == 0: #延时已结束，立即变道
                   self.lane_change_state = LaneChangeState.laneChangeStarting
-                  self.trigger_type = 6
+                  self.trigger_type = 7
                   self.lane_change_audio(False)  # 语音播报
-            elif self.lane_change_disable and self.lane_change_disable_count == 0: #已经开启了计时，并且延时已结束，立即变道
-              self.lane_change_state = LaneChangeState.laneChangeStarting
-              self.trigger_type = 7
-              self.lane_change_audio(False)  # 语音播报
+            #elif self.lane_change_disable and self.lane_change_disable_count == 0: #已经开启了计时，并且延时已结束，立即变道
+            #  self.lane_change_state = LaneChangeState.laneChangeStarting
+            #  self.trigger_type = 8
+            #  self.lane_change_audio(False)  # 语音播报
             else:
               self.trigger_type = -5
 

@@ -210,11 +210,7 @@ class DesireHelper:
       do_fork_dist = self.autoDoForkCheckDistH
     else:
       do_fork_dist = self.autoDoForkCheckDist
-    if v_ego > 0:
-      t_offset = do_fork_dist/v_ego
-      t_offset = min(1, t_offset)
-    else:
-      t_offset = 1
+    t_offset = min(float(do_fork_dist) / max(1., v_ego), 1.) if v_ego > 0 else 1.0
 
     #self.distance_to_road_edge_left/self.distance_to_road_edge_right 车辆当前位置到1秒前方车道中心线到道路边缘的距离。
     #self.distance_to_road_edge_left_far/self.distance_to_road_edge_right_far 车辆当前位置到2秒前方车道中心线到道路边缘的距离

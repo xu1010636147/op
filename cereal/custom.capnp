@@ -46,6 +46,7 @@ struct CarrotMan @0x81c2f05a394cf4af {
 	xDistToTurnNavLast @30 : Int32;
 	xDistToTurnMax @31 : Int32;
 	xDistToTurnMaxCnt @32 : Int32;
+	xLeftTurnSec @33 : Int32
 }
 
 struct CustomReserved1 @0xaedffd8f31e7b55d {

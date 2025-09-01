@@ -57,29 +57,20 @@ def calculate_lane_width_frog(lane, current_lane, road_edge):
 
   return min(distance_to_lane, distance_to_road_edge), distance_to_road_edge
 
-def calculate_lane_width(lane, lane_prob, current_lane, road_edge, t_offset):
+def calculate_lane_width(lane, lane_prob, current_lane, road_edge):
   t = 1.0 # 约1秒前的车道
   current_lane_y = np.interp(t, ModelConstants.T_IDXS, current_lane.y)
   lane_y = np.interp(t, ModelConstants.T_IDXS, lane.y)
   distance_to_lane = abs(current_lane_y - lane_y)
-  #new 计算2秒外的车道宽度
-  t_offset = max(0, min(1, t_offset)) #把t_offset限制[0,1]之间
-  if t_offset > 0.01:
-    current_lane_y_far = np.interp(t + t_offset, ModelConstants.T_IDXS, current_lane.y)
-    lane_y_far = np.interp(t + t_offset, ModelConstants.T_IDXS, lane.y)
-    distance_to_lane_far = abs(current_lane_y_far - lane_y_far)
-  else:
-    distance_to_lane_far = distance_to_lane
-  #new
   #if lane_prob < 0.3:# 차선이 없으면 없는것으로 간주시킴.
   #  distance_to_lane = min(2.0, distance_to_lane)
   road_edge_y = np.interp(t, ModelConstants.T_IDXS, road_edge.y)
   distance_to_road_edge = abs(current_lane_y - road_edge_y)
   distance_to_road_edge_far = abs(current_lane_y - np.interp(2.0, ModelConstants.T_IDXS, road_edge.y))
-  return min(distance_to_lane, distance_to_road_edge), distance_to_road_edge, distance_to_road_edge_far, lane_prob > 0.5, distance_to_lane_far
+  return min(distance_to_lane, distance_to_road_edge), distance_to_road_edge, distance_to_road_edge_far, lane_prob > 0.5
 
-def calculate_lane_width_only(lane, current_lane):
-  t = 1.0 # 约1秒前的车道
+def calculate_lane_width_only(lane, current_lane, t_offset):
+  t = 1.0 + max(0, min(1, t_offset)) # 把t_offset限制[0,1]之间
   current_lane_y = np.interp(t, ModelConstants.T_IDXS, current_lane.y)
   lane_y = np.interp(t, ModelConstants.T_IDXS, lane.y)
   distance_to_lane = abs(current_lane_y - lane_y)
@@ -205,6 +196,16 @@ class DesireHelper:
     return
     # 创建并发送 audioLaneChange 事件
 
+  # self.distance_to_road_edge_left/self.distance_to_road_edge_right 车辆当前位置到1秒前方车道中心线到道路边缘的距离。
+  # self.distance_to_road_edge_left_far/self.distance_to_road_edge_right_far 车辆当前位置到2秒前方车道中心线到道路边缘的距离
+  # modeldata.laneLines[0] - 左侧外车道线（左侧车道的外边界）
+  # modeldata.laneLines[1] - 当前车道的左边界线
+  # modeldata.laneLines[2] - 当前车道的右边界线
+  # modeldata.laneLines[3] - 右侧外车道线（右侧车道的外边界）
+  # modeldata.roadEdges[0] - 左侧道路边缘数据
+  # modeldata.roadEdges[1] - 右侧道路边缘数据
+  # modeldata.laneLineProbs[x]为车道线的置信度，一般大于0.5则认为有车道线
+  # 置信度大于0.5，则lane_prob_left/lane_prob_right为True
   def check_lane_state(self, modeldata, v_ego):
     #根据距离计算需要提前的时间
     if 0 <= self.roadType <= 1:
@@ -213,21 +214,17 @@ class DesireHelper:
       do_fork_dist = self.autoDoForkCheckDist
     t_offset = min(float(do_fork_dist) / max(1., v_ego), 1.) if v_ego > 0 else 1.0
 
-    #self.distance_to_road_edge_left/self.distance_to_road_edge_right 车辆当前位置到1秒前方车道中心线到道路边缘的距离。
-    #self.distance_to_road_edge_left_far/self.distance_to_road_edge_right_far 车辆当前位置到2秒前方车道中心线到道路边缘的距离
-    #modeldata.laneLines[0] - 左侧外车道线（左侧车道的外边界）
-    #modeldata.laneLines[1] - 当前车道的左边界线
-    #modeldata.laneLines[2] - 当前车道的右边界线
-    #modeldata.laneLines[3] - 右侧外车道线（右侧车道的外边界）
-    #modeldata.roadEdges[0] - 左侧道路边缘数据
-    #modeldata.roadEdges[1] - 右侧道路边缘数据
-    #modeldata.laneLineProbs[x]为车道线的置信度，一般大于0.5则认为有车道线
-    #置信度大于0.5，则lane_prob_left/lane_prob_right为True
-    lane_width_left, self.distance_to_road_edge_left, self.distance_to_road_edge_left_far, lane_prob_left, lane_width_left_far = calculate_lane_width(modeldata.laneLines[0], modeldata.laneLineProbs[0],
-                                                                                                 modeldata.laneLines[1], modeldata.roadEdges[0], t_offset)
-    lane_width_right, self.distance_to_road_edge_right, self.distance_to_road_edge_right_far, lane_prob_right, lane_width_right_far = calculate_lane_width(modeldata.laneLines[3], modeldata.laneLineProbs[3],
-                                                                                                    modeldata.laneLines[2], modeldata.roadEdges[1], t_offset)
-    lane_width_curr = calculate_lane_width_only(modeldata.laneLines[1], modeldata.laneLines[2])
+    lane_width_left, self.distance_to_road_edge_left, self.distance_to_road_edge_left_far, lane_prob_left = calculate_lane_width(modeldata.laneLines[0], modeldata.laneLineProbs[0],
+                                                                                                 modeldata.laneLines[1], modeldata.roadEdges[0])
+    lane_width_right, self.distance_to_road_edge_right, self.distance_to_road_edge_right_far, lane_prob_right = calculate_lane_width(modeldata.laneLines[3], modeldata.laneLineProbs[3],
+                                                                                                    modeldata.laneLines[2], modeldata.roadEdges[1])
+    lane_width_curr = calculate_lane_width_only(modeldata.laneLines[1], modeldata.laneLines[2], 0)
+    if do_fork_dist > 0:
+      lane_width_left_far = calculate_lane_width_only(modeldata.laneLines[0], modeldata.laneLines[1], t_offset)
+      lane_width_right_far = calculate_lane_width_only(modeldata.laneLines[2], modeldata.laneLines[3], t_offset)
+    else:
+      lane_width_left_far = lane_width_left
+      lane_width_right_far = lane_width_right
 
     #左右侧车道存在计数
     self.lane_exist_left_count.update(lane_prob_left)
@@ -238,8 +235,9 @@ class DesireHelper:
     self.lane_width_left_queue.append(lane_width_left)
     self.lane_width_right_queue.append(lane_width_right)
     self.lane_width_curr_queue.append(lane_width_curr)
-    self.lane_width_left_far_queue.append(lane_width_left_far)
-    self.lane_width_right_far_queue.append(lane_width_right_far)
+    if do_fork_dist > 0:
+      self.lane_width_left_far_queue.append(lane_width_left_far)
+      self.lane_width_right_far_queue.append(lane_width_right_far)
     self.distance_to_road_edge_left_queue.append(self.distance_to_road_edge_left)
     self.distance_to_road_edge_right_queue.append(self.distance_to_road_edge_right)
 
@@ -255,8 +253,12 @@ class DesireHelper:
     #[-1]为最新的入列的车道宽度，[0]为最旧的车道宽度，一般width_left_diff>0.5表示车道正在变宽(一般这种情况是出现了新的车道)
     self.lane_width_left_diff = self.lane_width_left_queue[-1] - self.lane_width_left_queue[0]
     self.lane_width_right_diff = self.lane_width_right_queue[-1] - self.lane_width_right_queue[0]
-    self.lane_width_left_far_diff = self.lane_width_left_far_queue[-1] - self.lane_width_left_far_queue[0]
-    self.lane_width_right_far_diff = self.lane_width_right_far_queue[-1] - self.lane_width_right_far_queue[0]
+    if do_fork_dist > 0:
+      self.lane_width_left_far_diff = self.lane_width_left_far_queue[-1] - self.lane_width_left_far_queue[0]
+      self.lane_width_right_far_diff = self.lane_width_right_far_queue[-1] - self.lane_width_right_far_queue[0]
+    else:
+      self.lane_width_left_far_diff = self.lane_width_left_diff
+      self.lane_width_right_far_diff = self.lane_width_right_diff
 
     #当前车道和侧面车道宽度的差值
     self.lane_width_left_curr_diff =  self.lane_width_curr - self.lane_width_left
@@ -487,7 +489,7 @@ class DesireHelper:
 
     # 侧面车道的宽度小于距离道路边缘的宽度，并且宽度在1少内变宽了0.8米以上(说明可能有新车道出现，即新车道在变大)
     #if lane_width_diff > 0.8 and (lane_width_side < distance_to_road_edge):
-    if lane_width_far_diff > self.newLaneWidthDiff and (lane_width_side < distance_to_road_edge): #所有变道类型，只要出现新车道，则允许变道，且不受变道次数的限制
+    if lane_width_diff > self.newLaneWidthDiff and (lane_width_side < distance_to_road_edge): #所有变道类型，只要出现新车道，则允许变道，且不受变道次数的限制
       if not atc_left_right:
         lane_available_trigger = True
       elif self.atc_turn_cnt >= 0: #还有剩余变道次数
@@ -496,7 +498,7 @@ class DesireHelper:
     elif (atc_left_right #为左右提前变道请求
           and (self.autoTurnInNotRoadEdge > 0 #允许在非侧边车道变道
                and curr_lane_width_diff < 0.3 #旁边车道不能比当前车道小于0.3m
-               and lane_width_far_diff >= -0.1 #旁边车道不允许在变小
+               and lane_width_diff >= -0.1 #旁边车道不允许在变小
                and self.atc_turn_cnt >= 0 #还有剩余变道次数
                and ((atc_blinker_state == BLINKER_RIGHT and self.roadType == 1 and not last_lane) #有应急车道的高速右变道限制，不允许变道到最后一条车道(应急车道)上
                     or (atc_blinker_state != BLINKER_RIGHT or self.roadType != 1)) #不是右变道或者在无应急车道的道路则允许变道

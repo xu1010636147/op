@@ -198,6 +198,7 @@ class DesireHelper:
     self.lane_count_last = -1
     self.lane_count_stab_cnt = int(5 / DT_MDL)
     self.trigger_type = 0
+    self.newLaneWidthDiff = 0.5
     #new
 
   def lane_change_audio(self, turn):
@@ -303,6 +304,7 @@ class DesireHelper:
       self.autoTurnLeft = self.params.get_int("AutoTurnLeft")
       self.showDebugLog = self.params.get_int("ShowDebugLog")
       self.autoNaviCountDownMode = self.params.get_int("AutoNaviCountDownMode")
+      self.newLaneWidthDiff = self.params.get_float("NewLaneWidthDiff") * 0.1
       #new
     self.frame += 1
 
@@ -485,7 +487,7 @@ class DesireHelper:
 
     # 侧面车道的宽度小于距离道路边缘的宽度，并且宽度在1少内变宽了0.8米以上(说明可能有新车道出现，即新车道在变大)
     #if lane_width_diff > 0.8 and (lane_width_side < distance_to_road_edge):
-    if lane_width_far_diff > 0.8 and (lane_width_side < distance_to_road_edge): #所有变道类型，只要出现新车道，则允许变道，且不受变道次数的限制
+    if lane_width_far_diff > self.newLaneWidthDiff and (lane_width_side < distance_to_road_edge): #所有变道类型，只要出现新车道，则允许变道，且不受变道次数的限制
       if not atc_left_right:
         lane_available_trigger = True
       elif self.atc_turn_cnt >= 0: #还有剩余变道次数
@@ -519,18 +521,21 @@ class DesireHelper:
         print(self.desireLog)
 
     if not lateral_active or self.lane_change_timer > LANE_CHANGE_TIME_MAX:
-      #print("---Desire canceled")
+      if (self.showDebugLog and 8) > 0:
+        print("---Desire canceled")
       self.lane_change_state = LaneChangeState.off
       self.lane_change_direction = LaneChangeDirection.none
       self.turn_direction = TurnDirection.none
     elif desire_enabled and ((below_lane_change_speed and not carstate.standstill and self.enable_turn_desires) or self.turn_desire_state):
-      #print("---Desire Turning")
+      if (self.showDebugLog and 8) > 0:
+        print("---Desire Turning")
       self.lane_change_state = LaneChangeState.off
       self.turn_direction = TurnDirection.turnLeft if blinker_state == BLINKER_LEFT else TurnDirection.turnRight
       self.lane_change_direction = self.turn_direction #LaneChangeDirection.none
       desire_enabled = False
     elif self.desire_disable_count > 0: # Turn后一段时间内无法变更车道,此变量在check_desire_state函数里计算，如果车辆在转弯，则一直把desire_disable_count设置为2秒的计数值
-      #print("---Desire after turning")
+      if (self.showDebugLog and 8) > 0:
+        print("---Desire after turning")
       self.lane_change_state = LaneChangeState.off
       self.lane_change_direction = LaneChangeDirection.none
       self.turn_direction = TurnDirection.none
@@ -697,6 +702,7 @@ class DesireHelper:
 
     self.prev_desire_enabled = desire_enabled
 
+    #驾驶员往反方向打了方向盘后，自动变道状态机变为Off
     steering_pressed = carstate.steeringPressed and \
                      ((carstate.steeringTorque < 0 and blinker_state == BLINKER_LEFT) or (carstate.steeringTorque > 0 and blinker_state == BLINKER_RIGHT))
     if steering_pressed and self.lane_change_state != LaneChangeState.off:

@@ -438,37 +438,41 @@ class DesireHelper:
         last_lane = False #侧面非最后一条车道
 
     #在有应急车道的高速公路，侧面只剩最后一条车道(也可能是应急车道)，则清除需要变道的次数
-    if desire_enabled and edge_available: #没有检测到路沿，有可以此时正在和变道方向相反的最远车道上
-      lane_count = 2
-      if lane_available and edge_available: #侧面车道和路沿都存在时，计算侧面的车道数量
+    if desire_enabled: #如果没有检测到路沿，那有可以车辆在离路沿最远的车道上，edge_available成立的标志为宽度大于2.5m
+      if lane_available and edge_available: #侧面车道和路沿均有时，通过宽度计算侧面的车道数量，lane_available和edge_available成立的标志为宽度大于2.5m
         road_edge_width_diff = distance_to_road_edge_avg - lane_width_side  # 计算距离边缘的宽度与侧面车道宽度的差值
-        if road_edge_width_diff > -0.2:
-          lane_count = 1
-        elif road_edge_width_diff > 1.5:
+        if road_edge_width_diff > 1.5: #路沿宽度和车道大1.5米时，可以认为是两条车道
           lane_count = 2
-      elif lane_available: #只有侧面车道存在，说明侧面只有一条车道
+        else:
+          lane_count = 1
+      elif lane_available: #侧面有车道或路沿，算1条车道
         lane_count = 1
+      elif (self.lane_change_state == LaneChangeState.laneChangeStarting
+            and self.lane_change_state == LaneChangeState.laneChangeFinishing): #没有车道也没有路沿，并且不是在变道中
+        lane_count = 0
       else:
-        self.lane_cnt_time = self.lane_count_stab_cnt
+        lane_count = 2
+        self.lane_cnt_time = self.lane_count_stab_cnt #变道中不稳定的情况下重置车道计时时间
         self.lane_count_last = -1
 
-      if self.lane_count_last == lane_count: #当侧面车道数量稳定时，则开始计数
+      # 车道数量稳定时间倒计时
+      if self.lane_count_last == lane_count:
         self.lane_cnt_time = max(-1, self.lane_cnt_time - 1)
       else:
         self.lane_cnt_time = self.lane_count_stab_cnt
 
       #车道数量稳定时间已达到
       if atc_desire_enabled and atc_left_right and (atc_blinker_state == BLINKER_RIGHT or atc_blinker_state == BLINKER_LEFT): #属于自动提变道类型atc_left或atc_right
-        if self.lane_cnt_time <= -1:
+        if self.lane_cnt_time <= -1: #倒计时已结束
           pass
-        elif self.lane_cnt_time <= 0:
+        elif self.lane_cnt_time <= 0: #倒计时为0
           if self.roadType == 1 and atc_blinker_state == BLINKER_RIGHT: #带应急车道的高速公路右变道
             if lane_count < 2:   #如果侧面只剩一条应急车道时，关闭自动变道功能
               self.atc_turn_cnt = -1
           else: #不带应急车道的高速公路或者普通公路
             if lane_count < 1: #如果侧面无任何车道时，关闭自动变道功能
               self.atc_turn_cnt = -1
-      else:
+      else: #不是左右自动变道atc_left或atc_right
         self.lane_cnt_time = self.lane_count_stab_cnt
         self.lane_count_last = -1
 

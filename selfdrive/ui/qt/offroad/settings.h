@@ -121,6 +121,7 @@ private:
   ListWidget* dispToggles;
   ListWidget* startToggles;
   ListWidget* speedToggles;
+  ListWidget* navToggles;
 
   void togglesCarrot(int widgetIndex);
   void updateButtonStyles();

@@ -1077,7 +1077,8 @@ class CarrotServ:
     self.xDistToTurn = 0
     self.xDistToTurnNav = 0
     self.xDistToTurnMax = 0
-    self.xDistToTurnLast = 0
+    self.xDistToTurnMaxCnt = 0 #最大转弯引导距离的次数
+    self.xDistToTurnNavLast = 0
     self.xTurnInfoNext = -1
     self.xDistToTurnNext = 0
 
@@ -1925,9 +1926,10 @@ class CarrotServ:
       self.left_sec = left_sec
 
     #new
-    if self.xDistToTurnNav > self.xDistToTurnLast: #当距离路口距离比上次大时，则记录为当前最大的路口距离
+    if self.xDistToTurnNav > self.xDistToTurnNavLast: #当距离路口距离比上次大时，则记录为当前最大的路口距离
       self.xDistToTurnMax = self.xDistToTurnNav
-    self.xDistToTurnLast = self.xDistToTurnNav #当前距离更新到上次距离时
+      self.xDistToTurnMaxCnt += 1
+    self.xDistToTurnNavLast = self.xDistToTurnNav #当前距离更新到上次距离时
     #new
 
     self._update_cmd()
@@ -1953,6 +1955,13 @@ class CarrotServ:
     msg.carrotMan.carrotCmd = self.carrotCmd
     msg.carrotMan.carrotArg = self.carrotArg
     msg.carrotMan.trafficState = self.traffic_state
+
+    #new
+    msg.carrotMan.xDistToTurnNav = int(self.xDistToTurnNav)
+    msg.carrotMan.xDistToTurnNavLast = int(self.xDistToTurnNavLast)
+    msg.carrotMan.xDistToTurnMax = int(self.xDistToTurnMax)
+    msg.carrotMan.xDistToTurnMaxCnt = int(self.xDistToTurnMaxCnt)
+    #new
 
     msg.carrotMan.xPosSpeed = float(v_ego_kph) #float(self.nPosSpeed)
     msg.carrotMan.xPosAngle = float(self.bearing)

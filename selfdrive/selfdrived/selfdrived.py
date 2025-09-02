@@ -247,7 +247,10 @@ class SelfdriveD:
             self.events.add(EventName.audioPreLaneChange)
         if "atc" not in atc_type and "atc" in self.atc_type_last: # atc left/right -> fork left/right
           if "fork" in atc_type:
-            self.events.add(EventName.audioLaneChange)
+            if "now" in atc_type:  # 立即变道
+              self.events.add(EventName.audioLaneChange)
+            else: #准备变道
+             self.events.add(EventName.audioPreLaneChange)
         elif "prepare" in atc_type:
           pass
         elif "turn" in atc_type and "turn" not in self.atc_type_last:   # fork left/right -> turn left/right

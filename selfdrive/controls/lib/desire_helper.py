@@ -468,10 +468,10 @@ class DesireHelper:
           lane_count = 1
       elif lane_available: #侧面有车道或路沿，算1条车道
         lane_count = 1
-      elif (self.lane_change_state == LaneChangeState.laneChangeStarting
-            and self.lane_change_state == LaneChangeState.laneChangeFinishing): #没有车道也没有路沿，并且不是在变道中
+      elif (self.lane_change_state != LaneChangeState.laneChangeStarting
+            and self.lane_change_state != LaneChangeState.laneChangeFinishing): #没有车道也没有路沿，并且不是在变道中
         lane_count = 0
-      else:
+      else: #当路宽和路沿距离都小于2.5时，lane_available和edge_available两个标志都不会成立
         lane_count = 2
         self.lane_cnt_time = self.lane_count_stab_cnt #变道中不稳定的情况下重置车道计时时间
         self.lane_count_last = -1

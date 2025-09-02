@@ -391,9 +391,9 @@ class DesireHelper:
       self.atc_active = 2
     atc_desire_enabled = atc_blinker_state in [BLINKER_LEFT, BLINKER_RIGHT] #自动转弯控制需求
 
-    if driver_blinker_state == BLINKER_NONE:
+    if driver_blinker_state == BLINKER_NONE: #驾驶员未打灯或者打了之后关闭了转向灯时，则清除反方向盘标志
       self.blinker_ignore = False
-    if self.blinker_ignore: #如果用户在控制方向盘，则self.blinker_ignore会为True
+    if self.blinker_ignore: #如果用户反方向打了方向盘，则self.blinker_ignore会为True
       driver_blinker_state = BLINKER_NONE
       atc_blinker_state = BLINKER_NONE
       driver_desire_enabled = False
@@ -564,7 +564,10 @@ class DesireHelper:
       self.turn_direction = TurnDirection.none
       # =============LaneChangeState.off=============
       # 不管是驾驶员还是系统自动打的灯，流程都会到这里，desire_enabled为True
-      if self.lane_change_state == LaneChangeState.off and desire_enabled and not self.prev_desire_enabled and not below_lane_change_speed:
+      #if self.lane_change_state == LaneChangeState.off and desire_enabled and not self.prev_desire_enabled and not below_lane_change_speed:
+      if ((self.lane_change_state == LaneChangeState.off and desire_enabled
+           and (not self.prev_desire_enabled or (driver_blinker_changed and driver_desire_enabled)) #从打灯变成未打灯状态，可以不受prev_desire_enabled的影响
+           and not below_lane_change_speed)):
         self.lane_change_state = LaneChangeState.preLaneChange
         self.lane_change_ll_prob = 1.0
         self.lane_change_delay = self.laneChangeDelay

@@ -889,15 +889,15 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   navToggles->addItem(new CValueControl("AutoDoForkDecalDistH", "H 高速进匝道口提前减速的距离偏移(50m)", "在距离匝道口多少米时开始减速，软件根据速度计算的距离加上此偏移为实际距离", 0, 500, 5));
   navToggles->addItem(new CValueControl("AutoDoForkBlinkerDistH", "H 高速进匝道口提前打灯的距离偏移(30m)", "在距离匝道口多少米时开始打转身灯准备变道，但不是一定会立即变道，还需要等匝道出现的条件成立，软件根据速度计算的距离加上此偏移为实际距离", 0, 200, 2));
   navToggles->addItem(new CValueControl("AutoDoForkNavDistH", "H 高速导航进匝道口的距离(50m)", "在距离导航匝道口小于多少米时开始变道进入匝道，此距离为绝对距离，0-不生效", 0, 200, 1));
-  navToggles->addItem(new CValueControl("AutoDoForkCheckDistH", "H 高速提前识别出现匝道口的距离(20m)", "在靠近匝道口时提前识别匝道口出现的距离，是在模型预留的轨迹上提前检测的距离", 0, 100, 1));
+  //navToggles->addItem(new CValueControl("AutoDoForkCheckDistH", "H 高速提前识别出现匝道口的距离(20m)", "在靠近匝道口时提前识别匝道口出现的距离，是在模型预留的轨迹上提前检测的距离", 0, 100, 1));
   navToggles->addItem(new CValueControl("AutoForkDecalRateH", "H 高速进匝道口前降速比率(80%)", "在进匝道口把车速降至道路限速的比率,0表示关闭此功能", 0, 100, 5));
   navToggles->addItem(new CValueControl("AutoForkSpeedMinH", "H 高速进匝道口前降速最低速度(60)", "在进匝道口前允许把车速降至的最低速度，低于此速度时则不再继续降低", 0, 100, 5));
 
   navToggles->addItem(new CValueControl("AutoForkDistOffset", "L 公路提前变道靠边的距离(30m)", "在距离公路分叉口多少米时开始变道到最侧面车道", 0, 1000, 5));
   navToggles->addItem(new CValueControl("AutoDoForkDecalDist", "L 公路进分叉口提前减速的距离偏移(20m)", "在距离公路分叉口多少米时开始减速，软件根据速度计算的距离加上此偏移为实际距离", 0, 500, 5));
   navToggles->addItem(new CValueControl("AutoDoForkBlinkerDist", "L 公路进分叉口提前打灯距离偏移(15m)", "在距离公路分叉口多少米时提前打转向灯准备变道，但不是一定会立即变道，还需要等分叉口出现的条件成立，软件根据速度计算的距离加上此偏移为实际距离", 0, 200, 1));
-  navToggles->addItem(new CValueControl("AutoDoForkNavDist", "H 高速导航进匝道口的距离(20m)", "在距离导航匝道口小于多少米时开始变道进入匝道，此距离为绝对距离，0-不生效", 0, 200, 1));
-  navToggles->addItem(new CValueControl("AutoDoForkCheckDist", "L 公路提前识别出现分叉口的距离(10m)", "在靠近公路分叉口时提前识别分叉口出现的距离，是在模型预留的轨迹上提前检测的距离", 0, 100, 1));
+  navToggles->addItem(new CValueControl("AutoDoForkNavDist", "H 公路导航进分叉口的距离(20m)", "在距离导航匝道口小于多少米时开始变道进入匝道，此距离为绝对距离，0-不生效", 0, 200, 1));
+  //navToggles->addItem(new CValueControl("AutoDoForkCheckDist", "L 公路提前识别出现分叉口的距离(10m)", "在靠近公路分叉口时提前识别分叉口出现的距离，是在模型预留的轨迹上提前检测的距离", 0, 100, 1));
   navToggles->addItem(new CValueControl("AutoForkDecalRate", "L 公路进分叉口前降速比率(80%)", "在进公路分叉口时把车速降至道路限速的比率,0表示关闭此功能", 0, 100, 5));
   navToggles->addItem(new CValueControl("AutoForkSpeedMin", "L 公路进分叉口前降速最低速度(45)", "在进公路分叉口时前允许把车速降至的最低速度，低于此速度时则不再继续降低", 0, 100, 5));
 

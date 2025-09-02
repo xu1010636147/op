@@ -130,6 +130,7 @@ class DesireHelper:
     self.distance_to_road_edge_left_far = 0
     self.distance_to_road_edge_right_far = 0
     self.blinker_ignore = False
+    self.blinker_ignore_last = False
 
     self.lane_exist_left_count = ExistCounter()
     self.lane_exist_right_count = ExistCounter()
@@ -404,8 +405,10 @@ class DesireHelper:
     atc_desire_enabled = atc_blinker_state in [BLINKER_LEFT, BLINKER_RIGHT] #自动转弯控制需求
 
     if driver_blinker_state == BLINKER_NONE: #驾驶员未打灯或者打了之后关闭了转向灯时，则清除反方向盘标志
+      if self.blinker_ignore and atc_left_right:# and atc_type in ["atc left", "atc right"]: #如果在是atc_left/right期间用户反向干预了方向盘，则设置标志self.blinker_ignore_last
+        self.blinker_ignore_last = True
       self.blinker_ignore = False
-    if self.blinker_ignore: #如果用户反方向打了方向盘，则self.blinker_ignore会为True
+    if self.blinker_ignore: #如果用户反方向打了方向盘，而且用户打了灯，则会持续清除转向灯的状态，禁止变道
       driver_blinker_state = BLINKER_NONE
       atc_blinker_state = BLINKER_NONE
       driver_desire_enabled = False
@@ -420,6 +423,7 @@ class DesireHelper:
       self.lane_change_disable = False # 重置禁止变道的标志
       self.lane_cnt_time = self.lane_count_stab_cnt
       self.lane_count_last = -1
+      self.blinker_ignore_last = False
       if (self.showDebugLog and 8) > 0:
         print(f"---atc_type change={atc_type}")
 
@@ -732,6 +736,14 @@ class DesireHelper:
 
           self.lane_change_disable_count = lane_change_interval #重置连续变道延时
           self.lane_change_disable = False
+
+          # 是否有被用户反向方向盘干预的自动变道
+          if self.blinker_ignore_last:
+            if atc_left_right and atc_blinker_state != BLINKER_NONE: #有自动左右变道和自动打灯状态
+              if driver_blinker_state == atc_blinker_state:  # 用户的打灯方向与自动变道方向一致
+                self.prev_desire_enabled = False
+                self.atc_turn_cnt = self.continuousLaneChangeCnt
+                self.blinker_ignore_last = False
 
         if (self.showDebugLog and 4) > 0:
           print(f"---Finishing: ll_prob={self.lane_change_ll_prob:.1f}, dir={self.lane_change_direction}, state new={self.lane_change_state}")

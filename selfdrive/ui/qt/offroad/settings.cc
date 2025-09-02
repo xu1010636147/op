@@ -886,7 +886,7 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   navToggles->addItem(new CValueControl("RoadType", "手动设置道路类型(-1)", "-1:导航自动识别，0:高速(无应急车道) 1:高速(有应急车道), >=2:其它道路", -1, 100, 1));
   navToggles->addItem(new CValueControl("SameSpiCamFilter", "过滤相同的测速数据(0)", "0:关闭, 1:打开", 0, 1, 1));
   navToggles->addItem(new CValueControl("AutoForkDistOffsetH", "H 高速提前变道靠边的距离(1000m)", "在距离匝道口多少米时开始变道到最侧面车道，设置为0则不提前变道", 0, 2000, 5));
-  navToggles->addItem(new CValueControl("AutoEnTurnNewLaneTimeH", "H 高速再次提前变道的新车道出现时间(10s)", "车辆已在最侧边车道，若新车道出现的时间超过设置值后允许再次变道，0 关闭", 0, 120, 1));
+  navToggles->addItem(new CValueControl("AutoEnTurnNewLaneTimeH", "H 高速再次提前变道的新车道出现时间(0s)", "车辆已在最侧边车道，若新车道出现的时间超过设置值后允许再次变道，推荐值20秒，0 关闭", 0, 120, 1));
   navToggles->addItem(new CValueControl("AutoDoForkDecalDistH", "H 高速进匝道口提前减速的距离偏移(50m)", "在距离匝道口多少米时开始减速，软件根据速度计算的距离加上此偏移为实际距离", 0, 500, 5));
   navToggles->addItem(new CValueControl("AutoDoForkBlinkerDistH", "H 高速进匝道口提前打灯的距离偏移(30m)", "在距离匝道口多少米时开始打转身灯准备变道，但不是一定会立即变道，还需要等匝道出现的条件成立，软件根据速度计算的距离加上此偏移为实际距离", 0, 200, 2));
   navToggles->addItem(new CValueControl("AutoDoForkNavDistH", "H 高速导航进匝道口的距离(50m)", "在距离导航匝道口小于多少米时开始变道进入匝道，此距离为绝对距离，0-不生效", 0, 200, 1));
@@ -895,7 +895,7 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   navToggles->addItem(new CValueControl("AutoForkSpeedMinH", "H 高速进匝道口前降速最低速度(60)", "在进匝道口前允许把车速降至的最低速度，低于此速度时则不再继续降低", 0, 100, 5));
 
   navToggles->addItem(new CValueControl("AutoForkDistOffset", "L 公路提前变道靠边的距离(30m)", "在距离公路分叉口多少米时开始变道到最侧面车道，设置为0则不提前变道", 0, 1000, 5));
-  navToggles->addItem(new CValueControl("AutoEnTurnNewLaneTime", "L 公路再次提前变道的新车道出现时间(5s)", "车辆已在最侧边车道，若新车道出现的时间超过设置值后允许再次变道，0 关闭", 0, 120, 1));
+  navToggles->addItem(new CValueControl("AutoEnTurnNewLaneTime", "L 公路再次提前变道的新车道出现时间(0s)", "车辆已在最侧边车道，若新车道出现的时间超过设置值后允许再次变道，推荐值5秒，0 关闭", 0, 120, 1));
   navToggles->addItem(new CValueControl("AutoDoForkDecalDist", "L 公路进分叉口提前减速的距离偏移(20m)", "在距离公路分叉口多少米时开始减速，软件根据速度计算的距离加上此偏移为实际距离", 0, 500, 5));
   navToggles->addItem(new CValueControl("AutoDoForkBlinkerDist", "L 公路进分叉口提前打灯距离偏移(15m)", "在距离公路分叉口多少米时提前打转向灯准备变道，但不是一定会立即变道，还需要等分叉口出现的条件成立，软件根据速度计算的距离加上此偏移为实际距离", 0, 200, 1));
   navToggles->addItem(new CValueControl("AutoDoForkNavDist", "H 公路导航进分叉口的距离(20m)", "在距离导航匝道口小于多少米时开始变道进入匝道，此距离为绝对距离，0-不生效", 0, 200, 1));

@@ -242,19 +242,30 @@ class SelfdriveD:
     if self.sm.alive['carrotMan']:
       atc_type = self.sm['carrotMan'].atcType
       if atc_type != self.atc_type_last:
-        if "prepare" not in atc_type and "prepare" in self.atc_type_last: # fork left/right prepare -> atc left/right
+        if "prepare" not in atc_type and "prepare" in self.atc_type_last: # prepare消失时
           if "atc" in atc_type:
             self.events.add(EventName.audioPreLaneChange)
-        if "atc" not in atc_type and "atc" in self.atc_type_last: # atc left/right -> fork left/right
-          if "fork" in atc_type:
+          elif "fork" in atc_type:
             if "now" in atc_type:  # 立即变道
               self.events.add(EventName.audioLaneChange)
             else: #准备变道
              self.events.add(EventName.audioPreLaneChange)
         elif "prepare" in atc_type:
           pass
+        elif "atc" not in atc_type and "atc" in self.atc_type_last: # atc消失时
+          if "fork" in atc_type:
+            if "now" in atc_type:  # 立即变道
+              self.events.add(EventName.audioLaneChange)
+            else: #准备变道
+             self.events.add(EventName.audioPreLaneChange)
+          elif "turn" in atc_type: # 转弯
+            self.events.add(EventName.audioTurn)
         elif "turn" in atc_type and "turn" not in self.atc_type_last:   # fork left/right -> turn left/right
           self.events.add(EventName.audioTurn)
+        elif "now" in atc_type and "now" not in self.atc_type_last:   # fork left/right -> fork left/right now
+          if "fork" in atc_type: # 立即变道
+            self.events.add(EventName.audioLaneChange)
+
         self.atc_type_last = atc_type
 
     # Handle lane change

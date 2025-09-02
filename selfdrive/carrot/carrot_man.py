@@ -1764,6 +1764,7 @@ class CarrotServ:
     #self.bearing = self.nPosAngle #self._update_gps(v_ego, sm)
     self.bearing = self._update_gps(v_ego, sm)
 
+    #根据车辆行驶的距离更新导航的所有距离信息
     self.xSpdDist = max(self.xSpdDist - delta_dist, -1000)
     self.xDistToTurn = self.xDistToTurn - delta_dist
     self.xDistToTurnNext = self.xDistToTurnNext - delta_dist
@@ -1784,8 +1785,14 @@ class CarrotServ:
         if not self.is_metric:
           road_speed_limit_offset *= CV.KPH_TO_MPH
         limit_speed = self.nRoadLimitSpeed + road_speed_limit_offset
+      #new
+      elif self.nRoadLimitSpeed > 0:
+        limit_speed = 30
+      else:
+        limit_speed = 200
+      #new
     else:
-      limit_speed = 200
+      limit_speed = 200 #如果autoRoadSpeedLimitOffset小于0，说明道路限速不生效
 
     if self.active_carrot <= 1:
       self.xSpdType = self.navType = self.xTurnInfo = self.xTurnInfoNext = -1
@@ -1827,7 +1834,7 @@ class CarrotServ:
       hda_active = True
 
     #print(f"sdi_speed: {sdi_speed}, hda_active: {hda_active}, xSpdType: {self.xSpdType}, xSpdDist: {self.xSpdDist}, active_carrot: {self.active_carrot}, v_ego_kph: {v_ego_kph}, nRoadLimitSpeed: {self.nRoadLimitSpeed}")
-    ### TBT 속도제어
+    ### TBT速度控制 self.atcSpeed, self.atcDist这两个变量均未用上
     atc_desired, self.atcType, self.atcSpeed, self.atcDist = self.update_auto_turn(v_ego*3.6, sm, self.xTurnInfo, self.xDistToTurn, True)
     atc_desired_next, _, _, _ = self.update_auto_turn(v_ego*3.6, sm, self.xTurnInfoNext, self.xDistToTurnNext, False)
 

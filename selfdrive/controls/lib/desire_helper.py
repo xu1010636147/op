@@ -642,10 +642,12 @@ class DesireHelper:
                 self.trigger_type = 1
               else:
                 self.trigger_type = -2
-                # 如果触发变道条件成立了，虽然盲区还在，但是可以开启倒计时，盲区消失后则可立即变道
-                if auto_lane_change_trigger and not self.lane_change_disable:
-                  self.lane_change_disable_count = lane_change_interval
-                  self.lane_change_disable = True
+                # 如果触发变道条件成立了，虽然盲区还在，但是可以开启倒计时，盲区消失后则可立即变道（删除，盲区结束后已即变道有点危险）
+                #if auto_lane_change_trigger and not self.lane_change_disable:
+                #  self.lane_change_disable_count = lane_change_interval
+                #  self.lane_change_disable = True
+              #盲区有车时重置变道延时计数器
+              self.lane_change_disable_count = lane_change_interval
             elif self.laneChangeNeedTorque > 0: # 需要轻推方向盘变道
               if torque_applied:
                 self.lane_change_state = LaneChangeState.laneChangeStarting

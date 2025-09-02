@@ -873,7 +873,7 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   speedToggles->addItem(new CValueControl("AutoNaviSpeedSafetyFactor", "测速点安全系数(105%)", "(1)测速摄像头限速值的比例系数，限速=摄像头限速值*比例,(2)在特定条件下也作用于道路限速的计算，在Auto speed up中使用", 80, 120, 1));
   speedToggles->addItem(new CValueControl("AutoNaviSpeedBumpTime", "减速带时间距离(1秒)", "", 1, 50, 1));
   speedToggles->addItem(new CValueControl("AutoNaviSpeedBumpSpeed", "减速带通过速度(35Km/h)", "", 10, 100, 5));
-  speedToggles->addItem(new CValueControl("AutoNaviCountDownMode", "导航倒计时模式(2)", "0:关闭, 1:转向+摄像头, 2:转向+摄像头+减速带", 0, 2, 1));
+  speedToggles->addItem(new CValueControl("AutoNaviCountDownMode", "导航倒计时模式(0)", "0:关闭, 1:转向+摄像头, 2:转向+摄像头+减速带", 0, 2, 1));
   speedToggles->addItem(new CValueControl("TurnSpeedControlMode", "转弯速度控制模式(1)", "0:关闭, 1:视觉, 2:视觉+路线, 3:路线", 0, 3, 1));
   speedToggles->addItem(new CValueControl("MapTurnSpeedFactor", "地图转弯速度系数(100%)", "在使用地图转弯速度时，实际转弯速度=地图速度*x%，在转弯速度控制模式为2或3时生效", 50, 300, 5));
   speedToggles->addItem(new CValueControl("AutoTurnControl", "ATC: 自动转弯控制(0)", "0:无, 1:变道, 2:变道+减速, 3:减速", 0, 3, 1));
@@ -901,7 +901,7 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   navToggles->addItem(new CValueControl("AutoForkDecalRate", "L 公路进分叉口前降速比率(80%)", "在进公路分叉口时把车速降至道路限速的比率,0表示关闭此功能", 0, 100, 5));
   navToggles->addItem(new CValueControl("AutoForkSpeedMin", "L 公路进分叉口前降速最低速度(45)", "在进公路分叉口时前允许把车速降至的最低速度，低于此速度时则不再继续降低", 0, 100, 5));
 
-  navToggles->addItem(new CValueControl("NewLaneWidthDiff", "ATC 新车道出现判断标准(5*0.1m)", "当侧面的车道在1秒内的宽度增加这个宽度时，则认为有新车道出现，推荐设置5-8*0.1m", 2, 10, 1));
+  navToggles->addItem(new CValueControl("NewLaneWidthDiff", "ATC 新车道出现判断标准(0.8m)", "当侧面的车道在1秒内的宽度增加这个宽度时，则认为有新车道出现，推荐设置0.8m，1代表0.1m", 2, 10, 1));
   navToggles->addItem(new CValueControl("AutoTurnDistOffset", "ATC 自动转弯距离偏移(0m)", "提前自动转弯的距离，一般为0，仅针对转弯类型(非变道)", -100, 200, 1));
   navToggles->addItem(new CValueControl("AutoTurnInNotRoadEdge", "ATC 允许在非侧边车道时自动变道(0)", "0-不允许在非侧边车道自动变道，1-允许", 0, 1, 1));
   navToggles->addItem(new CValueControl("ContinuousLaneChange", "ATC 允许自动连续变道(0)", "0-关闭，1-允许连续变多条车道", 0, 1, 1));

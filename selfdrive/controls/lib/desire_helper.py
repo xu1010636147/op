@@ -189,7 +189,7 @@ class DesireHelper:
     self.lane_count_last = -1
     self.lane_count_stab_cnt = int(5 / DT_MDL)
     self.trigger_type = 0
-    self.newLaneWidthDiff = 0.5
+    self.newLaneWidthDiff = 0.8
     #new
 
   def lane_change_audio(self, turn):
@@ -540,8 +540,8 @@ class DesireHelper:
         print(f"State:{self.lane_change_state},turn: {self.atc_turn_cnt},trig:{auto_lane_change_trigger}={self.auto_lane_change_enable} & !{auto_lane_change_blocked} & {edge_available} & ({lane_available_trigger} || {lane_appeared})")
 
     if not lateral_active or self.lane_change_timer > LANE_CHANGE_TIME_MAX:
-      if (self.showDebugLog and 8) > 0:
-        print("---Desire canceled")
+      #if (self.showDebugLog and 8) > 0:
+      #  print("---Desire canceled")
       self.lane_change_state = LaneChangeState.off
       self.lane_change_direction = LaneChangeDirection.none
       self.turn_direction = TurnDirection.none

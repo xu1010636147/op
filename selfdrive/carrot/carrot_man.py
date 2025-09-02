@@ -1118,7 +1118,7 @@ class CarrotServ:
     self.autoNaviSpeedCtrlMode = 3
     self.autoNaviSpeedSafetyFactor = 1.05
     self.autoNaviSpeedDecelRate = 0.8
-    self.autoNaviCountDownMode = 2
+    self.autoNaviCountDownMode = 0
     self.turnSpeedControlMode = 1
     self.mapTurnSpeedFactor = 1.
     self.autoTurnControlSpeedTurn = 20

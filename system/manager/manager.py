@@ -85,7 +85,7 @@ def get_default_params():
     ("AutoNaviSpeedSafetyFactor", "105"),
     ("AutoNaviSpeedDecelRate", "80"),
     ("AutoRoadSpeedLimitOffset", "-1"),
-    ("AutoNaviCountDownMode", "2"),
+    ("AutoNaviCountDownMode", "0"),
     ("TurnSpeedControlMode", "1"),
     ("MapTurnSpeedFactor", "100"),
     ("StoppingAccel", "0"),
@@ -209,7 +209,7 @@ def get_default_params():
     ("RoadType", "-1"),
     ("AutoCurveSpeedFactorH", "80"),
     ("AutoCurveSpeedAggressivenessH", "120"),
-    ("NewLaneWidthDiff", "5"),
+    ("NewLaneWidthDiff", "8"),
     # new
   ]
   return default_params

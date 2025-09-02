@@ -132,7 +132,7 @@ class LateralPlanner:
 
     # Turn off lanes during lane change
     #if self.DH.desire == log.Desire.laneChangeRight or self.DH.desire == log.Desire.laneChangeLeft:
-      
+
     if md.meta.desire != log.Desire.none or carrot.atc_active:
       self.LP.lane_change_multiplier = 0.0 #md.meta.laneChangeProb
     else:
@@ -144,10 +144,10 @@ class LateralPlanner:
     self.LP.lane_width_right = md.meta.laneWidthRight
     self.LP.curvature = measured_curvature
     self.path_xyz, self.lanelines_active = self.LP.get_d_path(sm['carState'], self.v_ego, self.t_idxs, self.path_xyz, self.curve_speed)
-    
+
     #if self.LP.lanefull_mode:
     #  self.plan_yaw, self.plan_yaw_rate = self.LP.calculate_plan_yaw_and_yaw_rate(self.path_xyz)
-      
+
     self.latDebugText = self.LP.debugText
     #self.lanelines_active = True if self.LP.d_prob > 0.3 and self.LP.lanefull_mode else False
 
@@ -192,7 +192,7 @@ class LateralPlanner:
       self.solution_invalid_cnt += 1
     else:
       self.solution_invalid_cnt = 0
-  
+
     self.x_sol = self.lat_mpc.x_sol
 
   def publish(self, sm, pm, carrot):
@@ -247,9 +247,9 @@ class LateralPlanner:
 
     debugText = (
       f"{'lanemode' if self.lanelines_active else 'laneless'} | " +
-      f"{self.LP.lane_width_left:.1f}m | " +
-      f"{self.LP.lane_width:.1f}m | " +
-      f"{self.LP.lane_width_right:.1f}m | " +
+      f"({self.LP.llll_prob:.1f}) {self.LP.lane_width_left:.1f}m | " +
+      f"({self.LP.lll_prob:.1f}) {self.LP.lane_width:.1f}m ({self.LP.rll_prob:.1f}) | " +
+      f"{self.LP.lane_width_right:.1f}m ({self.LP.rrll_prob:.1f}) | " +
       f"{f'offset={self.LP.offset_total * 100.0:.1f}cm turn={np.clip(self.curve_speed, -200, 200):.0f}km/h' if self.lanelines_active else ''}"
     )
 

@@ -1586,14 +1586,16 @@ class CarrotServ:
     fork_dist_for_speed = self.autoTurnControlTurnEnd * fork_speed / 3.6 # 5
     stop_dist_for_speed = 5
     if self.xroadcate > 1:
-      start_fork_dist = np.interp(self.nRoadLimitSpeed, [30, 50, 100], [160, 200, 350]) + self.autoForkDistOffset
+      fork_dist_offset = self.autoForkDistOffset
+      start_fork_dist = np.interp(self.nRoadLimitSpeed, [30, 50, 100], [160, 200, 350]) + fork_dist_offset
       do_fork_dist = fork_dist_for_speed + self.autoDoForkBlinkerDist
       do_speed_decal_dist = fork_dist_for_speed + self.autoDoForkDecalDist
       auto_decel_rate = self.autoForkDecalRate
       decel_speed_min = self.autoForkSpeedMin
       do_fork_nav_dist = self.autoDoForkNavDistH
     else:
-      start_fork_dist = np.interp(self.nRoadLimitSpeed, [30, 50, 100], [160, 200, 350]) + self.autoForkDistOffsetH
+      fork_dist_offset = self.autoForkDistOffsetH
+      start_fork_dist = np.interp(self.nRoadLimitSpeed, [30, 50, 100], [160, 200, 350]) + fork_dist_offset
       do_fork_dist = fork_dist_for_speed + self.autoDoForkBlinkerDistH
       do_speed_decal_dist = fork_dist_for_speed + self.autoDoForkDecalDistH
       auto_decel_rate = self.autoForkDecalRateH
@@ -1604,8 +1606,8 @@ class CarrotServ:
     if do_fork_nav_dist > 0:
       do_fork_dist = max(do_fork_dist, do_fork_nav_dist)
 
-    #对变道和转弯距离作一个限制，不能比最大路口距离的70%还大
-    max_dist = self.xDistToTurnMax*0.7
+    #对变道和转弯距离作一个限制，不能比最大路口距离的80%还大
+    max_dist = self.xDistToTurnMax*0.8
     if do_fork_dist > max_dist:
       do_fork_dist = max_dist
     if start_fork_dist > max_dist:
@@ -1629,7 +1631,7 @@ class CarrotServ:
 
     atc_type = mapping["type"]
     atc_speed = mapping["speed"]
-    atc_dist = mapping["dist"]
+    atc_dist = mapping["dist"] #这个距离主要是用来提前减速的距离
     atc_start_dist = mapping["start"]
 
     #导航给出在转弯距离大于开始转弯距离时，进入准备阶段
@@ -1644,11 +1646,11 @@ class CarrotServ:
         atc_type = "atc left" if atc_type == "turn left" else "atc right" #类型为atc left/right只是进入转弯准备状态，并不是真的在执行转弯
       elif atc_type in ["fork left", "fork right"]: #说明x_dist_to_turn>do_fork_dist并且说明x_dist_to_turn <=atc_start_dist
         #atc_dist = do_speed_decal_dist #替换减速距离
-        if x_dist_to_turn > do_fork_dist: #距离大于进入匝道口距离
+        if fork_dist_offset > 0 and x_dist_to_turn > do_fork_dist: #设置了提前变道距离，并且剩余距离大于进入匝道口距离，则执行提前变道流程
           atc_type = "atc left" if atc_type == "fork left" else "atc right"
         elif do_fork_nav_dist > 0 and x_dist_to_turn <= do_fork_nav_dist: #设置了导航距离控制转弯后，如果距离小于设置值是立即变道
           atc_type += " now"
-        if x_dist_to_turn < do_speed_decal_dist: #距离路口的距离小于设定值时要开始减速了
+        if x_dist_to_turn < do_speed_decal_dist: #距离路口的距离小于设定值时要开始减速了，因为到匝道口前nRoadLimitSpeed其实没有变，所以只能用这种方法进行减速
           if auto_decel_rate > 0: #设置了减速比率
             if atc_speed > decel_speed_min: #只有车速大于60时才允许降速
               atc_speed = max(decel_speed_min, atc_speed*auto_decel_rate)

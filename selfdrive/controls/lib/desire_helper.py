@@ -190,6 +190,8 @@ class DesireHelper:
     self.lane_count_stab_cnt = int(5 / DT_MDL)
     self.trigger_type = 0
     self.newLaneWidthDiff = 0.8
+    self.autoEnTurnNewLaneTimeH = 0
+    self.autoEnTurnNewLaneTime = 0
     #new
 
   def lane_change_audio(self, turn):
@@ -311,8 +313,17 @@ class DesireHelper:
       self.showDebugLog = self.params.get_int("ShowDebugLog")
       self.autoNaviCountDownMode = self.params.get_int("AutoNaviCountDownMode")
       self.newLaneWidthDiff = self.params.get_float("NewLaneWidthDiff") * 0.1
+      self.autoEnTurnNewLaneTimeH = self.params.get_int("AutoEnTurnNewLaneTimeH")
+      self.autoEnTurnNewLaneTime = self.params.get_int("AutoEnTurnNewLaneTime")
       #new
     self.frame += 1
+
+    # new
+    if 0 <= self.roadType <= 2: #高速
+      autoEnTurnNewLaneTime = self.autoEnTurnNewLaneTimeH
+    else:
+      autoEnTurnNewLaneTime = self.autoEnTurnNewLaneTime
+    # new
 
     self.carrot_lane_change_count = max(0, self.carrot_lane_change_count - 1)
     self.lane_change_delay = max(0, self.lane_change_delay - DT_MDL)
@@ -472,20 +483,26 @@ class DesireHelper:
             and self.lane_change_state != LaneChangeState.laneChangeFinishing): #没有车道也没有路沿，并且不是在变道中
         lane_count = 0
       else: #当路宽和路沿距离都小于2.5时，lane_available和edge_available两个标志都不会成立
-        lane_count = 2
+        lane_count = 10
         self.lane_cnt_time = self.lane_count_stab_cnt #变道中不稳定的情况下重置车道计时时间
         self.lane_count_last = -1
 
       # 车道数量稳定时间倒计时
       if self.lane_count_last == lane_count:
-        self.lane_cnt_time = max(-1, self.lane_cnt_time - 1)
+        self.lane_cnt_time = max(int(-60 / DT_MDL), self.lane_cnt_time - 1)
       else:
         self.lane_cnt_time = self.lane_count_stab_cnt
 
-      #车道数量稳定时间已达到
+      #根据车道数量稳定倒计时时间来决定是否要关闭自动变道次数
       if atc_desire_enabled and atc_left_right and (atc_blinker_state == BLINKER_RIGHT or atc_blinker_state == BLINKER_LEFT): #属于自动提变道类型atc_left或atc_right
         if self.lane_cnt_time <= -1: #倒计时已结束
-          pass
+          if self.atc_turn_cnt < 0 < autoEnTurnNewLaneTime and self.lane_cnt_time < int((-1) * autoEnTurnNewLaneTime / DT_MDL): #如果自动变道次数已用完，并且车道数量稳定时间超过10秒后(这个时间可以调大，用来过滤汇入车道)
+            if self.roadType == 1 and atc_blinker_state == BLINKER_RIGHT: #带应急车道的高速公路右变道
+              if 2 <= lane_count < 10: #稳定的车道数量大于等于2条，说明有车道可以变道了
+                self.atc_turn_cnt = 0
+            else: #不带应急车道的高速公路或者普通公路
+              if 1 <= lane_count < 10: #稳定的车道数量大于等于1条，说明有车道可以变道了
+                self.atc_turn_cnt = 0
         elif self.lane_cnt_time <= 0: #倒计时为0
           if self.roadType == 1 and atc_blinker_state == BLINKER_RIGHT: #带应急车道的高速公路右变道
             if lane_count < 2:   #如果侧面只剩一条应急车道时，关闭自动变道功能
@@ -493,7 +510,7 @@ class DesireHelper:
           else: #不带应急车道的高速公路或者普通公路
             if lane_count < 1: #如果侧面无任何车道时，关闭自动变道功能
               self.atc_turn_cnt = -1
-      else: #不是左右自动变道atc_left或atc_right
+      else: #不是左右自动变道类型atc_left或atc_right
         self.lane_cnt_time = self.lane_count_stab_cnt
         self.lane_count_last = -1
 
@@ -505,10 +522,11 @@ class DesireHelper:
     # 侧面车道的宽度小于距离道路边缘的宽度，并且宽度在1少内变宽了0.8米以上(说明可能有新车道出现，即新车道在变大)
     #if lane_width_diff > 0.8 and (lane_width_side < distance_to_road_edge):
     if lane_width_diff > self.newLaneWidthDiff and (lane_width_side < distance_to_road_edge): #所有变道类型，只要出现新车道，则允许变道，且不受变道次数的限制
-      if not atc_left_right:
+      if not atc_left_right: #非提前自动左右变道类型
         lane_available_trigger = True
-      elif self.atc_turn_cnt >= 0: #还有剩余变道次数
-        lane_available_trigger = True
+      #2025.09.02删除，提前自动左右变道类型不以车道宽度变大作为变道条件
+      #elif self.atc_turn_cnt >= 0: #还有剩余变道次数
+      #  lane_available_trigger = True
     #if (lane_width_diff > 0.5 or (self.autoTurnInNotRoadEdge > 0 and round(curr_lane_width_diff,1) < 0.3 )) and (lane_width_side < distance_to_road_edge):
     elif (atc_left_right #为左右提前变道请求
           and (self.autoTurnInNotRoadEdge > 0 #允许在非侧边车道变道

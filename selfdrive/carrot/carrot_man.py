@@ -1600,8 +1600,9 @@ class CarrotServ:
       decel_speed_min = self.autoForkSpeedMinH
       do_fork_nav_dist = self.autoDoForkNavDist
 
-    #限制距离不超过do_fork_dist
-    do_fork_nav_dist = min(do_fork_nav_dist, int(do_fork_dist))
+    #对两个fork距离进行限制
+    if do_fork_nav_dist > 0:
+      do_fork_dist = max(do_fork_dist, do_fork_nav_dist)
 
     #对变道和转弯距离作一个限制，不能比最大路口距离的70%还大
     max_dist = self.xDistToTurnMax*0.7

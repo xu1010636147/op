@@ -1138,8 +1138,10 @@ class CarrotServ:
     self.autoForkDistOffset = 30
     #self.autoDoForkCheckDistH = 0
     self.autoDoForkBlinkerDist = 15
+    self.autoDoForkNavDist = 15
     #self.autoDoForkCheckDistH = 0
     self.autoDoForkBlinkerDistH = 30
+    self.autoDoForkNavDistH = 50
     self.autoUpRoadLimit = 0
     self.autoUpRoadLimit40KMH = 15
     self.autoUpHighwayRoadLimit = 0
@@ -1183,11 +1185,13 @@ class CarrotServ:
       self.autoForkDistOffset = self.params.get_int("AutoForkDistOffset")
       #self.autoDoForkCheckDist = self.params.get_int("AutoDoForkCheckDist")
       self.autoDoForkBlinkerDist = self.params.get_int("AutoDoForkBlinkerDist")
+      self.autoDoForkNavDist = self.params.get_int("AutoDoForkNavDist")
       self.autoForkDistOffsetH = self.params.get_int("AutoForkDistOffsetH")
       self.autoDoForkDecalDistH = self.params.get_int("AutoDoForkDecalDistH")
       self.autoDoForkDecalDist = self.params.get_int("AutoDoForkDecalDist")
       #self.autoDoForkCheckDistH = self.params.get_int("AutoDoForkCheckDistH")
       self.autoDoForkBlinkerDistH = self.params.get_int("AutoDoForkBlinkerDistH")
+      self.autoDoForkNavDistH = self.params.get_int("AutoDoForkNavDistH")
       self.autoUpRoadLimit = self.params.get_int("AutoUpRoadLimit")
       self.autoUpRoadLimit40KMH = self.params.get_int("AutoUpRoadLimit40KMH")
       self.autoUpHighwayRoadLimit = self.params.get_int("AutoUpHighwayRoadLimit")
@@ -1587,12 +1591,17 @@ class CarrotServ:
       do_speed_decal_dist = fork_dist_for_speed + self.autoDoForkDecalDist
       auto_decel_rate = self.autoForkDecalRate
       decel_speed_min = self.autoForkSpeedMin
+      do_fork_nav_dist = self.autoDoForkNavDistH
     else:
       start_fork_dist = np.interp(self.nRoadLimitSpeed, [30, 50, 100], [160, 200, 350]) + self.autoForkDistOffsetH
       do_fork_dist = fork_dist_for_speed + self.autoDoForkBlinkerDistH
       do_speed_decal_dist = fork_dist_for_speed + self.autoDoForkDecalDistH
       auto_decel_rate = self.autoForkDecalRateH
       decel_speed_min = self.autoForkSpeedMinH
+      do_fork_nav_dist = self.autoDoForkNavDist
+
+    #限制距离不超过do_fork_dist
+    do_fork_nav_dist = min(do_fork_nav_dist, int(do_fork_dist))
 
     #对变道和转弯距离作一个限制，不能比最大路口距离的70%还大
     max_dist = self.xDistToTurnMax*0.7
@@ -1636,6 +1645,8 @@ class CarrotServ:
         #atc_dist = do_speed_decal_dist #替换减速距离
         if x_dist_to_turn > do_fork_dist: #距离大于进入匝道口距离
           atc_type = "atc left" if atc_type == "fork left" else "atc right"
+        elif do_fork_nav_dist > 0 and x_dist_to_turn <= do_fork_nav_dist: #设置了导航距离控制转弯后，如果距离小于设置值是立即变道
+          atc_type += " now"
         if x_dist_to_turn < do_speed_decal_dist: #距离路口的距离小于设定值时要开始减速了
           if auto_decel_rate > 0: #设置了减速比率
             if atc_speed > decel_speed_min: #只有车速大于60时才允许降速

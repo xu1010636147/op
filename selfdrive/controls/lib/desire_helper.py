@@ -452,23 +452,6 @@ class DesireHelper:
         self.object_detected_count = 1 if object_detected else min(int(-3/DT_MDL),self.object_detected_count - 1)
       else:
         self.object_detected_count = 0
-
-      if (self.showDebugLog and 16) > 0:
-        radar = radarState.leadLeft
-        debugText = f"---Radar: L={radar.status}"
-        if radar.status:
-          side_object_dist = radar.dRel + radar.vLead * 4.0
-          debugText += f",dRel={radar.dRel},V={radar.vLead},Dist={side_object_dist}"
-
-        radar = radarState.leadRight
-        debugText += f",R={radar.status}"
-        if radar.status:
-          side_object_dist = radar.dRel + radar.vLead * 4.0
-          debugText += f",dRel={radar.dRel},V={radar.vLead},Dist={side_object_dist}"
-
-        debugText += f" | v_ego*3={v_ego * 3.0},cnt={self.object_detected_count}"
-        print(debugText)
-
     else:
       lane_exist_counter = 0
       lane_available = True
@@ -476,6 +459,23 @@ class DesireHelper:
       lane_appeared = False
       self.object_detected_count = 0
       curr_lane_width_diff = 3.5
+
+    #雷达调试信息
+    if (self.showDebugLog and 16) > 0:
+      radar = radarState.leadLeft
+      debugText = f"---Radar: L={radar.status}"
+      if radar.status:
+        side_object_dist = radar.dRel + radar.vLead * 4.0
+        debugText += f",dRel={radar.dRel},V={radar.vLead},Dist={side_object_dist}"
+
+      radar = radarState.leadRight
+      debugText += f",R={radar.status}"
+      if radar.status:
+        side_object_dist = radar.dRel + radar.vLead * 4.0
+        debugText += f",dRel={radar.dRel},V={radar.vLead},Dist={side_object_dist}"
+
+      debugText += f" | v_ego*3={v_ego * 3.0},cnt={self.object_detected_count}"
+      print(debugText)
 
     #lane_available_trigger = not self.lane_available_last and lane_available
     lane_change_available = (lane_available or edge_available) and lane_line_info < 20 # lane_line_info小于20为白色虚线(注：SantaFe没有这个车道线识别功能)。

@@ -462,19 +462,20 @@ class DesireHelper:
 
     #雷达调试信息
     if (self.showDebugLog and 16) > 0:
+      vego3x = v_ego * 3.0
       radar = radarState.leadLeft
-      debugText = f"---Radar: L={radar.status}"
+      debugText = f"---Radar:L={radar.status}"
       if radar.status:
         side_object_dist = radar.dRel + radar.vLead * 4.0
-        debugText += f",dRel={radar.dRel},V={radar.vLead},Dist={side_object_dist}"
+        debugText += f",dRel={radar.dRel:.1f},V={radar.vLead:.1f},Dist={side_object_dist:.1f}={side_object_dist<vego3x}"
 
       radar = radarState.leadRight
       debugText += f",R={radar.status}"
       if radar.status:
         side_object_dist = radar.dRel + radar.vLead * 4.0
-        debugText += f",dRel={radar.dRel},V={radar.vLead},Dist={side_object_dist}"
+        debugText += f",dRel={radar.dRel:.1f},V={radar.vLead:.1f},Dist={side_object_dist:.1f}={side_object_dist<vego3x}"
 
-      debugText += f" | v_ego*3={v_ego * 3.0},cnt={self.object_detected_count}"
+      debugText += f"|v_ego*3={vego3x:.1f},cnt={self.object_detected_count}"
       print(debugText)
 
     #lane_available_trigger = not self.lane_available_last and lane_available
@@ -580,7 +581,7 @@ class DesireHelper:
       self.desireLog = f"D:{self.lane_width_curr:.1f},{lane_width_side:.1f},{distance_to_road_edge_avg:.1f},{lane_width_diff:.1f},{lane_width_far_diff:.1f},{lane_line_info}={auto_lane_change_trigger},T:{self.atc_turn_cnt},S:{self.lane_change_state},L:{self.auto_lane_change_enable},{auto_lane_change_blocked},E:{lane_available},{edge_available},A:{lane_available_trigger},{lane_appeared}"
       if (self.showDebugLog and 2) > 0:
         print(f"xDist:{xDistToTurn},Lane:{lane_available}=cur{self.lane_width_curr:.1f},side={lane_width_side:.1f},edge={distance_to_road_edge_avg:.1f},diff={lane_width_diff:.1f},far:{lane_width_far_diff:.1f}")
-        print(f"State:{self.lane_change_state},turn: {self.atc_turn_cnt},trig:{auto_lane_change_trigger}={self.auto_lane_change_enable} & !{auto_lane_change_blocked} & {edge_available} & ({lane_available_trigger} || {lane_appeared})")
+        print(f"State:{self.lane_change_state},turn: {self.atc_turn_cnt},trig:{auto_lane_change_trigger}=ALCE'{self.auto_lane_change_enable}'&!ALCB'{auto_lane_change_blocked}'&EA'{edge_available}'&LAT'({lane_available_trigger}'||LAP'{lane_appeared}')")
 
     if not lateral_active or self.lane_change_timer > LANE_CHANGE_TIME_MAX:
       #if (self.showDebugLog and 8) > 0:
@@ -716,7 +717,7 @@ class DesireHelper:
             self.trigger_type = -6
 
         if (self.showDebugLog and 4) > 0:
-          print(f"---Pre: A={lane_change_available}, C={auto_lane_change_trigger},{self.trigger_type},{atc_left_right},{self.lane_change_disable_count:.1f},{self.lane_change_disable},T:{lane_change_interval}, T={torque_applied}")
+          print(f"---Pre:LCA={lane_change_available},ALCT={auto_lane_change_trigger},TT {self.trigger_type},ALR {atc_left_right},LCDC {self.lane_change_disable_count:.1f},LCD {self.lane_change_disable},LCI:{lane_change_interval}, TA={torque_applied}")
 
       # =============LaneChangeState.laneChangeStarting=============
       elif self.lane_change_state == LaneChangeState.laneChangeStarting:

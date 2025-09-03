@@ -444,10 +444,29 @@ class DesireHelper:
       curr_lane_width_diff = self.lane_width_left_curr_diff if blinker_state == BLINKER_LEFT else self.lane_width_right_curr_diff #当前车道宽度和旁边车道宽度的差值
 
       #使用雷达检测左前方和右前方的车辆状态，判断变道是否存在危险，无有效雷达时则认为侧面无车
-      radar = radarState.leadLeft if blinker_state == BLINKER_LEFT else radarState.leadRight
-      side_object_dist = radar.dRel + radar.vLead * 4.0 if radar.status else 255
-      object_detected = side_object_dist < v_ego * 3.0
-      self.object_detected_count = max(1, self.object_detected_count + 1) if object_detected else min(-1, self.object_detected_count - 1)
+      if blinker_state != BLINKER_NONE:
+        radar = radarState.leadLeft if blinker_state == BLINKER_LEFT else radarState.leadRight
+        side_object_dist = radar.dRel + radar.vLead * 4.0 if radar.status else 255
+        object_detected = side_object_dist < v_ego * 3.0 or (radar.status and radar.dRel < v_ego) #增加一个相对距离要大于1秒车辆走过的距离
+        #self.object_detected_count = max(1, self.object_detected_count + 1) if object_detected else min(-1, self.object_detected_count - 1)
+        self.object_detected_count = 1 if object_detected else min(int(-3/DT_MDL),self.object_detected_count - 1)
+      else:
+        self.object_detected_count = 0
+
+      if (self.showDebugLog and 16) > 0:
+        radar = radarState.leadLeft
+        debugText = f"---Radar: L={radar.status}"
+        if radar.status:
+          side_object_dist = radar.dRel + radar.vLead * 4.0
+          debugText += f",dRel={radar.dRel},V={radar.vLead},Dist={side_object_dist}"
+
+        radar = radarState.leadRight
+        debugText += f",R={radar.status}"
+        if radar.status:
+          side_object_dist = radar.dRel + radar.vLead * 4.0
+          debugText += f",dRel={radar.dRel},V={radar.vLead},Dist={side_object_dist}"
+
+        debugText += f" | v_ego*3={v_ego * 3.0},cnt={self.object_detected_count}"
 
     else:
       lane_exist_counter = 0
@@ -546,7 +565,7 @@ class DesireHelper:
     elif fork_now and self.atc_turn_cnt >= 0: #立即变道的请求，强制设置lane_available_trigger为True
       lane_available_trigger = True
     edge_availabled = not self.edge_available_last and edge_available
-    side_object_detected = self.object_detected_count > -0.3 / DT_MDL #是否检测到侧面前方有可能会发生危险的车辆（需要雷达支持探测左右两侧前方的车辆）
+    side_object_detected = self.object_detected_count > -1. / DT_MDL #未检测到侧方车辆1秒才认为是安全的
     lane_appeared = lane_appeared and distance_to_road_edge < 4.0 #新车道出现还要附加个距离道路边缘小于4米的条件
 
     if self.carrot_lane_change_count > 0: #些计数为carrorMan发送过来的LANECHANGE触发的变道
@@ -569,14 +588,14 @@ class DesireHelper:
       self.lane_change_direction = LaneChangeDirection.none
       self.turn_direction = TurnDirection.none
     elif desire_enabled and ((below_lane_change_speed and not carstate.standstill and self.enable_turn_desires) or self.turn_desire_state):
-      if (self.showDebugLog and 8) > 0:
+      if (self.showDebugLog and 32) > 0:
         print("---Desire Turning")
       self.lane_change_state = LaneChangeState.off
       self.turn_direction = TurnDirection.turnLeft if blinker_state == BLINKER_LEFT else TurnDirection.turnRight
       self.lane_change_direction = self.turn_direction #LaneChangeDirection.none
       desire_enabled = False
     elif self.desire_disable_count > 0: # Turn后一段时间内无法变更车道,此变量在check_desire_state函数里计算，如果车辆在转弯，则一直把desire_disable_count设置为2秒的计数值
-      if (self.showDebugLog and 8) > 0:
+      if (self.showDebugLog and 32) > 0:
         print("---Desire after turning")
       self.lane_change_state = LaneChangeState.off
       self.lane_change_direction = LaneChangeDirection.none

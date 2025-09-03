@@ -467,6 +467,7 @@ class DesireHelper:
           debugText += f",dRel={radar.dRel},V={radar.vLead},Dist={side_object_dist}"
 
         debugText += f" | v_ego*3={v_ego * 3.0},cnt={self.object_detected_count}"
+        print(debugText)
 
     else:
       lane_exist_counter = 0

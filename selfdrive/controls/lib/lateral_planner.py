@@ -254,19 +254,19 @@ class LateralPlanner:
     )
 
     # 在 debugText 生成后添加
-    radar_info = f" | Radar:{sm.alive('radarState')}"
-    if sm.alive('radarState'):
-      radar_state = sm['radarState']
-      lead_left = radar_state.leadLeft
-      lead_right = radar_state.leadRight
-      radar_info += f" | LL:{lead_left.status} RL:{lead_right.status}"
+    #radar_info = f" | Radar:{sm.alive('radarState')}"
+    #if sm.alive('radarState'):
+    #  radar_state = sm['radarState']
+    #  lead_left = radar_state.leadLeft
+    #  lead_right = radar_state.leadRight
+    #  radar_info += f" | LL:{lead_left.status} RL:{lead_right.status}"
 
-      if lead_left.status:
-        radar_info += f" | L:{lead_left.dRel:.1f}m,{lead_left.vLead * 3.6:.0f}km/h"
-      if lead_right.status:
-        radar_info += f" | R:{lead_right.dRel:.1f}m,{lead_right.vLead * 3.6:.0f}km/h"
+    #  if lead_left.status:
+    #    radar_info += f" | L:{lead_left.dRel:.1f}m,{lead_left.vLead * 3.6:.0f}km/h"
+    #  if lead_right.status:
+    #    radar_info += f" | R:{lead_right.dRel:.1f}m,{lead_right.vLead * 3.6:.0f}km/h"
 
-    debugText += radar_info
+    #debugText += radar_info
 
     lateralPlan.latDebugText = debugText
     #lateralPlan.latDebugText = self.latDebugText

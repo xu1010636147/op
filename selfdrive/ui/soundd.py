@@ -108,6 +108,7 @@ class Soundd:
     self.params = Params()
     self.soundVolumeAdjust = 1.0
     self.carrot_count_down = 0
+    self.desire_count_down = 0
 
     self.lang = self.params.get('LanguageSetting', encoding='utf8')
     self.load_sounds()
@@ -199,6 +200,17 @@ class Soundd:
         elif count_down == 11:
           new_alert = AudibleAlert.promptDistracted
 
+      #new 来自desire_helper的倒计时
+      dh_count_down = sm['modelV2'].meta.leftSec
+      if self.desire_count_down != dh_count_down:
+        self.desire_count_down = dh_count_down
+        if dh_count_down == 0:
+          new_alert = AudibleAlert.longDisengaged
+        elif 0 < dh_count_down <= 10:
+          new_alert = getattr(AudibleAlert, f'audio{count_down}')
+        elif dh_count_down == 11:
+          new_alert = AudibleAlert.promptDistracted
+
     return new_alert
 
   def get_audible_alert(self, sm):
@@ -228,7 +240,7 @@ class Soundd:
     # sounddevice must be imported after forking processes
     import sounddevice as sd
 
-    sm = messaging.SubMaster(['selfdriveState', 'soundPressure', 'carrotMan'])
+    sm = messaging.SubMaster(['selfdriveState', 'soundPressure', 'carrotMan', 'modelV2'])
 
     with self.get_stream(sd) as stream:
       rk = Ratekeeper(20)

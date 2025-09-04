@@ -184,6 +184,19 @@ class SelfdriveD:
 
     self.events.add_from_msg(self.sm['longitudinalPlan'].events)  ## carrot
 
+    #new 添加来自modelV2的events
+    modelv2_event_type = self.sm['modelV2'].meta.eventType
+    if modelv2_event_type >= 0:
+      if modelv2_event_type == 1:  # 准备变道
+        self.events.add(EventName.audioPreLaneChange)
+      elif modelv2_event_type == 2:  # 变道
+        self.events.add(EventName.audioLaneChange)
+      elif modelv2_event_type == 3:  # 转弯
+        self.events.add(EventName.audioTurn)
+    else:
+      self.events.add_from_msg(self.sm['modelV2'].meta.events)
+      pass
+
     # Add car events, ignore if CAN isn't valid
     if CS.canValid:
       car_events = self.car_events.update(CS, self.CS_prev, self.sm['carControl']).to_msg()
@@ -239,7 +252,9 @@ class SelfdriveD:
       if self.sm['driverAssistance'].leftLaneDeparture or self.sm['driverAssistance'].rightLaneDeparture:
         self.events.add(EventName.ldw)
 
-    if self.sm.alive['carrotMan']:
+    #根据carrotMan消息中的atc_type来判断语音的播报类型
+    #if self.sm.alive['carrotMan']:
+    if False:
       atc_type = self.sm['carrotMan'].atcType
       if atc_type != self.atc_type_last:
         if "prepare" not in atc_type and "prepare" in self.atc_type_last: # prepare消失时

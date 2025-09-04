@@ -278,7 +278,7 @@ def main(demo=False):
       #lat_smooth_seconds = params.get_float("SteerSmoothSec") * 0.01
       long_delay = params.get_float("LongActuatorDelay")*0.01
       vEgoStopping = params.get_float("VEgoStopping") * 0.01
-      
+
     if custom_lat_delay > 0.0:
       lat_delay = custom_lat_delay + lat_smooth_seconds
     else:
@@ -390,6 +390,11 @@ def main(demo=False):
       modelv2_send.modelV2.meta.distanceToRoadEdgeRight = float(DH.distance_to_road_edge_right)
       modelv2_send.modelV2.meta.desire = DH.desire
       modelv2_send.modelV2.meta.laneChangeProb = DH.lane_change_ll_prob
+
+      #new
+      modelv2_send.modelV2.meta.events = DH.events.to_msg()
+      modelv2_send.modelV2.meta.eventType = int(DH.event_type)
+      modelv2_send.modelV2.meta.leftSec = int(DH.dh_left_sec)
 
       fill_pose_msg(posenet_send, model_output, meta_main.frame_id, vipc_dropped_frames, meta_main.timestamp_eof, live_calib_seen)
       pm.send('modelV2', modelv2_send)

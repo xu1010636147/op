@@ -80,13 +80,9 @@ cat id_rsa.pub
 
 #!/usr/bin/env bash
 
-# 检查 flask 是否安装
-if ! python -m pip show flask >/dev/null 2>&1; then
-  echo "Not found lib flask，installing..."
-  python -m pip install flask
-else
-  echo "Flask installed"
-fi
+# 安装flask
+echo "install flask..."
+python -m pip install flask
 
 # Cleanup will be called automatically due to trap on EXIT
 #echo "Operation completed successfully. System will reboot now."

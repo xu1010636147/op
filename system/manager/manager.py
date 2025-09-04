@@ -68,7 +68,7 @@ def get_default_params():
     ("SoftHoldMode", "0"),
 
     ("AutoSpeedUptoRoadSpeedLimit", "0"),
-    ("AutoRoadSpeedAdjust", "50"),
+    ("AutoRoadSpeedAdjust", "-1"),
     ("AutoCurveSpeedLowerLimit", "30"),
     ("AutoCurveSpeedFactor", "100"),
     ("AutoCurveSpeedAggressiveness", "100"),
@@ -84,7 +84,7 @@ def get_default_params():
     ("AutoNaviSpeedBumpSpeed", "35"),
     ("AutoNaviSpeedSafetyFactor", "105"),
     ("AutoNaviSpeedDecelRate", "80"),
-    ("AutoRoadSpeedLimitOffset", "-1"),
+    ("AutoRoadSpeedLimitOffset", "0"),
     ("AutoNaviCountDownMode", "0"),
     ("TurnSpeedControlMode", "1"),
     ("MapTurnSpeedFactor", "100"),
@@ -181,7 +181,7 @@ def get_default_params():
     ("NNFFLite", "0"),
 
     # new
-    ("SameSpiCamFilter", "0"),
+    ("SameSpiCamFilter", "1"),
     ("AutoTurnDistOffset", "0"),
     ("AutoTurnInNotRoadEdge", "0"),
     ("ContinuousLaneChange", "0"),

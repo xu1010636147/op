@@ -182,6 +182,7 @@ def get_default_params():
 
     # new
     ("SameSpiCamFilter", "1"),
+    ("SideRadarMinDist", "50"),
     ("AutoTurnDistOffset", "0"),
     ("AutoTurnInNotRoadEdge", "0"),
     ("ContinuousLaneChange", "0"),

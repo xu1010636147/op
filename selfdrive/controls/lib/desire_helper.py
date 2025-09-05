@@ -192,6 +192,7 @@ class DesireHelper:
     self.lane_cnt_time = -1
     self.lane_count_last = -1
     self.lane_count_stab_cnt = int(5 / DT_MDL)
+    self.trigger_name = ""
     self.trigger_type = 0
     self.newLaneWidthDiff = 0.8
     self.autoEnTurnNewLaneTimeH = 0
@@ -629,8 +630,8 @@ class DesireHelper:
       auto_lane_change_trigger = self.auto_lane_change_enable and not auto_lane_change_blocked and edge_available and (lane_available_trigger or lane_appeared) and not side_object_detected
       self.desireLog = f"D:{self.lane_width_curr:.1f},{lane_width_side:.1f},{distance_to_road_edge_avg:.1f},{lane_width_diff:.1f},{lane_width_far_diff:.1f},{lane_line_info}={auto_lane_change_trigger},T:{self.atc_turn_cnt},S:{self.lane_change_state},L:{self.auto_lane_change_enable},{auto_lane_change_blocked},E:{lane_available},{edge_available},A:{lane_available_trigger},{lane_appeared}"
       if (self.showDebugLog and 2) > 0:
-        print(f"---xDist:{xDistToTurn},Lane:{lane_available}=cur{self.lane_width_curr:.1f},side={lane_width_side:.1f},edge={distance_to_road_edge_avg:.1f},diff={lane_width_diff:.1f},far:{lane_width_far_diff:.1f}")
-        print(f"---State:{self.lane_change_state},turn: {self.atc_turn_cnt},trig:{auto_lane_change_trigger}=alce'{self.auto_lane_change_enable}'&&!alcb'{auto_lane_change_blocked}'&&edge_a'{edge_available}'&&(lat'{lane_available_trigger}'||la'{lane_appeared}')&!sod{side_object_detected}")
+        print(f"---xDist:{xDistToTurn},lane_available:{lane_available},cur={self.lane_width_curr:.1f},side={lane_width_side:.1f},edge={distance_to_road_edge_avg:.1f},diff={lane_width_diff:.1f},far_diff:{lane_width_far_diff:.1f}")
+        print(f"---State:{self.lane_change_state},turn: {self.atc_turn_cnt},trig:{auto_lane_change_trigger}=lane_change_enable'{self.auto_lane_change_enable}'&&!blocked'{auto_lane_change_blocked}'&&edge_available'{edge_available}'&&(lane_available_trig'{lane_available_trigger}'||lane_appeared'{lane_appeared}')&!object_detected{side_object_detected}")
 
     if not lateral_active or self.lane_change_timer > LANE_CHANGE_TIME_MAX:
       #if (self.showDebugLog and 8) > 0:
@@ -653,7 +654,7 @@ class DesireHelper:
       self.turn_direction = TurnDirection.none
     else:
       if (self.showDebugLog and 8) > 0:
-        print(f"---{atc_type},state={self.lane_change_state},desire={desire_enabled},{self.prev_desire_enabled},exist={lane_exist_counter},below={below_lane_change_speed}")
+        print(f"---type:{atc_type},state={self.lane_change_state},desire_enabled={desire_enabled},prev={self.prev_desire_enabled},exist={lane_exist_counter},below={below_lane_change_speed}")
       self.turn_direction = TurnDirection.none
       # =============LaneChangeState.off=============
       # 不管是驾驶员还是系统自动打的灯，流程都会到这里，desire_enabled为True
@@ -677,7 +678,7 @@ class DesireHelper:
         self.lane_change_disable_count = lane_change_interval #重置连续变道延时
         self.lane_change_disable = False
         if (self.showDebugLog and 4) > 0:
-          print(f"---Init: enable={self.auto_lane_change_enable}, exist_cnt={lane_exist_counter}, available={lane_change_available}")
+          print(f"---Init: enable={self.auto_lane_change_enable},exist cnt={lane_exist_counter},lane_change_available={lane_change_available}")
         #new
 
       # =============LaneChangeState.preLaneChange==============
@@ -703,10 +704,12 @@ class DesireHelper:
           self.blindspot_detected_counter = int(1.5 / DT_MDL) #盲区检测1.5秒
 
         self.trigger_type = 0
+        self.trigger_name = "none"
         if not desire_enabled or below_lane_change_speed:
           self.lane_change_state = LaneChangeState.off
           self.lane_change_direction = LaneChangeDirection.none
           self.trigger_type = -1
+          self.trigger_name = "desire disable"
         else:
           #此处根据条件决定是否进入开始变道或转弯的流程，lane_change_available为真时表示旁边车道或者路沿的宽度稳定大于2.5米
           if lane_change_available and self.lane_change_delay == 0: #允许变道并且没有延时时间要求
@@ -715,8 +718,10 @@ class DesireHelper:
               if torque_applied and not block_lanechange_bsd:
                 self.lane_change_state = LaneChangeState.laneChangeStarting
                 self.trigger_type = 1
+                self.trigger_name = "torque bsd"
               else:
                 self.trigger_type = -2
+                self.trigger_name = "bsd block"
                 # 如果触发变道条件成立了，虽然盲区还在，但是可以开启倒计时，盲区消失后则可立即变道（删除，盲区结束后已即变道有点危险）
                 #if auto_lane_change_trigger and not self.lane_change_disable:
                 #  self.lane_change_disable_count = lane_change_interval
@@ -727,39 +732,47 @@ class DesireHelper:
               if torque_applied:
                 self.lane_change_state = LaneChangeState.laneChangeStarting
                 self.trigger_type = 2
+                self.trigger_name = "torque ok"
               else:
                 self.trigger_type = -3
+                self.trigger_name = "no torque"
             elif driver_desire_enabled: #驾驶员打灯变道，直接进入LaneChangeState.laneChangeStarting
               self.lane_change_state = LaneChangeState.laneChangeStarting
               self.trigger_type = 3
+              self.trigger_name = "driver"
             elif torque_applied or auto_lane_change_trigger: #auto_lane_change_trigger在self.auto_lane_change_enable成立并且无其实阻止条件是则会为True
               if torque_applied: #如果用户施加了扭矩，则立即变道（不执行延时）
                 self.lane_change_state = LaneChangeState.laneChangeStarting
                 if auto_lane_change_trigger:
                   self.trigger_type = 4
+                  self.trigger_name = "torque auto"
                 else:
                   self.trigger_type = 5
+                  self.trigger_name = "torque"
               else:
                 if lane_change_interval < 0.5 or self.lane_change_disable_count == 0 or not atc_left_right: #变道不延时或者延时已结束或者为非act_left_right，则立即变道
                   self.lane_change_state = LaneChangeState.laneChangeStarting
-                  self.trigger_type = 6
+                  self.trigger_name = "auto"
                 elif not self.lane_change_disable: #没有设置过延时
                   self.lane_change_disable_count = lane_change_interval
                   self.lane_change_disable = True
                   self.lane_change_audio(True, 1, 0) #播报准备变道
                   self.trigger_type = -4
+                  self.trigger_name = "auto timer"
                   #计算倒时计时间
                   left_sec = min(10, int(lane_change_interval))
                   self.left_sec = left_sec
                 elif self.lane_change_disable_count == 0: #延时已结束，立即变道
                   self.lane_change_state = LaneChangeState.laneChangeStarting
                   self.trigger_type = 7
+                  self.trigger_name = "timeout"
             #elif self.lane_change_disable and self.lane_change_disable_count == 0: #已经开启了计时，并且延时已结束，立即变道
             #  self.lane_change_state = LaneChangeState.laneChangeStarting
             #  self.trigger_type = 8
             #  self.lane_change_audio(atc_desire_enabled, False, 0)  # 语音播报
             else:
               self.trigger_type = -5
+              self.trigger_name = "no trig"
 
             if self.lane_change_state == LaneChangeState.laneChangeStarting:
               self.lane_change_disable_count = lane_change_interval
@@ -775,11 +788,14 @@ class DesireHelper:
               self.lane_change_audio(True, 1, 0)  # 播报准备变道
               left_sec = min(10, int(self.lane_change_delay)) #倒计时时间
               self.left_sec = left_sec
+              self.trigger_type = -7
+              self.trigger_name = "delay"
           else:
             self.trigger_type = -6
+            self.trigger_name = "none"
 
         if (self.showDebugLog and 4) > 0:
-          print(f"---Pre:lane_change_available={lane_change_available},auto_lane_change_trigger={auto_lane_change_trigger},trigger_type={self.trigger_type},atc_left_right={atc_left_right},lane_change_disable_count={self.lane_change_disable_count:.1f},lane_change_disable={self.lane_change_disable},lane_change_interval={lane_change_interval}, torque_applied={torque_applied}")
+          print(f"---Pre:lane_change_available={lane_change_available},lane_change_trig={auto_lane_change_trigger},trig_name={self.trigger_name},atc_left_right={atc_left_right},disable_count={self.lane_change_disable_count:.1f},change_disable={self.lane_change_disable},interval={lane_change_interval}, torque={torque_applied}")
 
       # =============LaneChangeState.laneChangeStarting=============
       elif self.lane_change_state == LaneChangeState.laneChangeStarting:

@@ -224,8 +224,8 @@ static inline void fill_rect(NVGcontext* vg, const Rect1& r, const NVGcolor* col
     if (stroke_width > 0) {
         nvgStrokeWidth(vg, stroke_width);
         if (stroke_color) nvgStrokeColor(vg, *stroke_color);
-		else nvgStrokeColor(vg, nvgRGB(0, 0, 0));   
-        nvgStroke(vg);                         
+		else nvgStrokeColor(vg, nvgRGB(0, 0, 0));
+        nvgStroke(vg);
     }
 }
 
@@ -1162,7 +1162,7 @@ public:
             return -1;
         }
         const auto carrot_man = sm["carrotMan"].getCarrotMan();
-          
+
         active_carrot = carrot_man.getActiveCarrot();
 
         if (active_carrot > 1) {
@@ -1186,7 +1186,7 @@ public:
           szSdiDescr = QString::fromStdString(carrot_man.getSzSdiDescr());
           szPosRoadName = QString::fromStdString(carrot_man.getSzPosRoadName());
           szTBTMainText = QString::fromStdString(carrot_man.getSzTBTMainText());
-          
+
         }
         else {
           //xTurnInfo = -1;
@@ -1361,14 +1361,16 @@ public:
         if (left_blindspot) {
             ui_draw_bsd(s, lane_barrier_vertices[0], &color, false);
         }
-        else if (lead_left.getStatus() && lead_left.getDRel() < car_state.getVEgo() * 3.0 && leftLaneChange) {
+        //else if (lead_left.getStatus() && lead_left.getDRel() < car_state.getVEgo() * 3.0 && leftLaneChange) {
+        else if (lead_left.getStatus() && (lead_left.getDRel() + lead_left.getVLead()*4.0) < car_state.getVEgo() * 3.0) {
             ui_draw_bsd(s, lane_barrier_vertices[0], &color2, false);
         }
 
         if (right_blindspot) {
             ui_draw_bsd(s, lane_barrier_vertices[1], &color, true);
         }
-        else if (lead_right.getStatus() && lead_right.getDRel() < car_state.getVEgo() * 3.0 && rightLaneChange) {
+        //else if (lead_right.getStatus() && lead_right.getDRel() < car_state.getVEgo() * 3.0 && rightLaneChange) {
+        else if (lead_right.getStatus() && (lead_right.getDRel() + lead_right.getVLead()*4.0) < car_state.getVEgo() * 3.0) {
             ui_draw_bsd(s, lane_barrier_vertices[1], &color2, true);
         }
     }
@@ -1975,7 +1977,7 @@ public:
               int max_z = lane_lines[2].getZ().size();
               float z_offset = 0.0;
               foreach(const QString & pair, pairs) {
-                QStringList xy = pair.split(",");  // ","로 x와 y 구분                
+                QStringList xy = pair.split(",");  // ","로 x와 y 구분
                 if (xy.size() == 3) {
                   //printf("coords = x: %.1f, y: %.1f, d:%.1f\n", xy[0].toFloat(), xy[1].toFloat(), xy[2].toFloat());
                   float x = xy[0].toFloat();
@@ -2167,7 +2169,7 @@ public:
     void drawHud(UIState* s) {
         int show_device_state = params.getInt("ShowDeviceState");
         blink_timer = (blink_timer + 1) % 16;
-        disp_timer = (disp_timer + 1) % 64; 
+        disp_timer = (disp_timer + 1) % 64;
         nvgTextAlign(s->vg, NVG_ALIGN_CENTER | NVG_ALIGN_BOTTOM);
 
         int x = 140;// 120;
@@ -2716,7 +2718,7 @@ void ui_draw(UIState *s, ModelRenderer* model_renderer, int w, int h) {
   int path_x = drawPathEnd.getPathX();
   int path_y = drawPathEnd.getPathY();
   drawDesire.draw(s, path_x, path_y - 135);
-  
+
 
   drawPlot.draw(s);
 

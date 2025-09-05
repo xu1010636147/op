@@ -198,6 +198,7 @@ class DesireHelper:
     self.autoEnTurnNewLaneTime = 0
     self.events = Events()
     self.event_type = 0
+    self.event_type_id = 0
     self.left_sec = 100
     self.max_left_sec = 100
     self.dh_left_sec = 100
@@ -208,15 +209,21 @@ class DesireHelper:
     if not enable:
       return
     if turn_type == 1: #准备变道
-      self.events.add(EventName.audioPreLaneChange)
+      #self.events.add(EventName.audioPreLaneChange)
+      pass
     elif turn_type == 2: #变道
-      self.events.add(EventName.audioLaneChange)
+      #self.events.add(EventName.audioLaneChange)
+      pass
     elif turn_type == 3: #转弯
-      self.events.add(EventName.audioTurn)
+      #self.events.add(EventName.audioTurn)
+      pass
     elif turn_type == 4: #倒计时
       pass
     #保存事件类型
     self.event_type = turn_type
+    self.event_type_id += 1
+    if self.event_type_id > 255:
+      event_type = 0
 
   # self.distance_to_road_edge_left/self.distance_to_road_edge_right 车辆当前位置到1秒前方车道中心线到道路边缘的距离。
   # self.distance_to_road_edge_left_far/self.distance_to_road_edge_right_far 车辆当前位置到2秒前方车道中心线到道路边缘的距离
@@ -316,9 +323,6 @@ class DesireHelper:
     #print(f"desire_state = {desire_state}, turn_desire_state = {self.turn_desire_state}, disable_count = {self.desire_disable_count}")
 
   def update(self, carstate, modeldata, lateral_active, lane_change_prob, carrotMan, radarState):
-    self.event_type = 0
-    self.events = Events()
-
     if self.frame % 100 == 0:
       self.laneChangeNeedTorque = self.params.get_int("LaneChangeNeedTorque")
       self.laneChangeBsd = self.params.get_int("LaneChangeBsd")

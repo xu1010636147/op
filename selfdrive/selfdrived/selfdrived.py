@@ -124,7 +124,7 @@ class SelfdriveD:
     self.rk = Ratekeeper(100, print_delay_threshold=None)
 
     self.atc_type_last = ""
-
+    self.model_event_type = 0
 
     # some comma three with NVMe experience NVMe dropouts mid-drive that
     # cause loggerd to crash on write, so ignore it only on that platform
@@ -185,17 +185,18 @@ class SelfdriveD:
     self.events.add_from_msg(self.sm['longitudinalPlan'].events)  ## carrot
 
     #new 添加来自modelV2的events
-    #modelv2_event_type = self.sm['modelV2'].meta.eventType
-    #if modelv2_event_type >= 0:
-    #  if modelv2_event_type == 1:  # 准备变道
-    #    self.events.add(EventName.audioPreLaneChange)
-    #  elif modelv2_event_type == 2:  # 变道
-    #    self.events.add(EventName.audioLaneChange)
-    #  elif modelv2_event_type == 3:  # 转弯
-    #    self.events.add(EventName.audioTurn)
-    #else:
-    #  self.events.add_from_msg(self.sm['modelV2'].meta.events)
-    self.events.add_from_msg(self.sm['modelV2'].meta.events)
+    model_event_type = self.sm['modelV2'].meta.eventType
+    if model_event_type > 0 and model_event_type != self.model_event_type:
+      event_type_val = model_event_type & 256
+      event_type_id = (model_event_type-event_type_val)/256
+      if event_type_val == 1:  # 准备变道
+        self.events.add(EventName.audioPreLaneChange)
+      elif event_type_val == 2:  # 变道
+        self.events.add(EventName.audioLaneChange)
+      elif event_type_val == 3:  # 转弯
+        self.events.add(EventName.audioTurn)
+      self.model_event_type = model_event_type
+      print(f"id={event_type_id},event_type={event_type_val}")
 
     # Add car events, ignore if CAN isn't valid
     if CS.canValid:

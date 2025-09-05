@@ -1177,9 +1177,8 @@ struct ModelDataV2 {
     laneChangeProb @15 :Float32;
     desireLog @16 : Text;
     #new
-    events @17 :List(OnroadEvent);
-    eventType @18 :Int32;
-    leftSec @19 :Int32;
+    eventType @17 :Int32;
+    leftSec @18 :Int32;
 
     # deprecated
     brakeDisengageProbDEPRECATED @2 :Float32;

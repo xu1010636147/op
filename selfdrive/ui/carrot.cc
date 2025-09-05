@@ -1347,9 +1347,9 @@ public:
 
         auto lead_left = sm["radarState"].getRadarState().getLeadLeft();
         auto lead_right = sm["radarState"].getRadarState().getLeadRight();
+        /*
         auto meta = sm["modelV2"].getModelV2().getMeta();
         auto laneChangeState = meta.getLaneChangeState();
-        /*
         auto laneChangeDirection = meta.getLaneChangeDirection();
         bool rightLaneChange = (laneChangeState == cereal::LaneChangeState::PRE_LANE_CHANGE) &&
             (laneChangeDirection == cereal::LaneChangeDirection::RIGHT);

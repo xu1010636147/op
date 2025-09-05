@@ -185,17 +185,17 @@ class SelfdriveD:
     self.events.add_from_msg(self.sm['longitudinalPlan'].events)  ## carrot
 
     #new 添加来自modelV2的events
-    modelv2_event_type = self.sm['modelV2'].meta.eventType
-    if modelv2_event_type >= 0:
-      if modelv2_event_type == 1:  # 准备变道
-        self.events.add(EventName.audioPreLaneChange)
-      elif modelv2_event_type == 2:  # 变道
-        self.events.add(EventName.audioLaneChange)
-      elif modelv2_event_type == 3:  # 转弯
-        self.events.add(EventName.audioTurn)
-    else:
-      self.events.add_from_msg(self.sm['modelV2'].meta.events)
-      pass
+    #modelv2_event_type = self.sm['modelV2'].meta.eventType
+    #if modelv2_event_type >= 0:
+    #  if modelv2_event_type == 1:  # 准备变道
+    #    self.events.add(EventName.audioPreLaneChange)
+    #  elif modelv2_event_type == 2:  # 变道
+    #    self.events.add(EventName.audioLaneChange)
+    #  elif modelv2_event_type == 3:  # 转弯
+    #    self.events.add(EventName.audioTurn)
+    #else:
+    #  self.events.add_from_msg(self.sm['modelV2'].meta.events)
+    self.events.add_from_msg(self.sm['modelV2'].meta.events)
 
     # Add car events, ignore if CAN isn't valid
     if CS.canValid:

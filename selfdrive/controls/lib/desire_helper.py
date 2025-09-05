@@ -207,14 +207,11 @@ class DesireHelper:
     if not enable:
       return
     if turn_type == 1: #准备变道
-      #self.events.add(EventName.audioPreLaneChange)
-      pass
+      self.events.add(EventName.audioPreLaneChange)
     elif turn_type == 2: #变道
-      #self.events.add(EventName.audioLaneChange)
-      pass
+      self.events.add(EventName.audioLaneChange)
     elif turn_type == 3: #转弯
-      #self.events.add(EventName.audioTurn)
-      pass
+      self.events.add(EventName.audioTurn)
     elif turn_type == 4: #倒计时
       pass
     #保存事件类型
@@ -319,6 +316,7 @@ class DesireHelper:
 
   def update(self, carstate, modeldata, lateral_active, lane_change_prob, carrotMan, radarState):
     self.event_type = 0
+    self.events = Events()
 
     if self.frame % 100 == 0:
       self.laneChangeNeedTorque = self.params.get_int("LaneChangeNeedTorque")
@@ -355,7 +353,7 @@ class DesireHelper:
     if self.lane_change_disable:
       self.lane_change_disable_count = max(0, self.lane_change_disable_count - DT_MDL)
       # 计算倒时计时间
-      left_sec = min(10, int(self.lane_change_disable_count / DT_MDL))
+      left_sec = min(10, int(self.lane_change_disable_count))
       if self.left_sec != left_sec:
         self.dh_left_sec = left_sec
         self.left_sec = left_sec
@@ -733,7 +731,7 @@ class DesireHelper:
                   self.lane_change_audio(True, 1, 0) #播报准备变道
                   self.trigger_type = -4
                   #计算倒时计时间
-                  left_sec = min(10, int(lane_change_interval/DT_MDL))
+                  left_sec = min(10, int(lane_change_interval))
                   self.left_sec = left_sec
                 elif self.lane_change_disable_count == 0: #延时已结束，立即变道
                   self.lane_change_state = LaneChangeState.laneChangeStarting

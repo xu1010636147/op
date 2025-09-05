@@ -631,7 +631,7 @@ class DesireHelper:
       self.desireLog = f"D:{self.lane_width_curr:.1f},{lane_width_side:.1f},{distance_to_road_edge_avg:.1f},{lane_width_diff:.1f},{lane_width_far_diff:.1f},{lane_line_info}={auto_lane_change_trigger},T:{self.atc_turn_cnt},S:{self.lane_change_state},L:{self.auto_lane_change_enable},{auto_lane_change_blocked},E:{lane_available},{edge_available},A:{lane_available_trigger},{lane_appeared}"
       if (self.showDebugLog and 2) > 0:
         print(f"---xDist:{xDistToTurn},lane_available:{lane_available},cur={self.lane_width_curr:.1f},side={lane_width_side:.1f},edge={distance_to_road_edge_avg:.1f},diff={lane_width_diff:.1f},far_diff:{lane_width_far_diff:.1f}")
-        print(f"---State:{self.lane_change_state},turn: {self.atc_turn_cnt},trig:{auto_lane_change_trigger}=lane_change_enable'{self.auto_lane_change_enable}'&&!blocked'{auto_lane_change_blocked}'&&edge_available'{edge_available}'&&(lane_available_trig'{lane_available_trigger}'||lane_appeared'{lane_appeared}')&!object_detected{side_object_detected}")
+        print(f"---State:{self.lane_change_state},turn: {self.atc_turn_cnt},trig:{auto_lane_change_trigger}=lane_change_enable'{self.auto_lane_change_enable}'&&!blocked'{auto_lane_change_blocked}'&&edge_available'{edge_available}'&&(lane_available_trig'{lane_available_trigger}'||lane_appeared'{lane_appeared}')&!object_detected'{side_object_detected}' obj_cnt={self.object_detected_count:.1f}")
 
     if not lateral_active or self.lane_change_timer > LANE_CHANGE_TIME_MAX:
       #if (self.showDebugLog and 8) > 0:
@@ -795,7 +795,7 @@ class DesireHelper:
             self.trigger_name = "none"
 
         if (self.showDebugLog and 4) > 0:
-          print(f"---Prepare:lane_change_available={lane_change_available},lane_change_trig={auto_lane_change_trigger},trig_name={self.trigger_name},atc_left_right={atc_left_right},disable_count={self.lane_change_disable_count:.1f},change_disable={self.lane_change_disable},interval={lane_change_interval}, torque={torque_applied}")
+          print(f"---Prepare:lane_change_available={lane_change_available},lane_change_trig={auto_lane_change_trigger},trig_name={self.trigger_name},atc_left_right={atc_left_right},disable_count={self.lane_change_disable_count:.1f},change_disable={self.lane_change_disable},interval={lane_change_interval:.1f}, torque={torque_applied}")
 
       # =============LaneChangeState.laneChangeStarting=============
       elif self.lane_change_state == LaneChangeState.laneChangeStarting:

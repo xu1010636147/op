@@ -893,6 +893,7 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   //navToggles->addItem(new CValueControl("AutoDoForkCheckDistH", "H 高速提前识别出现匝道口的距离(20m)", "在靠近匝道口时提前识别匝道口出现的距离，是在模型预留的轨迹上提前检测的距离", 0, 100, 1));
   navToggles->addItem(new CValueControl("AutoForkDecalRateH", "H 高速进匝道口前降速比率(80%)", "在进匝道口把车速降至道路限速的比率,0表示关闭此功能", 0, 100, 5));
   navToggles->addItem(new CValueControl("AutoForkSpeedMinH", "H 高速进匝道口前降速最低速度(60)", "在进匝道口前允许把车速降至的最低速度，低于此速度时则不再继续降低", 0, 100, 5));
+  navToggles->addItem(new CValueControl("AutoKeepForkSpeedH", "H 高速进匝道后保持当前速度行驶的时间(0s)", "进了匝道口后保持当前速度行驶的时间，0-关闭", 0, 60, 1));
 
   navToggles->addItem(new CValueControl("AutoForkDistOffset", "L 公路提前变道靠边的距离(30m)", "在距离公路分叉口多少米时开始变道到最侧面车道，设置为0则不提前变道", 0, 1000, 5));
   navToggles->addItem(new CValueControl("AutoEnTurnNewLaneTime", "L 公路再次提前变道的新车道出现时间(0s)", "车辆已在最侧边车道，若新车道出现的时间超过设置值后允许再次变道，推荐值5秒，0 关闭", 0, 120, 1));
@@ -902,6 +903,7 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   //navToggles->addItem(new CValueControl("AutoDoForkCheckDist", "L 公路提前识别出现分叉口的距离(10m)", "在靠近公路分叉口时提前识别分叉口出现的距离，是在模型预留的轨迹上提前检测的距离", 0, 100, 1));
   navToggles->addItem(new CValueControl("AutoForkDecalRate", "L 公路进分叉口前降速比率(80%)", "在进公路分叉口时把车速降至道路限速的比率,0表示关闭此功能", 0, 100, 5));
   navToggles->addItem(new CValueControl("AutoForkSpeedMin", "L 公路进分叉口前降速最低速度(45)", "在进公路分叉口时前允许把车速降至的最低速度，低于此速度时则不再继续降低", 0, 100, 5));
+  navToggles->addItem(new CValueControl("AutoKeepForkSpeed", "L 公路进分叉后保持当前速度行驶的时间(0s)", "进了分叉口后保持当前速度行驶的时间，0-关闭", 0, 60, 1));
 
   navToggles->addItem(new CValueControl("NewLaneWidthDiff", "ATC 新车道出现判断标准(0.8m)", "当侧面的车道在1秒内的宽度增加这个宽度时，则认为有新车道出现，推荐设置0.8m，1代表0.1m", 2, 10, 1));
   navToggles->addItem(new CValueControl("AutoTurnDistOffset", "ATC 自动转弯距离偏移(0m)", "提前自动转弯的距离，一般为0，仅针对转弯类型(非变道)", -100, 200, 1));

@@ -619,7 +619,7 @@ class DesireHelper:
       self.desireLog = f"D:{self.lane_width_curr:.1f},{lane_width_side:.1f},{distance_to_road_edge_avg:.1f},{lane_width_diff:.1f},{lane_width_far_diff:.1f},{lane_line_info}={auto_lane_change_trigger},T:{self.atc_turn_cnt},S:{self.lane_change_state},L:{self.auto_lane_change_enable},{auto_lane_change_blocked},E:{lane_available},{edge_available},A:{lane_available_trigger},{lane_appeared}"
       if (self.showDebugLog and 2) > 0:
         print(f"xDist:{xDistToTurn},Lane:{lane_available}=cur{self.lane_width_curr:.1f},side={lane_width_side:.1f},edge={distance_to_road_edge_avg:.1f},diff={lane_width_diff:.1f},far:{lane_width_far_diff:.1f}")
-        print(f"State:{self.lane_change_state},turn: {self.atc_turn_cnt},trig:{auto_lane_change_trigger}=ALCE'{self.auto_lane_change_enable}'&!ALCB'{auto_lane_change_blocked}'&EA'{edge_available}'&LAT'({lane_available_trigger}'||LAP'{lane_appeared}')")
+        print(f"State:{self.lane_change_state},turn: {self.atc_turn_cnt},trig:{auto_lane_change_trigger}=ALCE'{self.auto_lane_change_enable}'&!ALCB'{auto_lane_change_blocked}'&EA'{edge_available}'&LAT'({lane_available_trigger}'|LAP'{lane_appeared}')&!SOD{side_object_detected}")
 
     if not lateral_active or self.lane_change_timer > LANE_CHANGE_TIME_MAX:
       #if (self.showDebugLog and 8) > 0:

@@ -604,7 +604,8 @@ class DesireHelper:
     elif fork_now and self.atc_turn_cnt >= 0: #立即变道的请求，强制设置lane_available_trigger为True
       lane_available_trigger = True
     edge_availabled = not self.edge_available_last and edge_available
-    side_object_detected = self.object_detected_count > -1. / DT_MDL #未检测到侧方车辆1秒才认为是安全的
+    #side_object_detected = self.object_detected_count > -1. / DT_MDL #未检测到侧方车辆1秒才认为是安全的
+    side_object_detected = self.object_detected_count > -0.3 / DT_MDL
     lane_appeared = lane_appeared and distance_to_road_edge < 4.0 #新车道出现还要附加个距离道路边缘小于4米的条件
 
     if self.carrot_lane_change_count > 0: #些计数为carrorMan发送过来的LANECHANGE触发的变道

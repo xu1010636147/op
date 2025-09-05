@@ -476,14 +476,19 @@ class DesireHelper:
       curr_lane_width_diff = self.lane_width_left_curr_diff if blinker_state == BLINKER_LEFT else self.lane_width_right_curr_diff #当前车道宽度和旁边车道宽度的差值
 
       #使用雷达检测左前方和右前方的车辆状态，判断变道是否存在危险，无有效雷达时则认为侧面无车
-      if blinker_state != BLINKER_NONE:
-        radar = radarState.leadLeft if blinker_state == BLINKER_LEFT else radarState.leadRight
-        side_object_dist = radar.dRel + radar.vLead * 4.0 if radar.status else 255
-        object_detected = side_object_dist < v_ego * 3.0 or (radar.status and radar.dRel < v_ego) #增加一个相对距离要大于1秒车辆走过的距离
-        #self.object_detected_count = max(1, self.object_detected_count + 1) if object_detected else min(-1, self.object_detected_count - 1)
-        self.object_detected_count = 1 if object_detected else min(int(-3/DT_MDL),self.object_detected_count - 1)
-      else:
-        self.object_detected_count = 0
+      #if blinker_state != BLINKER_NONE:
+      #  radar = radarState.leadLeft if blinker_state == BLINKER_LEFT else radarState.leadRight
+      #  side_object_dist = radar.dRel + radar.vLead * 4.0 if radar.status else 255
+      #  object_detected = side_object_dist < v_ego * 3.0 or (radar.status and radar.dRel < v_ego) #增加一个相对距离要大于1秒车辆走过的距离
+      #  #self.object_detected_count = max(1, self.object_detected_count + 1) if object_detected else min(-1, self.object_detected_count - 1)
+      #  self.object_detected_count = 1 if object_detected else min(int(-3/DT_MDL),self.object_detected_count - 1)
+      #else:
+      #  self.object_detected_count = 0
+
+      radar = radarState.leadLeft if blinker_state == BLINKER_LEFT else radarState.leadRight
+      side_object_dist = radar.dRel + radar.vLead * 4.0 if radar.status else 255
+      object_detected = side_object_dist < v_ego * 3.0
+      self.object_detected_count = max(1, self.object_detected_count + 1) if object_detected else min(-1, self.object_detected_count - 1)
     else:
       lane_exist_counter = 0
       lane_available = True

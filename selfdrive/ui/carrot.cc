@@ -1349,11 +1349,13 @@ public:
         auto lead_right = sm["radarState"].getRadarState().getLeadRight();
         auto meta = sm["modelV2"].getModelV2().getMeta();
         auto laneChangeState = meta.getLaneChangeState();
+        /*
         auto laneChangeDirection = meta.getLaneChangeDirection();
         bool rightLaneChange = (laneChangeState == cereal::LaneChangeState::PRE_LANE_CHANGE) &&
             (laneChangeDirection == cereal::LaneChangeDirection::RIGHT);
         bool leftLaneChange = (laneChangeState == cereal::LaneChangeState::PRE_LANE_CHANGE) &&
             (laneChangeDirection == cereal::LaneChangeDirection::LEFT);
+        */
 
 #if 0
         left_blindspot = right_blindspot = true;
@@ -1366,18 +1368,12 @@ public:
             ui_draw_bsd(s, lane_barrier_vertices[0], &color2, false);
         }
 
-        if (leftLaneChange){
-        }
-
         if (right_blindspot) {
             ui_draw_bsd(s, lane_barrier_vertices[1], &color, true);
         }
         //else if (lead_right.getStatus() && lead_right.getDRel() < car_state.getVEgo() * 3.0 && rightLaneChange) {
         else if (lead_right.getStatus() && (lead_right.getDRel() + lead_right.getVLead()*4.0) < car_state.getVEgo() * 3.0) {
             ui_draw_bsd(s, lane_barrier_vertices[1], &color2, true);
-        }
-
-        if (rightLaneChange){
         }
     }
 };

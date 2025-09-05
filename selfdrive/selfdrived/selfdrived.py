@@ -187,8 +187,8 @@ class SelfdriveD:
     #new 添加来自modelV2的events
     model_event_type = self.sm['modelV2'].meta.eventType
     if model_event_type > 0 and model_event_type != self.model_event_type:
-      event_type_val = model_event_type & 256
-      event_type_id = (model_event_type-event_type_val)/256
+      event_type_val = model_event_type & 255
+      event_type_id = int((model_event_type-event_type_val)/256)
       if event_type_val == 1:  # 准备变道
         self.events.add(EventName.audioPreLaneChange)
       elif event_type_val == 2:  # 变道
@@ -196,7 +196,7 @@ class SelfdriveD:
       elif event_type_val == 3:  # 转弯
         self.events.add(EventName.audioTurn)
       self.model_event_type = model_event_type
-      print(f"id={event_type_id},event_type={event_type_val}")
+      print(f"val={model_event_type},id={event_type_id},event_type={event_type_val}")
 
     # Add car events, ignore if CAN isn't valid
     if CS.canValid:

@@ -224,7 +224,7 @@ class DesireHelper:
     self.event_type = turn_type
     self.event_type_id += 1
     if self.event_type_id > 255:
-      event_type = 0
+      self.event_type_id = 0
 
   # self.distance_to_road_edge_left/self.distance_to_road_edge_right 车辆当前位置到1秒前方车道中心线到道路边缘的距离。
   # self.distance_to_road_edge_left_far/self.distance_to_road_edge_right_far 车辆当前位置到2秒前方车道中心线到道路边缘的距离

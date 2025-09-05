@@ -207,7 +207,7 @@ class Soundd:
         if dh_count_down == 0:
           new_alert = AudibleAlert.longDisengaged
         elif 0 < dh_count_down <= 10:
-          new_alert = getattr(AudibleAlert, f'audio{count_down}')
+          new_alert = getattr(AudibleAlert, f'audio{dh_count_down}')
         elif dh_count_down == 11:
           new_alert = AudibleAlert.promptDistracted
 

@@ -885,7 +885,7 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   navToggles = new ListWidget(this);
   navToggles->addItem(new CValueControl("RoadType", "手动设置道路类型(-1)", "-1:导航自动识别，0:高速(无应急车道) 1:高速(有应急车道), >=2:其它道路", -1, 100, 1));
   navToggles->addItem(new CValueControl("SameSpiCamFilter", "过滤相同的测速数据(1)", "0:关闭, 1:打开", 0, 1, 1));
-  navToggles->addItem(new CValueControl("SideRadarMinDist", "过滤侧面车道车辆的最小雷达距离(50x0.1m)", "当检测到的侧面车道上，雷达探测到的距离小于设置值时，忽略此车辆，单位为0.1m", -50, 100, 1));
+  navToggles->addItem(new CValueControl("SideRadarMinDist", "忽略小于雷达距离(50x0.1m)的侧面车辆", "在左右两侧的车道上，忽略小于此雷达探测距离的车辆，单位为0.1m", -50, 100, 1));
   navToggles->addItem(new CValueControl("AutoForkDistOffsetH", "H 高速提前变道靠边的距离(1000m)", "在距离匝道口多少米时开始变道到最侧面车道，设置为0则不提前变道", 0, 2000, 5));
   navToggles->addItem(new CValueControl("AutoEnTurnNewLaneTimeH", "H 高速再次提前变道的新车道出现时间(0s)", "车辆已在最侧边车道，若新车道出现的时间超过设置值后允许再次变道，推荐值20秒，0 关闭", 0, 120, 1));
   navToggles->addItem(new CValueControl("AutoDoForkDecalDistH", "H 高速进匝道口提前减速的距离偏移(50m)", "在距离匝道口多少米时开始减速，软件根据速度计算的距离加上此偏移为实际距离", 0, 500, 5));

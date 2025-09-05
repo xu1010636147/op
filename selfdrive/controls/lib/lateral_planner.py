@@ -260,18 +260,18 @@ class LateralPlanner:
     lead_right = radar_state.leadRight
     #radar_status_info = f" | LL:{lead_left.status} RL:{lead_right.status}"
     if lead_left.status:
-      radar_left_info = f"L:{lead_left.dRel:.1f}m,{lead_left.vLead * 3.6:.0f}km/h | "
+      radar_left_info = f"| L:{lead_left.dRel:.1f}m,{lead_left.vLead * 3.6:.0f}km/h"
     if lead_right.status:
-      radar_right_info += f"R:{lead_right.dRel:.1f}m,{lead_right.vLead * 3.6:.0f}km/h | "
+      radar_right_info += f"| R:{lead_right.dRel:.1f}m,{lead_right.vLead * 3.6:.0f}km/h"
 
     debugText = (
       f"{'lanemode' if self.lanelines_active else 'laneless'} | " +
-      radar_left_info +
       f"{self.LP.lane_width_left:.1f}m | " +
       f"{self.LP.lane_width:.1f}m | " +
       f"{self.LP.lane_width_right:.1f}m | " +
-      radar_right_info +
-      f"{f'offset={self.LP.offset_total * 100.0:.1f}cm turn={np.clip(self.curve_speed, -200, 200):.0f}km/h' if self.lanelines_active else ''}"
+      f"{f'offset={self.LP.offset_total * 100.0:.1f}cm turn={np.clip(self.curve_speed, -200, 200):.0f}km/h' if self.lanelines_active else ''}" +
+      radar_left_info +
+      radar_right_info
     )
 
     lateralPlan.latDebugText = debugText

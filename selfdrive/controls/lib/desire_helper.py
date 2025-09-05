@@ -654,7 +654,7 @@ class DesireHelper:
       self.turn_direction = TurnDirection.none
     else:
       if (self.showDebugLog and 8) > 0:
-        print(f"---type:{atc_type},state={self.lane_change_state},desire_enabled={desire_enabled},prev={self.prev_desire_enabled},exist={lane_exist_counter},below={below_lane_change_speed}")
+        print(f"---turn:{atc_type},state={self.lane_change_state},desire_enabled={desire_enabled},prev={self.prev_desire_enabled},exist={lane_exist_counter},below={below_lane_change_speed}")
       self.turn_direction = TurnDirection.none
       # =============LaneChangeState.off=============
       # 不管是驾驶员还是系统自动打的灯，流程都会到这里，desire_enabled为True
@@ -795,7 +795,7 @@ class DesireHelper:
             self.trigger_name = "none"
 
         if (self.showDebugLog and 4) > 0:
-          print(f"---Pre:lane_change_available={lane_change_available},lane_change_trig={auto_lane_change_trigger},trig_name={self.trigger_name},atc_left_right={atc_left_right},disable_count={self.lane_change_disable_count:.1f},change_disable={self.lane_change_disable},interval={lane_change_interval}, torque={torque_applied}")
+          print(f"---Prepare:lane_change_available={lane_change_available},lane_change_trig={auto_lane_change_trigger},trig_name={self.trigger_name},atc_left_right={atc_left_right},disable_count={self.lane_change_disable_count:.1f},change_disable={self.lane_change_disable},interval={lane_change_interval}, torque={torque_applied}")
 
       # =============LaneChangeState.laneChangeStarting=============
       elif self.lane_change_state == LaneChangeState.laneChangeStarting:

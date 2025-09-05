@@ -201,6 +201,7 @@ class DesireHelper:
     self.left_sec = 100
     self.max_left_sec = 100
     self.dh_left_sec = 100
+    self.lane_change_delay_start = 0
     #new
 
   def lane_change_audio(self, enable, turn_type, param):
@@ -348,12 +349,16 @@ class DesireHelper:
 
     self.carrot_lane_change_count = max(0, self.carrot_lane_change_count - 1)
     self.lane_change_delay = max(0, self.lane_change_delay - DT_MDL)
+    if self.lane_change_delay_start:
+      left_sec = min(10, int(self.lane_change_delay)) # 计算倒时计时间
+      if self.left_sec != left_sec:
+        self.dh_left_sec = left_sec
+        self.left_sec = left_sec
 
     #延时自动变道倒计时
     if self.lane_change_disable:
       self.lane_change_disable_count = max(0, self.lane_change_disable_count - DT_MDL)
-      # 计算倒时计时间
-      left_sec = min(10, int(self.lane_change_disable_count))
+      left_sec = min(10, int(self.lane_change_disable_count)) # 计算倒时计时间
       if self.left_sec != left_sec:
         self.dh_left_sec = left_sec
         self.left_sec = left_sec
@@ -699,6 +704,7 @@ class DesireHelper:
         else:
           #此处根据条件决定是否进入开始变道或转弯的流程，lane_change_available为真时表示旁边车道或者路沿的宽度稳定大于2.5米
           if lane_change_available and self.lane_change_delay == 0: #允许变道并且没有延时时间要求
+            self.lane_change_delay_start = False
             if self.blindspot_detected_counter > 0 and not ignore_bsd:  # bsd盲区检测次数还大于0
               if torque_applied and not block_lanechange_bsd:
                 self.lane_change_state = LaneChangeState.laneChangeStarting
@@ -757,6 +763,12 @@ class DesireHelper:
                 self.lane_change_audio(True, 2, 0)  # 变道
               else:
                 self.lane_change_audio(True, 3, 0)  # 转弯
+          elif lane_change_available and self.lane_change_delay > 0: #播报打灯提示和倒计时
+            if not self.lane_change_delay_start:
+              self.lane_change_delay_start = True
+              self.lane_change_audio(True, 1, 0)  # 播报准备变道
+              left_sec = min(10, int(self.lane_change_delay)) #倒计时时间
+              self.left_sec = left_sec
           else:
             self.trigger_type = -6
 
@@ -801,6 +813,8 @@ class DesireHelper:
 
           self.lane_change_disable_count = lane_change_interval #重置连续变道延时
           self.lane_change_disable = False
+          self.lane_change_delay = self.laneChangeDelay #重置打灯延时
+          self.lane_change_delay_start = False
 
           # 是否有被用户反向方向盘干预的自动变道
           if self.blinker_ignore_last:

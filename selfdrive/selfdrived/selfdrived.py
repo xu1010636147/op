@@ -191,10 +191,13 @@ class SelfdriveD:
       event_type_id = int((model_event_type-event_type_val)/256)
       if event_type_val == 1:  # 准备变道
         self.events.add(EventName.audioPreLaneChange)
+        print("Event: audioPreLaneChange")
       elif event_type_val == 2:  # 变道
         self.events.add(EventName.audioLaneChange)
+        print("Event: audioLaneChange")
       elif event_type_val == 3:  # 转弯
         self.events.add(EventName.audioTurn)
+        print("Event: audioTurn")
       self.model_event_type = model_event_type
       print(f"val={model_event_type},id={event_type_id},event_type={event_type_val}")
 

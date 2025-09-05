@@ -1366,12 +1366,18 @@ public:
             ui_draw_bsd(s, lane_barrier_vertices[0], &color2, false);
         }
 
+        if (leftLaneChange){
+        }
+
         if (right_blindspot) {
             ui_draw_bsd(s, lane_barrier_vertices[1], &color, true);
         }
         //else if (lead_right.getStatus() && lead_right.getDRel() < car_state.getVEgo() * 3.0 && rightLaneChange) {
         else if (lead_right.getStatus() && (lead_right.getDRel() + lead_right.getVLead()*4.0) < car_state.getVEgo() * 3.0) {
             ui_draw_bsd(s, lane_barrier_vertices[1], &color2, true);
+        }
+
+        if (rightLaneChange){
         }
     }
 };

@@ -509,20 +509,22 @@ class DesireHelper:
     #雷达调试信息
     if (self.showDebugLog and 16) > 0:
       vego3x = v_ego * 3.0
-      radar = radarState.leadLeft
-      debugText = f"---Radar:L={radar.status}"
-      if radar.status:
-        side_object_dist = radar.dRel + radar.vLead * 4.0
-        debugText += f",dRel={radar.dRel:.1f},V={radar.vLead:.1f},Dist={side_object_dist:.1f}={side_object_dist<vego3x}"
+      radar_left = radarState.leadLeft
+      radar_right = radarState.leadRight
+      if radar_left.status or radar_right.status:
+        debugText = f"---Radar:"
+        if radar_left.status:
+          debugText += f"L:{radar_left.status}"
+          side_object_dist = radar_left.dRel + radar_left.vLead * 4.0
+          debugText += f",dRel={radar_left.dRel:.1f},V={radar_left.vLead:.1f},sDist={side_object_dist:.1f},block={side_object_dist<vego3x},"
 
-      radar = radarState.leadRight
-      debugText += f",R={radar.status}"
-      if radar.status:
-        side_object_dist = radar.dRel + radar.vLead * 4.0
-        debugText += f",dRel={radar.dRel:.1f},V={radar.vLead:.1f},Dist={side_object_dist:.1f}={side_object_dist<vego3x}"
+        if radar_right.status:
+          debugText += f"R:{radar_right.status}"
+          side_object_dist = radar_right.dRel + radar_right.vLead * 4.0
+          debugText += f",dRel={radar_right.dRel:.1f},V={radar_right.vLead:.1f},sDist={side_object_dist:.1f},block=={side_object_dist<vego3x}"
 
-      debugText += f"|v_ego*3={vego3x:.1f},cnt={self.object_detected_count}"
-      print(debugText)
+        debugText += f",v_ego*3={vego3x:.1f},cnt={self.object_detected_count}"
+        print(debugText)
 
     #lane_available_trigger = not self.lane_available_last and lane_available
     lane_change_available = (lane_available or edge_available) and lane_line_info < 20 # lane_line_info小于20为白色虚线(注：SantaFe没有这个车道线识别功能)。
@@ -627,8 +629,8 @@ class DesireHelper:
       auto_lane_change_trigger = self.auto_lane_change_enable and not auto_lane_change_blocked and edge_available and (lane_available_trigger or lane_appeared) and not side_object_detected
       self.desireLog = f"D:{self.lane_width_curr:.1f},{lane_width_side:.1f},{distance_to_road_edge_avg:.1f},{lane_width_diff:.1f},{lane_width_far_diff:.1f},{lane_line_info}={auto_lane_change_trigger},T:{self.atc_turn_cnt},S:{self.lane_change_state},L:{self.auto_lane_change_enable},{auto_lane_change_blocked},E:{lane_available},{edge_available},A:{lane_available_trigger},{lane_appeared}"
       if (self.showDebugLog and 2) > 0:
-        print(f"xDist:{xDistToTurn},Lane:{lane_available}=cur{self.lane_width_curr:.1f},side={lane_width_side:.1f},edge={distance_to_road_edge_avg:.1f},diff={lane_width_diff:.1f},far:{lane_width_far_diff:.1f}")
-        print(f"State:{self.lane_change_state},turn: {self.atc_turn_cnt},trig:{auto_lane_change_trigger}=ALCE'{self.auto_lane_change_enable}'&!ALCB'{auto_lane_change_blocked}'&EA'{edge_available}'&LAT'({lane_available_trigger}'|LAP'{lane_appeared}')&!SOD{side_object_detected}")
+        print(f"---xDist:{xDistToTurn},Lane:{lane_available}=cur{self.lane_width_curr:.1f},side={lane_width_side:.1f},edge={distance_to_road_edge_avg:.1f},diff={lane_width_diff:.1f},far:{lane_width_far_diff:.1f}")
+        print(f"---State:{self.lane_change_state},turn: {self.atc_turn_cnt},trig:{auto_lane_change_trigger}=alce'{self.auto_lane_change_enable}'&&!alcb'{auto_lane_change_blocked}'&&edge_a'{edge_available}'&&(lat'{lane_available_trigger}'||la'{lane_appeared}')&!sod{side_object_detected}")
 
     if not lateral_active or self.lane_change_timer > LANE_CHANGE_TIME_MAX:
       #if (self.showDebugLog and 8) > 0:
@@ -777,7 +779,7 @@ class DesireHelper:
             self.trigger_type = -6
 
         if (self.showDebugLog and 4) > 0:
-          print(f"---Pre:LCA={lane_change_available},ALCT={auto_lane_change_trigger},TT {self.trigger_type},ALR {atc_left_right},LCDC {self.lane_change_disable_count:.1f},LCD {self.lane_change_disable},LCI:{lane_change_interval}, TA={torque_applied}")
+          print(f"---Pre:lane_change_available={lane_change_available},auto_lane_change_trigger={auto_lane_change_trigger},trigger_type={self.trigger_type},atc_left_right={atc_left_right},lane_change_disable_count={self.lane_change_disable_count:.1f},lane_change_disable={self.lane_change_disable},lane_change_interval={lane_change_interval}, torque_applied={torque_applied}")
 
       # =============LaneChangeState.laneChangeStarting=============
       elif self.lane_change_state == LaneChangeState.laneChangeStarting:

@@ -21,6 +21,8 @@ from openpilot.system.hardware import PC, TICI
 from openpilot.selfdrive.navd.helpers import Coordinate
 from opendbc.car.common.conversions import Conversions as CV
 
+from openpilot.common.realtime import DT_MDL
+
 try:
   from shapely.geometry import LineString
   SHAPELY_AVAILABLE = True
@@ -1150,10 +1152,14 @@ class CarrotServ:
     self.xroadcate = 8
     self.autoForkDecalRateH = 80
     self.autoForkSpeedMinH = 60
+    self.autoKeepForkSpeedH = 5
     self.autoForkDecalRate = 80
     self.autoForkSpeedMin = 45
+    self.autoKeepForkSpeed = 5
     self.showDebugLog = 0
     self.param_frame = 0
+    self.atc_speed_decal = 0
+    self.fork_speed_keep_time = -1
     #new
 
     self.update_params()
@@ -1199,8 +1205,10 @@ class CarrotServ:
       self.roadType = self.params.get_int("RoadType")
       self.autoForkDecalRateH = float(self.params.get_int("AutoForkDecalRateH")) * 0.01
       self.autoForkSpeedMinH = self.params.get_int("AutoForkSpeedMinH")
+      self.autoKeepForkSpeedH = self.params.get_int("AutoKeepForkSpeedH")
       self.autoForkDecalRate = float(self.params.get_int("AutoForkDecalRate")) * 0.01
       self.autoForkSpeedMin = self.params.get_int("AutoForkSpeedMin")
+      self.autoKeepForkSpeed = self.params.get_int("AutoKeepForkSpeed")
       self.showDebugLog = self.params.get_int("ShowDebugLog")
 
     self.param_frame += 1
@@ -1593,6 +1601,7 @@ class CarrotServ:
       auto_decel_rate = self.autoForkDecalRate
       decel_speed_min = self.autoForkSpeedMin
       do_fork_nav_dist = self.autoDoForkNavDistH
+      fork_speed_keep_time = self.autoKeepForkSpeedH
     else:
       fork_dist_offset = self.autoForkDistOffsetH
       start_fork_dist = np.interp(self.nRoadLimitSpeed, [30, 50, 100], [160, 200, 350]) + fork_dist_offset
@@ -1601,6 +1610,7 @@ class CarrotServ:
       auto_decel_rate = self.autoForkDecalRateH
       decel_speed_min = self.autoForkSpeedMinH
       do_fork_nav_dist = self.autoDoForkNavDist
+      fork_speed_keep_time = self.autoKeepForkSpeed
 
     #对两个fork距离进行限制
     if do_fork_nav_dist > 0:
@@ -1633,6 +1643,7 @@ class CarrotServ:
     atc_speed = mapping["speed"]
     atc_dist = mapping["dist"] #这个距离主要是用来提前减速的距离
     atc_start_dist = mapping["start"]
+    atc_type_org = atc_type
 
     #导航给出在转弯距离大于开始转弯距离时，进入准备阶段
     if x_dist_to_turn > atc_start_dist:
@@ -1642,6 +1653,7 @@ class CarrotServ:
     else:
       if check_steer:
         self.atc_activate_count = max(0, self.atc_activate_count + 1)
+
       if atc_type in ["turn left", "turn right"] and x_dist_to_turn > start_turn_dist:
         atc_type = "atc left" if atc_type == "turn left" else "atc right" #类型为atc left/right只是进入转弯准备状态，并不是真的在执行转弯
       elif atc_type in ["fork left", "fork right"]: #说明x_dist_to_turn>do_fork_dist并且说明x_dist_to_turn <=atc_start_dist
@@ -1654,7 +1666,21 @@ class CarrotServ:
           if auto_decel_rate > 0: #设置了减速比率
             if atc_speed > decel_speed_min: #只有车速大于60时才允许降速
               atc_speed = max(decel_speed_min, atc_speed*auto_decel_rate)
+          if check_steer:
+            self.atc_speed_decal = atc_speed #保存进匝道减速的目标速度
+            self.fork_speed_keep_time = int(fork_speed_keep_time/DT_MDL) #重置时间
     #如果上面的条件都不成立，则atc_type直接就是查表得到的类型，即atc_type = mapping["type"]
+
+    #是否保持进匝道时的速度
+    if check_steer:
+      if atc_type_org in ["fork left", "fork right"] and self.atc_speed_decal > 0:
+        self.fork_speed_keep_time = min(-1, self.fork_speed_keep_time - 1)  # 保持速度的时间递减
+        if self.fork_speed_keep_time > 0:
+          atc_speed = min(atc_speed, self.atc_speed_decal) #保持之前的速度
+        if self.fork_speed_keep_time == 0:
+          self.atc_speed_decal = 0
+      else:
+        self.fork_speed_keep_time = -1
 
     if self.autoTurnMapChange > 0 and check_steer:
       #print(f"x_dist_to_turn: {x_dist_to_turn}, atc_start_dist: {atc_start_dist}")

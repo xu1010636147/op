@@ -184,23 +184,6 @@ class SelfdriveD:
 
     self.events.add_from_msg(self.sm['longitudinalPlan'].events)  ## carrot
 
-    #new 添加来自modelV2的events
-    model_event_type = self.sm['modelV2'].meta.eventType
-    if model_event_type > 0 and model_event_type != self.model_event_type:
-      event_type_val = model_event_type & 255
-      event_type_id = int((model_event_type-event_type_val)/256)
-      if event_type_val == 1:  # 准备变道
-        self.events.add(EventName.audioPreLaneChange)
-        print("Event: audioPreLaneChange")
-      elif event_type_val == 2:  # 变道
-        self.events.add(EventName.audioLaneChange)
-        print("Event: audioLaneChange")
-      elif event_type_val == 3:  # 转弯
-        self.events.add(EventName.audioTurn)
-        print("Event: audioTurn")
-      self.model_event_type = model_event_type
-      print(f"val={model_event_type},id={event_type_id},event_type={event_type_val}")
-
     # Add car events, ignore if CAN isn't valid
     if CS.canValid:
       car_events = self.car_events.update(CS, self.CS_prev, self.sm['carControl']).to_msg()
@@ -286,6 +269,23 @@ class SelfdriveD:
             self.events.add(EventName.audioLaneChange)
 
         self.atc_type_last = atc_type
+
+    #new 添加来自modelV2的events
+    model_event_type = self.sm['modelV2'].meta.eventType
+    if model_event_type > 0 and model_event_type != self.model_event_type:
+      event_type_val = model_event_type & 255
+      event_type_id = int((model_event_type-event_type_val)/256)
+      if event_type_val == 1:  # 准备变道
+        self.events.add(EventName.audioPreLaneChange)
+        print("Event: audioPreLaneChange")
+      elif event_type_val == 2:  # 变道
+        self.events.add(EventName.audioLaneChange)
+        print("Event: audioLaneChange")
+      elif event_type_val == 3:  # 转弯
+        self.events.add(EventName.audioTurn)
+        print("Event: audioTurn")
+      self.model_event_type = model_event_type
+      print(f"val={model_event_type},id={event_type_id},event_type={event_type_val}")
 
     # Handle lane change
     if self.sm['modelV2'].meta.laneChangeState == LaneChangeState.preLaneChange:

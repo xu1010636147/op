@@ -1644,6 +1644,7 @@ class CarrotServ:
     atc_dist = mapping["dist"] #这个距离主要是用来提前减速的距离
     atc_start_dist = mapping["start"]
     atc_type_org = atc_type
+    atc_speed_org = atc_speed
 
     #导航给出在转弯距离大于开始转弯距离时，进入准备阶段
     if x_dist_to_turn > atc_start_dist:
@@ -1654,14 +1655,14 @@ class CarrotServ:
       if check_steer:
         self.atc_activate_count = max(0, self.atc_activate_count + 1)
 
-      if atc_type in ["turn left", "turn right"] and x_dist_to_turn > start_turn_dist:
-        atc_type = "atc left" if atc_type == "turn left" else "atc right" #类型为atc left/right只是进入转弯准备状态，并不是真的在执行转弯
+      if (atc_type in ["turn left", "turn right"]) and (x_dist_to_turn > start_turn_dist):
+        atc_type = "atc left" if "left" in atc_type else "atc right" #类型为atc left/right只是进入转弯准备状态，并不是真的在执行转弯
       elif atc_type in ["fork left", "fork right"]: #说明x_dist_to_turn>do_fork_dist并且说明x_dist_to_turn <=atc_start_dist
         #atc_dist = do_speed_decal_dist #替换减速距离
-        if fork_dist_offset > 0 and x_dist_to_turn > do_fork_dist: #设置了提前变道距离，并且剩余距离大于进入匝道口距离，则执行提前变道流程
-          atc_type = "atc left" if atc_type == "fork left" else "atc right"
-        elif do_fork_nav_dist > 0 and x_dist_to_turn <= do_fork_nav_dist: #设置了导航距离控制转弯后，如果距离小于设置值是立即变道
+        if (do_fork_nav_dist > 0) and (x_dist_to_turn <= do_fork_nav_dist): #设置了导航距离控制转弯后，如果距离小于设置值是立即变道
           atc_type += " now"
+        elif (fork_dist_offset > 0) and (x_dist_to_turn > do_fork_dist): #设置了提前变道距离，并且剩余距离大于进入匝道口距离，则执行提前变道流程
+          atc_type = "atc left" if "left" in atc_type else "atc right"
         if x_dist_to_turn < do_speed_decal_dist: #距离路口的距离小于设定值时要开始减速了，因为到匝道口前nRoadLimitSpeed其实没有变，所以只能用这种方法进行减速
           if auto_decel_rate > 0: #设置了减速比率
             if atc_speed > decel_speed_min: #只有车速大于60时才允许降速
@@ -1717,6 +1718,13 @@ class CarrotServ:
       safe_sec = 2.0
       atc_desired = min(atc_desired, self.calculate_current_speed(x_dist_to_turn - atc_dist, atc_speed, safe_sec, decel))
 
+    if (self.showDebugLog & 1) > 0:
+      debugText = (f"***atc info: type={atc_type_org},{atc_type},xdist={x_dist_to_turn},dist={atc_dist:.1f}," +
+                   f"start={atc_start_dist:.1f},speed={atc_speed_org:.1f},{atc_speed:.1f},decal_dist={do_speed_decal_dist}" +
+                   f"fork_dist_offset={fork_dist_offset},do_fork_dist={do_fork_dist},do_fork_nav_dist={do_fork_nav_dist}," +
+                   f"atc_paused={self.atc_paused}"
+                   )
+      print(debugText)
 
     return atc_desired, atc_type, atc_speed, atc_dist
 
@@ -1980,10 +1988,10 @@ class CarrotServ:
       self.left_sec = left_sec
 
     #new
-    if self.xDistToTurnNav > self.xDistToTurnNavLast: #当距离路口距离比上次大时，则记录为当前最大的路口距离
+    if self.xDistToTurnNav > (self.xDistToTurnNavLast + 20): #当距离路口距离比上次大于20米时，则记录为当前最大的路口距离
       self.xDistToTurnMax = self.xDistToTurnNav
       self.xDistToTurnMaxCnt += 1
-    self.xDistToTurnNavLast = self.xDistToTurnNav #当前距离更新到上次距离时
+      self.xDistToTurnNavLast = self.xDistToTurnNav #当前距离更新到上次距离时
     #new
 
     self._update_cmd()
@@ -2245,11 +2253,11 @@ class CarrotServ:
       self._update_sdi()
       if (self.showDebugLog & 1) > 0:
         print(
-          f"sdi = T {self.nSdiType}, S {self.nSdiSpeedLimit}, PS {self.nSdiPlusType}, " +
-          f"spd = T {self.xSpdType}, S {self.xSpdLimit}, D {self.xSpdDist:.1f}, RC {self.roadcate}, xRC {self.xroadcate}, " +
-          f"tbt = T {self.nTBTTurnType}, D {self.nTBTDist}, " +
-          f"xtbt = xT {self.xTurnInfo}, xD {self.xDistToTurn:.1f}, " +
-          f"next = T {self.nTBTTurnTypeNext}, D {self.nTBTDistNext}"
+          f"***sdi=T{self.nSdiType},S {self.nSdiSpeedLimit},PS {self.nSdiPlusType}," +
+          f"spd=T {self.xSpdType},S {self.xSpdLimit},D {self.xSpdDist:.1f},RC {self.roadcate},xRC {self.xroadcate}, " +
+          f"tbt=T {self.nTBTTurnType},D {self.nTBTDist}, " +
+          f"xtbt=xT {self.xTurnInfo},xD {self.xDistToTurn:.1f}, " +
+          f"next=T {self.nTBTTurnTypeNext},D {self.nTBTDistNext}"
         )
       #print(json)
     else:

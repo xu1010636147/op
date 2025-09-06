@@ -270,6 +270,29 @@ class SelfdriveD:
 
         self.atc_type_last = atc_type
 
+    # Handle lane change
+    laneChangeBlocked = False
+    preLaneChangeLeft = False
+    preLaneChangeRight = False
+    laneChange = False
+    if self.sm['modelV2'].meta.laneChangeState == LaneChangeState.preLaneChange:
+      direction = self.sm['modelV2'].meta.laneChangeDirection
+      if (CS.leftBlindspot and direction == LaneChangeDirection.left) or \
+         (CS.rightBlindspot and direction == LaneChangeDirection.right):
+        self.events.add(EventName.laneChangeBlocked)
+        laneChangeBlocked = True
+      else:
+        if direction == LaneChangeDirection.left:
+          self.events.add(EventName.preLaneChangeLeft)
+          preLaneChangeLeft = True
+        else:
+          self.events.add(EventName.preLaneChangeRight)
+          preLaneChangeRight = True
+    elif self.sm['modelV2'].meta.laneChangeState in (LaneChangeState.laneChangeStarting,
+                                                    LaneChangeState.laneChangeFinishing):
+      self.events.add(EventName.laneChange)
+      laneChange = True
+
     #new 添加来自modelV2的events
     model_event_type = self.sm['modelV2'].meta.eventType
     if model_event_type > 0 and model_event_type != self.model_event_type:
@@ -277,30 +300,15 @@ class SelfdriveD:
       event_type_id = int((model_event_type-event_type_val)/256)
       if event_type_val == 1:  # 准备变道
         self.events.add(EventName.audioPreLaneChange)
-        print("Event: audioPreLaneChange")
+        print(f"Event: audioPreLaneChange, laneChangeBlocked={laneChangeBlocked},preLaneChangeLeft={preLaneChangeLeft},preLaneChangeRight={preLaneChangeRight},laneChange={laneChange}")
       elif event_type_val == 2:  # 变道
         self.events.add(EventName.audioLaneChange)
-        print("Event: audioLaneChange")
+        print(f"Event: audioLaneChange, laneChangeBlocked={laneChangeBlocked},preLaneChangeLeft={preLaneChangeLeft},preLaneChangeRight={preLaneChangeRight},laneChange={laneChange}")
       elif event_type_val == 3:  # 转弯
         self.events.add(EventName.audioTurn)
-        print("Event: audioTurn")
+        print(f"Event: audioTurn, laneChangeBlocked={laneChangeBlocked},preLaneChangeLeft={preLaneChangeLeft},preLaneChangeRight={preLaneChangeRight},laneChange={laneChange}")
       self.model_event_type = model_event_type
       print(f"val={model_event_type},id={event_type_id},event_type={event_type_val}")
-
-    # Handle lane change
-    if self.sm['modelV2'].meta.laneChangeState == LaneChangeState.preLaneChange:
-      direction = self.sm['modelV2'].meta.laneChangeDirection
-      if (CS.leftBlindspot and direction == LaneChangeDirection.left) or \
-         (CS.rightBlindspot and direction == LaneChangeDirection.right):
-        self.events.add(EventName.laneChangeBlocked)
-      else:
-        if direction == LaneChangeDirection.left:
-          self.events.add(EventName.preLaneChangeLeft)
-        else:
-          self.events.add(EventName.preLaneChangeRight)
-    elif self.sm['modelV2'].meta.laneChangeState in (LaneChangeState.laneChangeStarting,
-                                                    LaneChangeState.laneChangeFinishing):
-      self.events.add(EventName.laneChange)
 
     for i, pandaState in enumerate(self.sm['pandaStates']):
       # All pandas must match the list of safetyConfigs, and if outside this list, must be silent or noOutput

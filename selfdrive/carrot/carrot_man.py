@@ -1600,8 +1600,8 @@ class CarrotServ:
       do_speed_decal_dist = fork_dist_for_speed + self.autoDoForkDecalDist
       auto_decel_rate = self.autoForkDecalRate
       decel_speed_min = self.autoForkSpeedMin
-      do_fork_nav_dist = self.autoDoForkNavDistH
-      fork_speed_keep_time = self.autoKeepForkSpeedH
+      do_fork_nav_dist = self.autoDoForkNavDist
+      fork_speed_keep_time = self.autoKeepForkSpeed
     else:
       fork_dist_offset = self.autoForkDistOffsetH
       start_fork_dist = np.interp(self.nRoadLimitSpeed, [30, 50, 100], [160, 200, 350]) + fork_dist_offset
@@ -1609,8 +1609,8 @@ class CarrotServ:
       do_speed_decal_dist = fork_dist_for_speed + self.autoDoForkDecalDistH
       auto_decel_rate = self.autoForkDecalRateH
       decel_speed_min = self.autoForkSpeedMinH
-      do_fork_nav_dist = self.autoDoForkNavDist
-      fork_speed_keep_time = self.autoKeepForkSpeed
+      do_fork_nav_dist = self.autoDoForkNavDistH
+      fork_speed_keep_time = self.autoKeepForkSpeedH
 
     #对两个fork距离进行限制
     if do_fork_nav_dist > 0:

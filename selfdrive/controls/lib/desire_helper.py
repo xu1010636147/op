@@ -438,27 +438,27 @@ class DesireHelper:
       if self.atc_active != 2:
         below_lane_change_speed = True
         self.lane_change_timer = 0.0
-        atc_blinker_state = BLINKER_LEFT if atc_type == "turn left" else BLINKER_RIGHT
+        atc_blinker_state = BLINKER_LEFT if "left" in atc_type else BLINKER_RIGHT
         self.atc_active = 1
         self.blinker_ignore = False
         turn_left_right = True
     elif atc_type in ["fork left", "fork right"]: #来自carrot_man.py的update_auto_turn函数，变道请求
       if self.atc_active != 2:
         below_lane_change_speed = False
-        atc_blinker_state = BLINKER_LEFT if atc_type in ["fork left"] else BLINKER_RIGHT
+        atc_blinker_state = BLINKER_LEFT if "left" in atc_type else BLINKER_RIGHT
         self.atc_active = 1
         fork_left_right = True
     elif atc_type in ["fork left now", "fork right now"]: #立即变道请求
       if self.atc_active != 2:
         below_lane_change_speed = False
-        atc_blinker_state = BLINKER_LEFT if atc_type in ["fork left"] else BLINKER_RIGHT
+        atc_blinker_state = BLINKER_LEFT if "left" in atc_type else BLINKER_RIGHT
         self.atc_active = 1
         fork_now = True
         fork_left_right = True
     elif atc_type in ["atc left", "atc right"]: #来自carrot_man.py的update_auto_turn函数，变道请求
       if self.atc_active != 2:
         below_lane_change_speed = False
-        atc_blinker_state = BLINKER_LEFT if atc_type in ["atc left"] else BLINKER_RIGHT
+        atc_blinker_state = BLINKER_LEFT if "left" in atc_type else BLINKER_RIGHT
         self.atc_active = 1
         atc_left_right = True
     else:

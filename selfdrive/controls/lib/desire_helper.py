@@ -205,6 +205,7 @@ class DesireHelper:
     self.dh_left_sec = 100
     self.lane_change_delay_start = 0
     self.event_test_frame = 0
+    self.lane_change_audio_delay = 0
     #new
 
   def lane_change_audio(self, enable, turn_type, param=0):
@@ -378,9 +379,10 @@ class DesireHelper:
 
     self.carrot_lane_change_count = max(0, self.carrot_lane_change_count - 1)
     self.lane_change_delay = max(0, self.lane_change_delay - DT_MDL)
+    self.lane_change_audio_delay = max(0, self.lane_change_audio_delay - DT_MDL)
     if self.lane_change_delay_start:
       left_sec = min(10, int(self.lane_change_delay)) # 计算倒时计时间
-      if self.left_sec != left_sec:
+      if self.left_sec != left_sec and self.lane_change_audio_delay <= 0:
         self.dh_left_sec = left_sec
         self.left_sec = left_sec
 
@@ -388,7 +390,7 @@ class DesireHelper:
     if self.lane_change_disable:
       self.lane_change_disable_count = max(0, self.lane_change_disable_count - DT_MDL)
       left_sec = min(10, int(self.lane_change_disable_count)) # 计算倒时计时间
-      if self.left_sec != left_sec:
+      if self.left_sec != left_sec and self.lane_change_audio_delay <= 0:
         self.dh_left_sec = left_sec
         self.left_sec = left_sec
 
@@ -781,6 +783,7 @@ class DesireHelper:
                   self.lane_change_disable_count = lane_change_interval
                   self.lane_change_disable = True
                   self.lane_change_audio(True, 1, 0) #播报准备变道
+                  self.lane_change_audio_delay = 2 #延时2秒后再播报倒计时
                   self.trigger_type = -4
                   self.trigger_name = "auto timer"
                   #计算倒时计时间
@@ -810,6 +813,7 @@ class DesireHelper:
             if not self.lane_change_delay_start:
               self.lane_change_delay_start = True
               self.lane_change_audio(True, 1, 0)  # 播报准备变道
+              self.lane_change_audio_delay = 2  # 延时2秒后再播报倒计时
               left_sec = min(10, int(self.lane_change_delay)) #倒计时时间
               self.left_sec = left_sec
               self.trigger_type = -7

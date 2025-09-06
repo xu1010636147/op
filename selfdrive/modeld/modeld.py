@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 import os
 from openpilot.system.hardware import TICI
+
+from selfdrive.controls.lib.desire_helper import LaneChangeDirection, LaneChangeState
+
 USBGPU = "USBGPU" in os.environ
 if USBGPU:
   os.environ['AMD'] = '1'
@@ -394,6 +397,9 @@ def main(demo=False):
       #new
       modelv2_send.modelV2.meta.eventType = int(DH.event_type + DH.event_type_id*256)
       modelv2_send.modelV2.meta.leftSec = int(DH.dh_left_sec)
+      if DH.event_test_frame > 0:
+        modelv2_send.modelV2.meta.laneChangeState = LaneChangeState.preLaneChange
+        modelv2_send.modelV2.meta.laneChangeDirection = LaneChangeDirection.left
 
       fill_pose_msg(posenet_send, model_output, meta_main.frame_id, vipc_dropped_frames, meta_main.timestamp_eof, live_calib_seen)
       pm.send('modelV2', modelv2_send)

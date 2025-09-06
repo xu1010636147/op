@@ -204,9 +204,10 @@ class DesireHelper:
     self.max_left_sec = 100
     self.dh_left_sec = 100
     self.lane_change_delay_start = 0
+    self.event_test_frame = 0
     #new
 
-  def lane_change_audio(self, enable, turn_type, param):
+  def lane_change_audio(self, enable, turn_type, param=0):
     if not enable:
       return
     if turn_type == 1: #准备变道
@@ -344,6 +345,29 @@ class DesireHelper:
       self.autoEnTurnNewLaneTime = self.params.get_int("AutoEnTurnNewLaneTime")
       #new
     self.frame += 1
+
+    #TEST语音测试
+    if False:
+      self.event_test_frame += 1
+      if self.event_test_frame == 20*10:
+        self.lane_change_audio(True, 1, 0)
+        print("lane_change_audio 1")
+      elif self.event_test_frame == 20 * 20:
+        self.lane_change_audio(True, 2, 0)
+        print("lane_change_audio 2")
+      elif self.event_test_frame == 20 * 30:
+        self.lane_change_audio(True, 3, 0)
+        print("lane_change_audio 3")
+      elif self.event_test_frame >= 20 * 52:
+        self.event_test_frame = 0
+        print("event test end")
+      elif self.event_test_frame >= 20 * 40:
+        left_sec = int((self.event_test_frame - 20 * 40)/20)
+        if self.left_sec != left_sec:
+          self.dh_left_sec = left_sec
+          self.left_sec = left_sec
+          print(f"audio {left_sec}")
+    # TEST
 
     # new
     if 0 <= self.roadType <= 2: #高速

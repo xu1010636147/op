@@ -312,7 +312,7 @@ class SelfdriveD:
 
       # 添加调试信息
       print(f"Current alert types: {self.state_machine.current_alert_types}")
-      print(f"Clear event types: {clear_event_types}")
+      #print(f"Clear event types: {clear_event_types}")
       print(f"System state: {self.state_machine.state}")
       print(f"System enabled: {self.enabled}")
       print(f"System active: {self.active}")

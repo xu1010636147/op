@@ -350,18 +350,26 @@ class DesireHelper:
     if False:
       self.event_test_frame += 1
       if self.event_test_frame == 20*10:
+        self.lane_change_direction = LaneChangeDirection.left
+        self.lane_change_state == LaneChangeState.preLaneChange
         self.lane_change_audio(True, 1, 0)
         print("lane_change_audio 1")
       elif self.event_test_frame == 20 * 20:
+        self.lane_change_direction = LaneChangeDirection.left
+        self.lane_change_state == LaneChangeState.preLaneChange
         self.lane_change_audio(True, 2, 0)
         print("lane_change_audio 2")
       elif self.event_test_frame == 20 * 30:
+        self.lane_change_direction = LaneChangeDirection.left
+        self.lane_change_state == LaneChangeState.preLaneChange
         self.lane_change_audio(True, 3, 0)
         print("lane_change_audio 3")
       elif self.event_test_frame >= 20 * 52:
         self.event_test_frame = 0
         print("event test end")
       elif self.event_test_frame >= 20 * 40:
+        self.lane_change_direction = LaneChangeDirection.none
+        self.lane_change_state == LaneChangeState.off
         left_sec = int((self.event_test_frame - 20 * 40)/20)
         if self.left_sec != left_sec:
           self.dh_left_sec = left_sec

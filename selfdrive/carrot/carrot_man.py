@@ -1721,7 +1721,7 @@ class CarrotServ:
 
     if (self.showDebugLog & 1) > 0 and check_steer:
       debugText = (f"***atc info: type={atc_type_org},{atc_type},xdist={x_dist_to_turn:.1f},dist={atc_dist:.1f}," +
-                   f"start={atc_start_dist:.1f},speed={atc_speed_org:.1f},{atc_speed:.1f},decal_dist={do_speed_decal_dist:.1f}" +
+                   f"start={atc_start_dist:.1f},speed={atc_speed_org:.1f},{atc_speed:.1f},decal_dist={do_speed_decal_dist:.1f}," +
                    f"fork_dist_offset={fork_dist_offset:.1f},do_fork_dist={do_fork_dist:.1f},do_fork_nav_dist={do_fork_nav_dist:.1f}," +
                    f"atc_paused={self.atc_paused},keep: time={self.fork_speed_keep_time:.1f},speed={self.atc_speed_decal:.1f}"
                    )

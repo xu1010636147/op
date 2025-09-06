@@ -310,6 +310,13 @@ class SelfdriveD:
       self.model_event_type = model_event_type
       print(f"val={model_event_type},id={event_type_id},event_type={event_type_val}")
 
+      # 添加调试信息
+      print(f"Current alert types: {self.state_machine.current_alert_types}")
+      print(f"Clear event types: {clear_event_types}")
+      print(f"System state: {self.state_machine.state}")
+      print(f"System enabled: {self.enabled}")
+      print(f"System active: {self.active}")
+
     for i, pandaState in enumerate(self.sm['pandaStates']):
       # All pandas must match the list of safetyConfigs, and if outside this list, must be silent or noOutput
       if i < len(self.CP.safetyConfigs):

@@ -852,13 +852,11 @@ class DesireHelper:
                   self.lane_change_state = LaneChangeState.laneChangeStarting
                   trigger_type = 7
                   trigger_name = "timeout"
-            #elif self.lane_change_disable and self.lane_change_disable_count == 0: #已经开启了计时，并且延时已结束，立即变道
-            #  self.lane_change_state = LaneChangeState.laneChangeStarting
-            #  self.trigger_type = 8
-            #  self.lane_change_audio(atc_desire_enabled, False, 0)  # 语音播报
             else:
               trigger_type = -5
               trigger_name = "no trig"
+              if side_object_detected and (self.frame % int(1/DT_MDL)):
+                self.lane_change_audio(True, 6, 0)  # 播报盲区有车
 
             if self.lane_change_state == LaneChangeState.laneChangeStarting:
               self.lane_change_disable_count = lane_change_interval

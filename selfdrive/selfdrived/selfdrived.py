@@ -313,6 +313,9 @@ class SelfdriveD:
       elif event_type_val == 5:  # 领航已恢复
         self.events.add(EventName.audioAtcResume)
         print(f"Event: audioAtcResume, laneChangeBlocked={laneChangeBlocked},preLaneChangeLeft={preLaneChangeLeft},preLaneChangeRight={preLaneChangeRight},laneChange={laneChange}")
+      elif event_type_val == 6:  # 盲区有车
+        self.events.add(EventName.laneChangeBlocked)
+        print(f"Event: laneChangeBlocked, laneChangeBlocked={laneChangeBlocked},preLaneChangeLeft={preLaneChangeLeft},preLaneChangeRight={preLaneChangeRight},laneChange={laneChange}")
 
       self.model_event_type = model_event_type
       print(f"val={model_event_type},id={event_type_id},event_type={event_type_val}")

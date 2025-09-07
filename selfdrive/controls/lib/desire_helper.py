@@ -660,20 +660,20 @@ class DesireHelper:
         print(f"---State:{self.lane_change_state},turn: {self.atc_turn_cnt},trig:{auto_lane_change_trigger}=lane_change_enable'{self.auto_lane_change_enable}'&&!blocked'{auto_lane_change_blocked}'&&edge_available'{edge_available}'&&(lane_available_trig'{lane_available_trigger}'||lane_appeared'{lane_appeared}')&!object_detected'{side_object_detected}' obj_cnt={self.object_detected_count:.1f},active={self.atc_active}")
 
     if not lateral_active or self.lane_change_timer > LANE_CHANGE_TIME_MAX:
-      #if (self.showDebugLog & 8) > 0:
-      #  print("---Desire canceled")
+      if (self.showDebugLog & 32) > 0 and self.lane_change_state != LaneChangeState.off:
+        print("---Desire canceled")
       self.lane_change_state = LaneChangeState.off
       self.lane_change_direction = LaneChangeDirection.none
       self.turn_direction = TurnDirection.none
     elif desire_enabled and ((below_lane_change_speed and not carstate.standstill and self.enable_turn_desires) or self.turn_desire_state):
-      if (self.showDebugLog & 32) > 0:
+      if (self.showDebugLog & 32) > 0 and self.lane_change_state != LaneChangeState.off:
         print("---Desire Turning")
       self.lane_change_state = LaneChangeState.off
       self.turn_direction = TurnDirection.turnLeft if blinker_state == BLINKER_LEFT else TurnDirection.turnRight
       self.lane_change_direction = self.turn_direction #LaneChangeDirection.none
       desire_enabled = False
     elif self.desire_disable_count > 0: # Turn后一段时间内无法变更车道,此变量在check_desire_state函数里计算，如果车辆在转弯，则一直把desire_disable_count设置为2秒的计数值
-      if (self.showDebugLog & 32) > 0:
+      if (self.showDebugLog & 32) > 0 and self.lane_change_state != LaneChangeState.off:
         print("---Desire after turning")
       self.lane_change_state = LaneChangeState.off
       self.lane_change_direction = LaneChangeDirection.none
@@ -732,6 +732,8 @@ class DesireHelper:
         trigger_type = 0
         trigger_name = "none"
         if not desire_enabled or below_lane_change_speed:
+          if (self.showDebugLog & 32) > 0 and self.lane_change_state != LaneChangeState.off:
+            print("---!desire_enabled or below_lane_change_speed")
           self.lane_change_state = LaneChangeState.off
           self.lane_change_direction = LaneChangeDirection.none
           trigger_type = -1
@@ -899,6 +901,8 @@ class DesireHelper:
       self.lane_change_direction = LaneChangeDirection.none
       self.lane_change_state = LaneChangeState.off
       self.blinker_ignore = True
+      if (self.showDebugLog & 32) > 0:
+        print("---steering_pressed, LaneChangeState.off")
 
     if self.turn_direction != TurnDirection.none:
       self.desire = TURN_DESIRES[self.turn_direction]

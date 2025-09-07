@@ -1366,7 +1366,7 @@ public:
         //else if (lead_left.getStatus() && lead_left.getDRel() < car_state.getVEgo() * 3.0 && leftLaneChange) {
         else if (lead_left.getStatus() && ( (((lead_left.getDRel() + lead_left.getVLead()*3.0) < car_state.getVEgo() * 4.5)
                                                 || (lead_left.getDRel() < car_state.getVEgo()*1.5))
-                                            && ((lead_left.getVLead() > 2.8) || (lead_left.getVLead() < -2.8)) ) //速度要大于2或小于-2，否则可能是路边静止物
+                                            && (abs(lead_left.getVLead()) > 2.8) ) //速度要大于2或小于-2，否则可能是路边静止物
                 ){
             ui_draw_bsd(s, lane_barrier_vertices[0], &color2, false);
         }
@@ -1377,7 +1377,7 @@ public:
         //else if (lead_right.getStatus() && lead_right.getDRel() < car_state.getVEgo() * 3.0 && rightLaneChange) {
         else if (lead_right.getStatus() && ( (((lead_right.getDRel() + lead_right.getVLead()*3.0) < car_state.getVEgo() * 4.5)
                                                 || (lead_right.getDRel() < car_state.getVEgo()*1.5))
-                                            && ((lead_right.getVLead() > 2.8) || (lead_right.getVLead() < -2.8)) ) //速度要大于2或小于-2，否则可能是路边静止物
+                                            && (abs(lead_right.getVLead()) > 2.8) ) //速度要大于2或小于-2，否则可能是路边静止物
                 ){
             ui_draw_bsd(s, lane_barrier_vertices[1], &color2, true);
         }

@@ -212,8 +212,8 @@ class DesireHelper:
     self.min_object_detected_count_thr = int(-2.0 / DT_MDL)  # 判断是否无障碍的持续时间
     self.side_object_detected = False
     self.min_drel_vego_time = 1.5
-    self.bsdDelayTime = 2
-    self.sideBsdDelayTime = 2
+    self.bsdDelayTime = 2.
+    self.sideBsdDelayTime = 2.
     #new
 
   def lane_change_audio(self, enable, turn_type, param=0):
@@ -352,8 +352,8 @@ class DesireHelper:
       self.newLaneWidthDiff = self.params.get_float("NewLaneWidthDiff") * 0.1
       self.autoEnTurnNewLaneTimeH = self.params.get_int("AutoEnTurnNewLaneTimeH")
       self.autoEnTurnNewLaneTime = self.params.get_int("AutoEnTurnNewLaneTime")
-      self.bsdDelayTime = max(30, min(0, self.params.get_int("BsdDelayTime")))
-      self.sideBsdDelayTime = max(30, min(0, self.params.get_int("SideBsdDelayTime")))
+      self.bsdDelayTime = self.params.get_float("BsdDelayTime") * 0.1
+      self.sideBsdDelayTime = self.params.get_int("SideBsdDelayTime") * 0.1
       self.min_object_detected_count_thr = int(-1*self.sideBsdDelayTime/DT_MDL)
       #new
     self.frame += 1
@@ -528,7 +528,10 @@ class DesireHelper:
 
       radar = radarState.leadLeft if blinker_state == BLINKER_LEFT else radarState.leadRight
       side_object_dist = radar.dRel + radar.vLead * 3.0 if radar.status else 255
-      object_detected = (side_object_dist < v_ego * (3.0 + self.min_drel_vego_time)) or (radar.dRel < (v_ego*self.min_drel_vego_time) and radar.status)
+      if radar.status:
+        object_detected = ((side_object_dist < v_ego * (3.0 + self.min_drel_vego_time)) or (radar.dRel < (v_ego*self.min_drel_vego_time))) and abs(radar.vLead) > 2.8
+      else:
+        object_detected = False
       #self.object_detected_count = max(1, self.object_detected_count + 1) if object_detected else min(-1, self.object_detected_count - 1)
       if object_detected: #检测到
         self.object_detected_count = 1
@@ -550,6 +553,7 @@ class DesireHelper:
       lane_appeared = False
       self.object_detected_count = 0
       self.object_detected_count_new = 0
+      self.side_object_detected = False
       curr_lane_width_diff = 3.5
 
     #雷达调试信息
@@ -683,8 +687,12 @@ class DesireHelper:
       auto_lane_change_trigger = self.auto_lane_change_enable and not auto_lane_change_blocked and edge_available and (lane_available_trigger or lane_appeared) and not side_object_detected
       self.desireLog = f"D:{self.lane_width_curr:.1f},{lane_width_side:.1f},{distance_to_road_edge_avg:.1f},{lane_width_diff:.1f},{lane_width_far_diff:.1f},{lane_line_info}={auto_lane_change_trigger},T:{self.atc_turn_cnt},S:{self.lane_change_state},L:{self.auto_lane_change_enable},{auto_lane_change_blocked},E:{lane_available},{edge_available},A:{lane_available_trigger},{lane_appeared}"
       if (self.showDebugLog & 2) > 0:
-        print(f"---xDist:{xDistToTurn},lane_available:{lane_available},cur={self.lane_width_curr:.1f},side={lane_width_side:.1f},edge={distance_to_road_edge_avg:.1f},diff={lane_width_diff:.1f},far_diff:{lane_width_far_diff:.1f}")
-        print(f"---State:{self.lane_change_state},turn: {self.atc_turn_cnt},trig:{auto_lane_change_trigger}=lane_change_enable'{self.auto_lane_change_enable}'&&!blocked'{auto_lane_change_blocked}'&&edge_available'{edge_available}'&&(lane_available_trig'{lane_available_trigger}'||lane_appeared'{lane_appeared}')&!object_detected'{side_object_detected}' obj_cnt={self.object_detected_count:.1f},{self.object_detected_count_new},active={self.atc_active}")
+        print(f"---xDist:{xDistToTurn},lane_available:{lane_available},cur={self.lane_width_curr:.1f},side={lane_width_side:.1f},"
+              f"edge={distance_to_road_edge_avg:.1f},diff={lane_width_diff:.1f},far_diff:{lane_width_far_diff:.1f}")
+        print(f"---State:{self.lane_change_state},turn: {self.atc_turn_cnt},trig:{auto_lane_change_trigger}="
+              f"lane_change_enable'{self.auto_lane_change_enable}'&&!blocked'{auto_lane_change_blocked}'&&edge_available'{edge_available}'&&"
+              f"(lane_available_trig'{lane_available_trigger}'||lane_appeared'{lane_appeared}')&!object_detected'{side_object_detected}' "
+              f"obj_cnt={self.object_detected_count:.1f},{self.object_detected_count_new},active={self.atc_active}")
 
     if not lateral_active or self.lane_change_timer > LANE_CHANGE_TIME_MAX:
       if self.lane_change_state != LaneChangeState.off:
@@ -877,7 +885,10 @@ class DesireHelper:
           self.trigger_name = trigger_name
 
         if (self.showDebugLog & 4) > 0:
-          print(f"---Prepare:lane_change_available={lane_change_available},lane_change_trig={auto_lane_change_trigger},trig_name={trigger_name},atc_left_right={atc_left_right},disable_count={self.lane_change_disable_count:.1f},change_disable={self.lane_change_disable},interval={lane_change_interval:.1f}, torque={torque_applied}")
+          print(f"---Pre:lane_change_available={lane_change_available},lane_change_trig={auto_lane_change_trigger},"
+                f"trig_name={trigger_name},atc_left_right={atc_left_right},disable_count={self.lane_change_disable_count:.1f},"
+                f"change_disable={self.lane_change_disable},interval={lane_change_interval:.1f}, torque={torque_applied},"
+                f"blindspot={blindspot_cond},{blindspot_detected},L:{carstate.leftBlindspot},R:{carstate.rightBlindspot},cnt={self.blindspot_detected_counter:.1f}")
 
       # =============LaneChangeState.laneChangeStarting=============
       elif self.lane_change_state == LaneChangeState.laneChangeStarting:

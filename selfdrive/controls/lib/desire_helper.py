@@ -539,7 +539,7 @@ class DesireHelper:
       radar_left = radarState.leadLeft
       radar_right = radarState.leadRight
       if radar_left.status or radar_right.status:
-        debugText = f"---Radar:"
+        debugText = f"---Radar,"
         if radar_left.status:
           debugText += f"L:{radar_left.status}"
           side_object_dist = radar_left.dRel + radar_left.vLead * 4.0

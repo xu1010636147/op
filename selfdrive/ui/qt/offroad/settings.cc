@@ -885,8 +885,8 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   navToggles = new ListWidget(this);
   navToggles->addItem(new CValueControl("RoadType", "手动设置道路类型(-1)", "-1:导航自动识别，0:高速(无应急车道) 1:高速(有应急车道), >=2:其它道路", -1, 100, 1));
   navToggles->addItem(new CValueControl("SameSpiCamFilter", "过滤相同的测速数据(1)", "0:关闭, 1:打开", 0, 1, 1));
-  navToggles->addItem(new CValueControl("BsdDelayTime", "后盲区有车延时(2s)", "当后盲区有车信号消失后，经过延时的秒数后允许变道", 1, 10, 1));
-  navToggles->addItem(new CValueControl("SideBsdDelayTime", "侧前方有车延时(2s)", "当侧前方有车信号消失后，经过延时的秒数后允许变道", 1, 10, 1));
+  navToggles->addItem(new CValueControl("BsdDelayTime", "后盲区有车延时(20x0.1s)", "当后盲区有车信号消失后，经过延时的秒数后允许变道", 15, 100, 1));
+  navToggles->addItem(new CValueControl("SideBsdDelayTime", "侧前方有车延时(20x0.1s)", "当侧前方有车信号消失后，经过延时的秒数后允许变道", 0, 100, 1));
   navToggles->addItem(new CValueControl("SideRadarMinDist", "忽略小于雷达距离(50x0.1m)的侧面车辆", "在左右两侧的车道上，忽略小于此雷达探测距离的车辆，单位为0.1m", -50, 100, 1));
   navToggles->addItem(new CValueControl("AutoForkDistOffsetH", "H 高速提前变道靠边的距离(1000m)", "在距离匝道口多少米时开始变道到最侧面车道，设置为0则不提前变道", 0, 2000, 5));
   navToggles->addItem(new CValueControl("AutoEnTurnNewLaneTimeH", "H 高速再次提前变道的新车道出现时间(0s)", "车辆已在最侧边车道，若新车道出现的时间超过设置值后允许再次变道，推荐值20秒，0 关闭", 0, 120, 1));

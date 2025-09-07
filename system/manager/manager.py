@@ -182,8 +182,8 @@ def get_default_params():
 
     # new
     ("SameSpiCamFilter", "1"),
-    ("BsdDelayTime", "2"),
-    ("SideBsdDelayTime", "2"),
+    ("BsdDelayTime", "20"),
+    ("SideBsdDelayTime", "0"),
     ("SideRadarMinDist", "50"),
     ("AutoTurnDistOffset", "0"),
     ("AutoTurnInNotRoadEdge", "0"),

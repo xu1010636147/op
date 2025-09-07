@@ -687,7 +687,7 @@ class DesireHelper:
       auto_lane_change_trigger = self.auto_lane_change_enable and not auto_lane_change_blocked and edge_available and (lane_available_trigger or lane_appeared) and not side_object_detected
       self.desireLog = f"D:{self.lane_width_curr:.1f},{lane_width_side:.1f},{distance_to_road_edge_avg:.1f},{lane_width_diff:.1f},{lane_width_far_diff:.1f},{lane_line_info}={auto_lane_change_trigger},T:{self.atc_turn_cnt},S:{self.lane_change_state},L:{self.auto_lane_change_enable},{auto_lane_change_blocked},E:{lane_available},{edge_available},A:{lane_available_trigger},{lane_appeared}"
       if (self.showDebugLog & 2) > 0:
-        print(f"---desire:{desire_enabled}({driver_desire_enabled},{atc_desire_enabled}),xDist:{xDistToTurn},"
+        print(f"---xDist:{xDistToTurn},desire:{desire_enabled}({driver_desire_enabled},{atc_desire_enabled}),"
               f"lane_available:{lane_available},cur={self.lane_width_curr:.1f},side={lane_width_side:.1f},"
               f"edge={distance_to_road_edge_avg:.1f},diff={lane_width_diff:.1f},far_diff:{lane_width_far_diff:.1f}")
         print(f"---State:{self.lane_change_state},turn: {self.atc_turn_cnt},trig:{auto_lane_change_trigger}="

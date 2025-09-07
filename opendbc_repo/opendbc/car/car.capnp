@@ -515,6 +515,7 @@ struct CarControl {
       nnff @34;
       preLaneChange @35;
       atcCancel @36;
+      atcResume @37;
     }
   }
 

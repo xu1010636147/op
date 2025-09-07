@@ -1384,8 +1384,14 @@ class CarrotServ:
       self.navTypeNext, self.navModifierNext, self.xTurnInfoNext = "invalid", "", -1
 
     if self.nTBTDist > 0 and self.xTurnInfo > 0:
-      self.xDistToTurn = self.nTBTDist
       self.xDistToTurnNav = self.nTBTDist
+      # 检测是否进入了下一个导航距离提示
+      if self.xDistToTurnNav > (self.xDistToTurnNavLast + 20):  # 当距离路口距离比上次大于20米时，则记录为当前最大的路口距离
+        self.xDistToTurnMax = self.xDistToTurnNav
+        self.xDistToTurnMaxCnt += 1
+      self.xDistToTurnNavLast = self.xDistToTurnNav  # 当前距离更新到上次距离时
+
+      self.xDistToTurn = self.nTBTDist
     if self.nTBTDistNext > 0 and self.xTurnInfoNext > 0:
       self.xDistToTurnNext = self.nTBTDistNext + self.nTBTDist
 
@@ -1987,13 +1993,6 @@ class CarrotServ:
         self.carrot_left_sec = left_sec
 
       self.left_sec = left_sec
-
-    #new
-    if self.xDistToTurnNav > (self.xDistToTurnNavLast + 20): #当距离路口距离比上次大于20米时，则记录为当前最大的路口距离
-      self.xDistToTurnMax = self.xDistToTurnNav
-      self.xDistToTurnMaxCnt += 1
-      self.xDistToTurnNavLast = self.xDistToTurnNav #当前距离更新到上次距离时
-    #new
 
     self._update_cmd()
     msg = messaging.new_message('carrotMan')

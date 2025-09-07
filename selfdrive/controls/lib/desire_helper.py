@@ -833,9 +833,15 @@ class DesireHelper:
                 trigger_type = -3
                 trigger_name = "no torque"
             elif driver_desire_enabled: #驾驶员打灯变道，直接进入LaneChangeState.laneChangeStarting
-              self.lane_change_state = LaneChangeState.laneChangeStarting
-              trigger_type = 3
-              trigger_name = "driver"
+              if not side_object_detected or (torque_applied and not block_lanechange_bsd): #侧前方无车或用户打了方向盘
+                self.lane_change_state = LaneChangeState.laneChangeStarting
+                trigger_type = 3
+                trigger_name = "driver"
+              else:
+                trigger_type = -8
+                trigger_name = "driver fbsd"
+                if 0 == (self.frame % int(2 / DT_MDL)):
+                  self.lane_change_audio(True, 6, 0)  # 播报盲区有车
             elif torque_applied or auto_lane_change_trigger: #auto_lane_change_trigger在self.auto_lane_change_enable成立并且无其实阻止条件是则会为True
               if torque_applied: #如果用户施加了扭矩，则立即变道（不执行延时）
                 self.lane_change_state = LaneChangeState.laneChangeStarting
@@ -866,7 +872,7 @@ class DesireHelper:
             else:
               trigger_type = -5
               trigger_name = "no trig"
-              if side_object_detected and (self.frame % int(1/DT_MDL)):
+              if side_object_detected and (0 == (self.frame % int(2/DT_MDL))):
                 self.lane_change_audio(True, 6, 0)  # 播报盲区有车
 
             if self.lane_change_state == LaneChangeState.laneChangeStarting:

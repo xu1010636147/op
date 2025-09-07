@@ -206,6 +206,7 @@ class DesireHelper:
     self.lane_change_delay_start = 0
     self.event_test_frame = 0
     self.lane_change_audio_delay = 0
+    self.atc_resume = 0
     #new
 
   def lane_change_audio(self, enable, turn_type, param=0):
@@ -712,6 +713,18 @@ class DesireHelper:
 
         self.lane_change_disable_count = lane_change_interval #重置连续变道延时
         self.lane_change_disable = False
+
+        #提示领航已恢复
+        if (desire_enabled and self.prev_desire_enabled and driver_blinker_changed and
+            driver_desire_enabled and atc_desire_enabled and driver_blinker_state == atc_blinker_state and
+            atc_blinker_state != BLINKER_NONE):
+          self.atc_resume = 1
+          self.lane_change_audio(True, 5, 0)  # 播报领航已退出
+        elif desire_enabled and not self.prev_desire_enabled and atc_blinker_state != BLINKER_NONE: #自动变道成立的条件
+          self.atc_resume = 2
+        else:
+          self.atc_resume = 0
+
         if (self.showDebugLog & 4) > 0:
           print(f"---Init: enable={self.auto_lane_change_enable},exist cnt={lane_exist_counter},lane_change_available={lane_change_available}")
         #new
@@ -864,7 +877,11 @@ class DesireHelper:
           else:
             self.lane_change_state = LaneChangeState.off
 
-          #new 如果不允许连续变道，则改为LaneChangeState.off状态，如果允许连续变道，变道次数完成后则不再允许变道
+          #是否有打灯恢复领航状态的标志，如果不允许恢复，则状态机设置为0ff
+          if self.atc_resume == 0:
+            self.lane_change_state = LaneChangeState.off
+
+          #new 如果不允许连续变道，则清空变道次数self.atc_turn_cnt
           if atc_left_right: #属于变道
             #if self.autoTurnInNotRoadEdge > 0 and (not driver_desire_enabled and atc_desire_enabled): #属于系统自动变道
             if self.autoTurnInNotRoadEdge > 0:
@@ -890,7 +907,7 @@ class DesireHelper:
                 self.blinker_ignore_last = False
 
         if (self.showDebugLog & 4) > 0:
-          print(f"---Finishing: ll_prob={self.lane_change_ll_prob:.1f};dir={self.lane_change_direction};trig:name={self.trigger_name},type={self.trigger_type};state new={self.lane_change_state}")
+          print(f"---Finishing: ll_prob={self.lane_change_ll_prob:.1f};dir={self.lane_change_direction};trig:name={self.trigger_name},type={self.trigger_type};state new={self.lane_change_state},atc resume={self.atc_resume}")
 
     if self.lane_change_state in (LaneChangeState.off, LaneChangeState.preLaneChange):
       self.lane_change_timer = 0.0

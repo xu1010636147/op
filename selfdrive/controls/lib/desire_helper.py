@@ -208,10 +208,12 @@ class DesireHelper:
     self.lane_change_audio_delay = 0
     self.atc_resume = 0
     self.object_detected_count_new = 0
-    self.min_object_detected_count = int(-2.0 / DT_MDL)  # 最小计时
-    self.min_object_detected_count_thr = int(-1.0 / DT_MDL)  # 判断是否无障碍的持续时间
+    self.min_object_detected_count = int(-60.0 / DT_MDL)  # 最小计时
+    self.min_object_detected_count_thr = int(-2.0 / DT_MDL)  # 判断是否无障碍的持续时间
     self.side_object_detected = False
     self.min_drel_vego_time = 1.5
+    self.bsdDelayTime = 2
+    self.sideBsdDelayTime = 2
     #new
 
   def lane_change_audio(self, enable, turn_type, param=0):
@@ -350,6 +352,9 @@ class DesireHelper:
       self.newLaneWidthDiff = self.params.get_float("NewLaneWidthDiff") * 0.1
       self.autoEnTurnNewLaneTimeH = self.params.get_int("AutoEnTurnNewLaneTimeH")
       self.autoEnTurnNewLaneTime = self.params.get_int("AutoEnTurnNewLaneTime")
+      self.bsdDelayTime = max(30, min(0, self.params.get_int("BsdDelayTime")))
+      self.sideBsdDelayTime = max(30, min(0, self.params.get_int("SideBsdDelayTime")))
+      self.min_object_detected_count_thr = int(-1*self.sideBsdDelayTime/DT_MDL)
       #new
     self.frame += 1
 
@@ -770,7 +775,7 @@ class DesireHelper:
           self.auto_lane_change_enable = True
 
         if blindspot_detected and not ignore_bsd: #检测到盲区有车并且不忽略BSD，否则self.blindspot_detected_counter为0
-          self.blindspot_detected_counter = int(1.5 / DT_MDL) #盲区检测1.5秒
+          self.blindspot_detected_counter = int(self.bsdDelayTime / DT_MDL) #盲区检测1.5秒
 
         trigger_type = 0
         trigger_name = "none"

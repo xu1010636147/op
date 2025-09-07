@@ -211,6 +211,7 @@ class DesireHelper:
     self.min_object_detected_count = int(-2.0 / DT_MDL)  # 最小计时
     self.min_object_detected_count_thr = int(-1.0 / DT_MDL)  # 判断是否无障碍的持续时间
     self.side_object_detected = False
+    self.min_drel_vego_time = 1.5
     #new
 
   def lane_change_audio(self, enable, turn_type, param=0):
@@ -522,7 +523,7 @@ class DesireHelper:
 
       radar = radarState.leadLeft if blinker_state == BLINKER_LEFT else radarState.leadRight
       side_object_dist = radar.dRel + radar.vLead * 3.0 if radar.status else 255
-      object_detected = (side_object_dist < v_ego * 4.0) or (radar.dRel < v_ego and radar.status)
+      object_detected = (side_object_dist < v_ego * (3.0 + self.min_drel_vego_time)) or (radar.dRel < (v_ego*self.min_drel_vego_time) and radar.status)
       #self.object_detected_count = max(1, self.object_detected_count + 1) if object_detected else min(-1, self.object_detected_count - 1)
       if object_detected: #检测到
         self.object_detected_count = 1
@@ -548,7 +549,7 @@ class DesireHelper:
 
     #雷达调试信息
     if (self.showDebugLog & 16) > 0:
-      vego4x = v_ego * 4.0
+      vego4x = v_ego * (3.0 + self.min_drel_vego_time)
       radar_left = radarState.leadLeft
       radar_right = radarState.leadRight
       if radar_left.status or radar_right.status:
@@ -556,13 +557,13 @@ class DesireHelper:
         if radar_left.status:
           debugText += f"L:{radar_left.status}"
           side_object_dist = radar_left.dRel + radar_left.vLead * 3.0
-          side_object_block = side_object_dist < vego4x or radar_left.dRel < v_ego
+          side_object_block = side_object_dist < vego4x or radar_left.dRel < (v_ego*self.min_drel_vego_time)
           debugText += f",dRel={radar_left.dRel:.1f},V={radar_left.vLead:.1f},sDist={side_object_dist:.1f},block={side_object_block},"
 
         if radar_right.status:
           debugText += f"R:{radar_right.status}"
           side_object_dist = radar_right.dRel + radar_right.vLead * 3.0
-          side_object_block = side_object_dist < vego4x or radar_right.dRel < v_ego
+          side_object_block = side_object_dist < vego4x or radar_right.dRel < (v_ego*self.min_drel_vego_time)
           debugText += f",dRel={radar_right.dRel:.1f},V={radar_right.vLead:.1f},sDist={side_object_dist:.1f},block=={side_object_block}"
 
         debugText += f",v_ego*4={vego4x:.1f},cnt={self.object_detected_count},{self.object_detected_count_new}"

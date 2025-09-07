@@ -1364,8 +1364,8 @@ public:
             ui_draw_bsd(s, lane_barrier_vertices[0], &color, false);
         }
         //else if (lead_left.getStatus() && lead_left.getDRel() < car_state.getVEgo() * 3.0 && leftLaneChange) {
-        else if (lead_left.getStatus() && ( ((lead_left.getDRel() + lead_left.getVLead()*3.0) < car_state.getVEgo() * 4.0)
-                                           || (lead_left.getDRel() < car_state.getVEgo()) )
+        else if (lead_left.getStatus() && ( ((lead_left.getDRel() + lead_left.getVLead()*3.0) < car_state.getVEgo() * 4.5)
+                                           || (lead_left.getDRel() < car_state.getVEgo()*1.5) )
                 ){
             ui_draw_bsd(s, lane_barrier_vertices[0], &color2, false);
         }
@@ -1374,8 +1374,8 @@ public:
             ui_draw_bsd(s, lane_barrier_vertices[1], &color, true);
         }
         //else if (lead_right.getStatus() && lead_right.getDRel() < car_state.getVEgo() * 3.0 && rightLaneChange) {
-        else if (lead_right.getStatus() && ( ((lead_right.getDRel() + lead_right.getVLead()*3.0) < car_state.getVEgo() * 4.0)
-                                             || (lead_right.getDRel() < car_state.getVEgo()) )
+        else if (lead_right.getStatus() && ( ((lead_right.getDRel() + lead_right.getVLead()*3.0) < car_state.getVEgo() * 4.5)
+                                             || (lead_right.getDRel() < car_state.getVEgo()*1.5) )
                 ){
             ui_draw_bsd(s, lane_barrier_vertices[1], &color2, true);
         }

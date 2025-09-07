@@ -373,13 +373,13 @@ class DesireHelper:
         self.lane_change_audio(True, 3, 0)
         print("lane_change_audio 3")
       elif self.event_test_frame == 20 * 40:
-        self.lane_change_audio(True, 3, 0)
+        self.lane_change_audio(True, 4, 0)
         print("lane_change_audio 3")
       elif self.event_test_frame == 20 * 50:
-        self.lane_change_audio(True, 3, 0)
+        self.lane_change_audio(True, 5, 0)
         print("lane_change_audio 3")
       elif self.event_test_frame == 20 * 60:
-        self.lane_change_audio(True, 3, 0)
+        self.lane_change_audio(True, 6, 0)
         print("lane_change_audio 3")
       elif self.event_test_frame >= 20 * 82:
         self.event_test_frame = 0

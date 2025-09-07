@@ -206,7 +206,7 @@ class DesireHelper:
     self.lane_change_delay_start = 0
     self.event_test_frame = 0
     self.lane_change_audio_delay = 0
-    self.atc_resume = 0
+    self.atc_resume = -1
     self.object_detected_count_new = 0
     self.min_object_detected_count = int(-60.0 / DT_MDL)  # 最小计时
     self.min_object_detected_count_thr = int(-2.0 / DT_MDL)  # 判断是否无障碍的持续时间
@@ -754,7 +754,7 @@ class DesireHelper:
             driver_desire_enabled and atc_desire_enabled and driver_blinker_state == atc_blinker_state and
             atc_blinker_state != BLINKER_NONE):
           self.atc_resume = 1
-          self.lane_change_audio(True, 5, 0)  # 播报领航已退出
+          #self.lane_change_audio(True, 5, 0)  # 播报领航已恢复
         elif desire_enabled and not self.prev_desire_enabled and atc_blinker_state != BLINKER_NONE: #自动变道成立的条件
           self.atc_resume = 2
         else:
@@ -916,6 +916,9 @@ class DesireHelper:
           #是否有打灯恢复领航状态的标志，如果不允许恢复，则状态机设置为0ff
           if self.atc_resume == 0:
             self.lane_change_state = LaneChangeState.off
+          elif self.atc_resume == 1:
+            self.lane_change_audio(True, 5, 0)  # 播报领航已恢复
+          self.atc_resume = -1
 
           #new 如果不允许连续变道，则清空变道次数self.atc_turn_cnt
           if atc_left_right: #属于变道

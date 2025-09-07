@@ -207,6 +207,10 @@ class DesireHelper:
     self.event_test_frame = 0
     self.lane_change_audio_delay = 0
     self.atc_resume = 0
+    self.object_detected_count_new = 0
+    self.min_object_detected_count = int(-2.0 / DT_MDL)  # 最小计时
+    self.min_object_detected_count_thr = int(-1.0 / DT_MDL)  # 判断是否无障碍的持续时间
+    self.side_object_detected = False
     #new
 
   def lane_change_audio(self, enable, turn_type, param=0):
@@ -516,26 +520,30 @@ class DesireHelper:
       lane_appeared = lane_exist_counter == int(0.2 / DT_MDL) #车道线存在时间等于0.2秒代表有新车道线出现
       curr_lane_width_diff = self.lane_width_left_curr_diff if blinker_state == BLINKER_LEFT else self.lane_width_right_curr_diff #当前车道宽度和旁边车道宽度的差值
 
-      #使用雷达检测左前方和右前方的车辆状态，判断变道是否存在危险，无有效雷达时则认为侧面无车
-      #if blinker_state != BLINKER_NONE:
-      #  radar = radarState.leadLeft if blinker_state == BLINKER_LEFT else radarState.leadRight
-      #  side_object_dist = radar.dRel + radar.vLead * 4.0 if radar.status else 255
-      #  object_detected = side_object_dist < v_ego * 3.0 or (radar.status and radar.dRel < v_ego) #增加一个相对距离要大于1秒车辆走过的距离
-      #  #self.object_detected_count = max(1, self.object_detected_count + 1) if object_detected else min(-1, self.object_detected_count - 1)
-      #  self.object_detected_count = 1 if object_detected else min(int(-3/DT_MDL),self.object_detected_count - 1)
-      #else:
-      #  self.object_detected_count = 0
-
       radar = radarState.leadLeft if blinker_state == BLINKER_LEFT else radarState.leadRight
       side_object_dist = radar.dRel + radar.vLead * 3.0 if radar.status else 255
       object_detected = side_object_dist < v_ego * 4.0
-      self.object_detected_count = max(1, self.object_detected_count + 1) if object_detected else min(-1, self.object_detected_count - 1)
+      #self.object_detected_count = max(1, self.object_detected_count + 1) if object_detected else min(-1, self.object_detected_count - 1)
+      if object_detected: #检测到
+        self.object_detected_count = 1
+      else:
+        self.object_detected_count -= 1
+        if self.object_detected_count < self.min_object_detected_count:
+          self.object_detected_count = self.min_object_detected_count
+
+      if object_detected:
+        self.object_detected_count_new = 1
+      else:
+        self.object_detected_count_new -= 1
+        if self.object_detected_count_new < self.min_object_detected_count:
+          self.object_detected_count_new = self.min_object_detected_count
     else:
       lane_exist_counter = 0
       lane_available = True
       edge_available = True
       lane_appeared = False
       self.object_detected_count = 0
+      self.object_detected_count_new = 0
       curr_lane_width_diff = 3.5
 
     #雷达调试信息
@@ -555,7 +563,7 @@ class DesireHelper:
           side_object_dist = radar_right.dRel + radar_right.vLead * 3.0
           debugText += f",dRel={radar_right.dRel:.1f},V={radar_right.vLead:.1f},sDist={side_object_dist:.1f},block=={side_object_dist<vego4x}"
 
-        debugText += f",v_ego*4={vego4x:.1f},cnt={self.object_detected_count}"
+        debugText += f",v_ego*4={vego4x:.1f},cnt={self.object_detected_count},{self.object_detected_count_new}"
         print(debugText)
 
     #lane_available_trigger = not self.lane_available_last and lane_available
@@ -647,8 +655,14 @@ class DesireHelper:
     elif fork_now and self.atc_turn_cnt >= 0: #立即变道的请求，强制设置lane_available_trigger为True
       lane_available_trigger = True
     edge_availabled = not self.edge_available_last and edge_available
-    #side_object_detected = self.object_detected_count > -1. / DT_MDL #未检测到侧方车辆1秒才认为是安全的
-    side_object_detected = self.object_detected_count > -0.3 / DT_MDL
+    #side_object_detected = self.object_detected_count > -0.3 / DT_MDL
+    #侧面车道障碍物判断
+    if self.side_object_detected:
+      if self.object_detected_count_new <= self.min_object_detected_count_thr:
+        self.side_object_detected = False
+    elif self.object_detected_count_new > 0:
+      self.side_object_detected = True
+    side_object_detected = self.side_object_detected
     lane_appeared = lane_appeared and distance_to_road_edge < 4.0 #新车道出现还要附加个距离道路边缘小于4米的条件
 
     if self.carrot_lane_change_count > 0: #些计数为carrorMan发送过来的LANECHANGE触发的变道
@@ -662,7 +676,7 @@ class DesireHelper:
       self.desireLog = f"D:{self.lane_width_curr:.1f},{lane_width_side:.1f},{distance_to_road_edge_avg:.1f},{lane_width_diff:.1f},{lane_width_far_diff:.1f},{lane_line_info}={auto_lane_change_trigger},T:{self.atc_turn_cnt},S:{self.lane_change_state},L:{self.auto_lane_change_enable},{auto_lane_change_blocked},E:{lane_available},{edge_available},A:{lane_available_trigger},{lane_appeared}"
       if (self.showDebugLog & 2) > 0:
         print(f"---xDist:{xDistToTurn},lane_available:{lane_available},cur={self.lane_width_curr:.1f},side={lane_width_side:.1f},edge={distance_to_road_edge_avg:.1f},diff={lane_width_diff:.1f},far_diff:{lane_width_far_diff:.1f}")
-        print(f"---State:{self.lane_change_state},turn: {self.atc_turn_cnt},trig:{auto_lane_change_trigger}=lane_change_enable'{self.auto_lane_change_enable}'&&!blocked'{auto_lane_change_blocked}'&&edge_available'{edge_available}'&&(lane_available_trig'{lane_available_trigger}'||lane_appeared'{lane_appeared}')&!object_detected'{side_object_detected}' obj_cnt={self.object_detected_count:.1f},active={self.atc_active}")
+        print(f"---State:{self.lane_change_state},turn: {self.atc_turn_cnt},trig:{auto_lane_change_trigger}=lane_change_enable'{self.auto_lane_change_enable}'&&!blocked'{auto_lane_change_blocked}'&&edge_available'{edge_available}'&&(lane_available_trig'{lane_available_trigger}'||lane_appeared'{lane_appeared}')&!object_detected'{side_object_detected}' obj_cnt={self.object_detected_count:.1f},{self.object_detected_count_new},active={self.atc_active}")
 
     if not lateral_active or self.lane_change_timer > LANE_CHANGE_TIME_MAX:
       if self.lane_change_state != LaneChangeState.off:

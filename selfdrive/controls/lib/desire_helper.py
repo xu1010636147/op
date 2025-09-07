@@ -527,8 +527,8 @@ class DesireHelper:
       #  self.object_detected_count = 0
 
       radar = radarState.leadLeft if blinker_state == BLINKER_LEFT else radarState.leadRight
-      side_object_dist = radar.dRel + radar.vLead * 4.0 if radar.status else 255
-      object_detected = side_object_dist < v_ego * 3.0
+      side_object_dist = radar.dRel + radar.vLead * 3.0 if radar.status else 255
+      object_detected = side_object_dist < v_ego * 4.0
       self.object_detected_count = max(1, self.object_detected_count + 1) if object_detected else min(-1, self.object_detected_count - 1)
     else:
       lane_exist_counter = 0

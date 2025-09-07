@@ -467,10 +467,14 @@ class DesireHelper:
     else:
       self.atc_active = 0
 
+    #atc_blinker_state_org = atc_blinker_state
     #自动转弯方向和驾驶员打的转向灯不同，则优先驾驶员
     if driver_blinker_state != BLINKER_NONE and atc_blinker_state != BLINKER_NONE and driver_blinker_state != atc_blinker_state:
       atc_blinker_state = BLINKER_NONE
       self.atc_active = 2
+    elif driver_blinker_state != BLINKER_NONE and driver_blinker_state == atc_blinker_state and driver_blinker_changed: #如果用户打了与自动转身一样的灯，可恢复自动转向
+      if self.atc_active == 2:
+        self.atc_active = 0
     atc_desire_enabled = atc_blinker_state in [BLINKER_LEFT, BLINKER_RIGHT] #自动转弯控制需求
 
     if driver_blinker_state == BLINKER_NONE: #驾驶员未打灯或者打了之后关闭了转向灯时，则清除反方向盘标志

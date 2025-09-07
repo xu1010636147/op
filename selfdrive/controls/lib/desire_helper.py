@@ -214,6 +214,8 @@ class DesireHelper:
     self.min_drel_vego_time = 1.5
     self.bsdDelayTime = 2.
     self.sideBsdDelayTime = 2.
+    self.atc_cancel = False
+    self.atc_cancel_delay = 0
     #new
 
   def lane_change_audio(self, enable, turn_type, param=0):
@@ -967,9 +969,17 @@ class DesireHelper:
       self.lane_change_state = LaneChangeState.off
       self.blinker_ignore = True
       if atc_desire_enabled:
-        self.lane_change_audio(True, 4, 0) #播报领航已退出
+        self.atc_cancel = True
+        #self.lane_change_audio(True, 4, 0) #播报领航已退出
       if (self.showDebugLog & 32) > 0:
         print("---steering_pressed, LaneChangeState.off")
+    elif steering_pressed and self.atc_cancel:
+      self.atc_cancel_delay = int(2.0/DT_MDL)
+
+    self.atc_cancel_delay = min(-1, self.atc_cancel_delay - 1)
+    if self.atc_cancel_delay == 0:
+      self.lane_change_audio(True, 4, 0)  # 播报领航已退出
+      self.atc_cancel = False
 
     if self.turn_direction != TurnDirection.none:
       self.desire = TURN_DESIRES[self.turn_direction]

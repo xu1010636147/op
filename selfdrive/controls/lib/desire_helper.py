@@ -220,7 +220,7 @@ class DesireHelper:
     elif turn_type == 3: #转弯
       #self.events.add(EventName.audioTurn)
       pass
-    elif turn_type == 4: #倒计时
+    elif turn_type == 4: #领航已退出
       pass
     #保存事件类型
     self.event_type = turn_type
@@ -660,21 +660,30 @@ class DesireHelper:
         print(f"---State:{self.lane_change_state},turn: {self.atc_turn_cnt},trig:{auto_lane_change_trigger}=lane_change_enable'{self.auto_lane_change_enable}'&&!blocked'{auto_lane_change_blocked}'&&edge_available'{edge_available}'&&(lane_available_trig'{lane_available_trigger}'||lane_appeared'{lane_appeared}')&!object_detected'{side_object_detected}' obj_cnt={self.object_detected_count:.1f},active={self.atc_active}")
 
     if not lateral_active or self.lane_change_timer > LANE_CHANGE_TIME_MAX:
-      if (self.showDebugLog & 32) > 0 and self.lane_change_state != LaneChangeState.off:
-        print("---Desire canceled")
+      if self.lane_change_state != LaneChangeState.off:
+        if atc_desire_enabled:
+          self.lane_change_audio(True, 4, 0)  # 播报领航已退出
+        if (self.showDebugLog & 32) > 0:
+          print("---Desire canceled")
       self.lane_change_state = LaneChangeState.off
       self.lane_change_direction = LaneChangeDirection.none
       self.turn_direction = TurnDirection.none
     elif desire_enabled and ((below_lane_change_speed and not carstate.standstill and self.enable_turn_desires) or self.turn_desire_state):
-      if (self.showDebugLog & 32) > 0 and self.lane_change_state != LaneChangeState.off:
-        print("---Desire Turning")
+      if self.lane_change_state != LaneChangeState.off:
+        if atc_desire_enabled:
+          self.lane_change_audio(True, 4, 0)  # 播报领航已退出
+        if (self.showDebugLog & 32) > 0:
+          print("---Desire Turning")
       self.lane_change_state = LaneChangeState.off
       self.turn_direction = TurnDirection.turnLeft if blinker_state == BLINKER_LEFT else TurnDirection.turnRight
       self.lane_change_direction = self.turn_direction #LaneChangeDirection.none
       desire_enabled = False
     elif self.desire_disable_count > 0: # Turn后一段时间内无法变更车道,此变量在check_desire_state函数里计算，如果车辆在转弯，则一直把desire_disable_count设置为2秒的计数值
-      if (self.showDebugLog & 32) > 0 and self.lane_change_state != LaneChangeState.off:
-        print("---Desire after turning")
+      if self.lane_change_state != LaneChangeState.off:
+        if atc_desire_enabled:
+          self.lane_change_audio(True, 4, 0)  # 播报领航已退出
+        if (self.showDebugLog & 32) > 0:
+          print("---Desire after turning")
       self.lane_change_state = LaneChangeState.off
       self.lane_change_direction = LaneChangeDirection.none
       self.turn_direction = TurnDirection.none
@@ -901,6 +910,8 @@ class DesireHelper:
       self.lane_change_direction = LaneChangeDirection.none
       self.lane_change_state = LaneChangeState.off
       self.blinker_ignore = True
+      if atc_desire_enabled:
+        self.lane_change_audio(True, 4, 0) #播报领航已退出
       if (self.showDebugLog & 32) > 0:
         print("---steering_pressed, LaneChangeState.off")
 

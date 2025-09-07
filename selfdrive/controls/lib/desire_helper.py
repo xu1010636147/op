@@ -540,22 +540,22 @@ class DesireHelper:
 
     #雷达调试信息
     if (self.showDebugLog & 16) > 0:
-      vego3x = v_ego * 3.0
+      vego4x = v_ego * 4.0
       radar_left = radarState.leadLeft
       radar_right = radarState.leadRight
       if radar_left.status or radar_right.status:
         debugText = f"---Radar,"
         if radar_left.status:
           debugText += f"L:{radar_left.status}"
-          side_object_dist = radar_left.dRel + radar_left.vLead * 4.0
-          debugText += f",dRel={radar_left.dRel:.1f},V={radar_left.vLead:.1f},sDist={side_object_dist:.1f},block={side_object_dist<vego3x},"
+          side_object_dist = radar_left.dRel + radar_left.vLead * 3.0
+          debugText += f",dRel={radar_left.dRel:.1f},V={radar_left.vLead:.1f},sDist={side_object_dist:.1f},block={side_object_dist<vego4x},"
 
         if radar_right.status:
           debugText += f"R:{radar_right.status}"
-          side_object_dist = radar_right.dRel + radar_right.vLead * 4.0
-          debugText += f",dRel={radar_right.dRel:.1f},V={radar_right.vLead:.1f},sDist={side_object_dist:.1f},block=={side_object_dist<vego3x}"
+          side_object_dist = radar_right.dRel + radar_right.vLead * 3.0
+          debugText += f",dRel={radar_right.dRel:.1f},V={radar_right.vLead:.1f},sDist={side_object_dist:.1f},block=={side_object_dist<vego4x}"
 
-        debugText += f",v_ego*3={vego3x:.1f},cnt={self.object_detected_count}"
+        debugText += f",v_ego*4={vego4x:.1f},cnt={self.object_detected_count}"
         print(debugText)
 
     #lane_available_trigger = not self.lane_available_last and lane_available

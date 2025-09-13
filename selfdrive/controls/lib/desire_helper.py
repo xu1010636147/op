@@ -216,6 +216,7 @@ class DesireHelper:
     self.sideBsdDelayTime = 2.
     self.atc_cancel = False
     self.atc_cancel_delay = 0
+    self.xroadcate = -1
     #new
 
   def lane_change_audio(self, enable, turn_type, param=0):
@@ -360,6 +361,10 @@ class DesireHelper:
       #new
     self.frame += 1
 
+    self.xroadcate = carrotMan.roadCate
+    if self.roadType < 0:
+      self.xroadcate = self.roadType
+
     #TEST语音测试
     if False:
       self.event_test_frame += 1
@@ -393,7 +398,7 @@ class DesireHelper:
     # TEST
 
     # new
-    if 0 <= self.roadType <= 2: #高速
+    if 0 <= self.xroadcate <= 1: #高速
       autoEnTurnNewLaneTime = self.autoEnTurnNewLaneTimeH
     else:
       autoEnTurnNewLaneTime = self.autoEnTurnNewLaneTime
@@ -633,14 +638,14 @@ class DesireHelper:
       if atc_desire_enabled and atc_left_right and (atc_blinker_state == BLINKER_RIGHT or atc_blinker_state == BLINKER_LEFT): #属于自动提变道类型atc_left或atc_right
         if self.lane_cnt_time <= -1: #倒计时已结束
           if self.atc_turn_cnt < 0 < autoEnTurnNewLaneTime and self.lane_cnt_time < int((-1) * autoEnTurnNewLaneTime / DT_MDL): #如果自动变道次数已用完，并且车道数量稳定时间超过10秒后(这个时间可以调大，用来过滤汇入车道)
-            if self.roadType == 1 and atc_blinker_state == BLINKER_RIGHT: #带应急车道的高速公路右变道
+            if self.xroadcate == 1 and atc_blinker_state == BLINKER_RIGHT: #带应急车道的高速公路右变道
               if 2 <= lane_count < 10: #稳定的车道数量大于等于2条，说明有车道可以变道了
                 self.atc_turn_cnt = 0
             else: #不带应急车道的高速公路或者普通公路
               if 1 <= lane_count < 10: #稳定的车道数量大于等于1条，说明有车道可以变道了
                 self.atc_turn_cnt = 0
         elif self.lane_cnt_time <= 0: #倒计时为0
-          if self.roadType == 1 and atc_blinker_state == BLINKER_RIGHT: #带应急车道的高速公路右变道
+          if self.xroadcate == 1 and atc_blinker_state == BLINKER_RIGHT: #带应急车道的高速公路右变道
             if lane_count < 2:   #如果侧面只剩一条应急车道时，关闭自动变道功能
               self.atc_turn_cnt = -1
           else: #不带应急车道的高速公路或者普通公路
@@ -669,8 +674,8 @@ class DesireHelper:
                and curr_lane_width_diff < 0.3 #旁边车道不能比当前车道小于0.3m
                and lane_width_diff >= -0.1 #旁边车道不允许在变小
                and self.atc_turn_cnt >= 0 #还有剩余变道次数
-               and ((atc_blinker_state == BLINKER_RIGHT and self.roadType == 1 and not last_lane) #有应急车道的高速右变道限制，不允许变道到最后一条车道(应急车道)上
-                    or (atc_blinker_state != BLINKER_RIGHT or self.roadType != 1)) #不是右变道或者在无应急车道的道路则允许变道
+               and ((atc_blinker_state == BLINKER_RIGHT and self.xroadcate == 1 and not last_lane) #有应急车道的高速右变道限制，不允许变道到最后一条车道(应急车道)上
+                    or (atc_blinker_state != BLINKER_RIGHT or self.xroadcate != 1)) #不是右变道或者在无应急车道的道路则允许变道
                )
           and (lane_width_side < distance_to_road_edge) #侧面车道的宽度要大于路沿宽度
          ):
@@ -693,14 +698,14 @@ class DesireHelper:
       auto_lane_change_trigger = lane_change_available
     else:
       #如果自动转弯要求是左变道，但是用户没有打左转向灯，那么会阻止自动变道
-      auto_lane_change_blocked = ((atc_blinker_state == BLINKER_LEFT) and (driver_blinker_state != BLINKER_LEFT) and (self.autoTurnLeft == 0 or self.roadType < 0 or self.roadType > 1)) #增加可以设置允许左变道
+      auto_lane_change_blocked = ((atc_blinker_state == BLINKER_LEFT) and (driver_blinker_state != BLINKER_LEFT) and (self.autoTurnLeft == 0 or self.xroadcate < 0 or self.xroadcate > 1)) #增加可以设置允许左变道
       #auto_lane_change_trigger = not auto_lane_change_blocked and edge_available and (lane_available_trigger or edge_availabled or lane_appeared) and not side_object_detected
       auto_lane_change_trigger = self.auto_lane_change_enable and not auto_lane_change_blocked and edge_available and (lane_available_trigger or lane_appeared) and not side_object_detected
       self.desireLog = f"D:{self.lane_width_curr:.1f},{lane_width_side:.1f},{distance_to_road_edge_avg:.1f},{lane_width_diff:.1f},{lane_width_far_diff:.1f},{lane_line_info}={auto_lane_change_trigger},T:{self.atc_turn_cnt},S:{self.lane_change_state},L:{self.auto_lane_change_enable},{auto_lane_change_blocked},E:{lane_available},{edge_available},A:{lane_available_trigger},{lane_appeared}"
       if (self.showDebugLog & 2) > 0:
         print(f"---xDist:{xDistToTurn},desire:{desire_enabled}({driver_desire_enabled},{atc_desire_enabled}),"
               f"lane_available:{lane_available},cur={self.lane_width_curr:.1f},side={lane_width_side:.1f},"
-              f"edge={distance_to_road_edge_avg:.1f},diff={lane_width_diff:.1f},far_diff:{lane_width_far_diff:.1f}")
+              f"edge={distance_to_road_edge_avg:.1f},diff={lane_width_diff:.1f},far_diff:{lane_width_far_diff:.1f},road_type={self.xroadcate}")
         print(f"---State:{self.lane_change_state},turn: {self.atc_turn_cnt},trig:{auto_lane_change_trigger}="
               f"lane_change_enable'{self.auto_lane_change_enable}'&&!blocked'{auto_lane_change_blocked}'&&edge_available'{edge_available}'&&"
               f"(lane_available_trig'{lane_available_trigger}'||lane_appeared'{lane_appeared}')&!object_detected'{side_object_detected}' "
@@ -716,21 +721,21 @@ class DesireHelper:
       self.lane_change_direction = LaneChangeDirection.none
       self.turn_direction = TurnDirection.none
     elif desire_enabled and ((below_lane_change_speed and not carstate.standstill and self.enable_turn_desires) or self.turn_desire_state):
+      if (self.showDebugLog & 32) > 0:
+        print("---Desire Turning")
       if self.lane_change_state != LaneChangeState.off:
         if atc_desire_enabled:
           self.lane_change_audio(True, 4, 0)  # 播报领航已退出
-        if (self.showDebugLog & 32) > 0:
-          print("---Desire Turning")
       self.lane_change_state = LaneChangeState.off
       self.turn_direction = TurnDirection.turnLeft if blinker_state == BLINKER_LEFT else TurnDirection.turnRight
       self.lane_change_direction = self.turn_direction #LaneChangeDirection.none
       desire_enabled = False
     elif self.desire_disable_count > 0: # Turn后一段时间内无法变更车道,此变量在check_desire_state函数里计算，如果车辆在转弯，则一直把desire_disable_count设置为2秒的计数值
+      if (self.showDebugLog & 32) > 0:
+        print("---Desire after turning")
       if self.lane_change_state != LaneChangeState.off:
         if atc_desire_enabled:
           self.lane_change_audio(True, 4, 0)  # 播报领航已退出
-        if (self.showDebugLog & 32) > 0:
-          print("---Desire after turning")
       self.lane_change_state = LaneChangeState.off
       self.lane_change_direction = LaneChangeDirection.none
       self.turn_direction = TurnDirection.none

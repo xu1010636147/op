@@ -119,7 +119,7 @@ class CarState(CarStateBase):
       self.SCC12 = True if 1057 in fingerprints[bus_cruise] else False
       self.SCC13 = True if 1290 in fingerprints[bus_cruise] else False
       self.SCC14 = True if 905 in fingerprints[bus_cruise] else False
-      
+
     self.HAS_LFA_BUTTON = True if 913 in fingerprints[0] else False
     self.CRUISE_BUTTON_ALT = True if 1007 in fingerprints[0] else False
 
@@ -144,6 +144,13 @@ class CarState(CarStateBase):
     self.cp_bsm = None
 
     self.controls_ready_count = 0
+
+    #ESCC
+    self.escc_enabled = True if Params().get_int("EnableEscc") == 1 else False
+    self.escc_aeb_warning = 0
+    self.escc_aeb_dec_cmd_act = 0
+    self.escc_cmd_act = 0
+    self.escc_aeb_dec_cmd = 0
 
   def update(self, can_parsers) -> structs.CarState:
 
@@ -293,6 +300,22 @@ class CarState(CarStateBase):
       aeb_braking = cp_cruise.vl[aeb_src]["CF_VSM_DecCmdAct"] != 0 or cp_cruise.vl[aeb_src][aeb_sig] != 0
       ret.stockFcw = (aeb_warning or scc_warning) and not aeb_braking
       ret.stockAeb = aeb_warning and aeb_braking
+    #加上ESCC的数据
+    elif self.escc_enabled:
+      aeb_src = "FCA11" if self.CP.flags & HyundaiFlags.USE_FCA else "ESCC"
+      aeb_sig = "FCA_CmdAct" if self.CP.flags & HyundaiFlags.USE_FCA.value else "AEB_CmdAct"
+      aeb_warning_sig = "CF_VSM_Warn" if self.CP.flags & HyundaiFlags.USE_FCA.value else "CF_VSM_Warn_SCC12"
+      aeb_braking_sig = "CF_VSM_DecCmdAct" if self.CP.flags & HyundaiFlags.USE_FCA.value else "CF_VSM_DecCmdAct_SCC12"
+      aeb_braking_cmd = "CR_VSM_DecCmd_FCA11" if self.CP.flags & HyundaiFlags.USE_FCA.value else "CR_VSM_DecCmd_SCC12"
+      aeb_warning = cp.vl[aeb_src][aeb_warning_sig] != 0
+      aeb_braking = cp.vl[aeb_src][aeb_braking_sig] != 0 or cp.vl[aeb_src][aeb_sig] != 0
+      ret.stockFcw = aeb_warning and not aeb_braking
+      ret.stockAeb = aeb_warning and aeb_braking
+      if not self.CP.flags & HyundaiFlags.USE_FCA:
+        self.escc_aeb_warning = cp.vl[aeb_src][aeb_warning_sig]
+        self.escc_aeb_dec_cmd_act = cp.vl[aeb_src][aeb_braking_sig]
+        self.escc_cmd_act = cp.vl[aeb_src][aeb_sig]
+        self.escc_aeb_dec_cmd = cp.vl[aeb_src][aeb_braking_cmd]
 
     if self.CP.enableBsm:
       ret.leftBlindspot = cp.vl["LCA11"]["CF_Lca_IndLeft"] != 0
@@ -435,7 +458,7 @@ class CarState(CarStateBase):
     if self.STEER_TOUCH_2AF:
       self.steer_touch_info = cp.vl["STEER_TOUCH_2AF"]
 
-    blinkers_info = cp.vl["BLINKERS"]  
+    blinkers_info = cp.vl["BLINKERS"]
     left_blinker_lamp = blinkers_info["LEFT_LAMP"] or blinkers_info["LEFT_LAMP_ALT"]
     right_blinker_lamp = blinkers_info["RIGHT_LAMP"] or blinkers_info["RIGHT_LAMP_ALT"]
     ret.leftBlinker, ret.rightBlinker = self.update_blinker_from_lamp(50, left_blinker_lamp, right_blinker_lamp)
@@ -462,7 +485,7 @@ class CarState(CarStateBase):
       self.MainMode_ACC = cp_cam.vl["SCC_CONTROL"]["MainMode_ACC"] == 1
       self.ACCMode = cp_cam.vl["SCC_CONTROL"]["ACCMode"]
       self.LFA_ICON = cp_cam.vl["LFAHDA_CLUSTER"]["HDA_LFA_SymSta"]
-      
+
     if self.CP.openpilotLongitudinalControl:
       # These are not used for engage/disengage since openpilot keeps track of state using the buttons
       ret.cruiseState.enabled = cp.vl["TCS"]["ACC_REQ"] == 1
@@ -489,7 +512,7 @@ class CarState(CarStateBase):
 
       if self.LFAHDA_CLUSTER:
         self.lfahda_cluster_info = cp_cam.vl["LFAHDA_CLUSTER"]
-        
+
       corner = False
       self.adrv_info_161 = cp_cam.vl["ADRV_0x161"] if self.CCNC_0x161 else None
       self.adrv_info_162 = cp_cam.vl["CCNC_0x162"] if self.CCNC_0x162 else None
@@ -522,7 +545,7 @@ class CarState(CarStateBase):
 
       self.new_msg_4b4 = cp.vl["NEW_MSG_4B4"] if self.NEW_MSG_4B4 else None
       self.tcs_info_373 = cp.vl["TCS"]
-    
+
     ret.gearStep = cp.vl["GEAR"]["GEAR_STEP"] if self.GEAR else 0
     if 1 <= ret.gearStep <= 8 and ret.gearShifter == GearShifter.unknown:
       ret.gearShifter = GearShifter.drive

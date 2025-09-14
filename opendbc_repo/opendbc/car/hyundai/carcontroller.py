@@ -96,6 +96,8 @@ class CarController(CarControllerBase):
     self.activeCarrot = 0
     self.camera_scc_params = Params().get_int("HyundaiCameraSCC")
     self.is_ldws_car = Params().get_bool("IsLdwsCar")
+    #new
+    self.escc_enabled = True if Params().get_int("EnableEscc") == 1 else False
 
     self.steerDeltaUpOrg = self.steerDeltaUp = self.steerDeltaUpLC = self.params.STEER_DELTA_UP
     self.steerDeltaDownOrg = self.steerDeltaDown = self.steerDeltaDownLC = self.params.STEER_DELTA_DOWN
@@ -131,7 +133,7 @@ class CarController(CarControllerBase):
         self.steerDeltaDownLC = steerDeltaDownLC
       else:
         self.steerDeltaDownLC = self.steerDeltaDown
-        
+
       self.soft_hold_mode = 1 if params.get_int("AutoCruiseControl") > 1 else 2
       self.hapticFeedbackWhenSpeedCamera = int(params.get_int("HapticFeedbackWhenSpeedCamera"))
 
@@ -152,7 +154,7 @@ class CarController(CarControllerBase):
     else:
       self.params.STEER_DELTA_UP = self.steerDeltaUp
       self.params.STEER_DELTA_DOWN = self.steerDeltaDown
-    
+
     angle_control = self.CP.flags & HyundaiFlags.ANGLE_CONTROL
 
     # steering torque
@@ -164,7 +166,7 @@ class CarController(CarControllerBase):
                                                                        self.angle_limit_counter, self.max_angle_frames,
                                                                        MAX_ANGLE_CONSECUTIVE_FRAMES)
 
-    apply_angle = apply_std_steer_angle_limits(actuators.steeringAngleDeg, self.apply_angle_last, CS.out.vEgoRaw, 
+    apply_angle = apply_std_steer_angle_limits(actuators.steeringAngleDeg, self.apply_angle_last, CS.out.vEgoRaw,
                                                CS.out.steeringAngleDeg, CC.latActive, self.params.ANGLE_LIMITS)
 
     if abs(apply_angle - self.apply_angle_last) > 0.1:
@@ -191,10 +193,10 @@ class CarController(CarControllerBase):
           (1 - curve_scale) * self.angle_max_torque + curve_scale * 25,
           (1 - curve_scale) * self.angle_max_torque + curve_scale * 50,
           self.angle_max_torque
-        ]        
+        ]
         #base_max_torque = np.interp(CS.out.vEgo * CV.MS_TO_KPH, [0, 30, 60], torque_pts)
         base_max_torque = np.interp(CS.out.vEgo * CV.MS_TO_KPH, [0, 20, 30], torque_pts)
-      
+
       target_torque = np.interp(abs(actuators.curvature), [0.0, 0.003, 0.006], [0.5 * base_max_torque, 0.75 * base_max_torque, base_max_torque])
 
       max_steering_tq = self.params.STEER_DRIVER_ALLOWANCE * 0.7
@@ -230,7 +232,7 @@ class CarController(CarControllerBase):
 
     active_speed_decel = hud_control.activeCarrot == 3 and self.activeCarrot != 3 # 3: Speed Decel
     self.activeCarrot = hud_control.activeCarrot
-    if active_speed_decel and self.speedCameraHapticEndFrame < 0: # 과속카메라 감속시작      
+    if active_speed_decel and self.speedCameraHapticEndFrame < 0: # 과속카메라 감속시작
       self.speedCameraHapticEndFrame = self.frame + (8.0 / DT_CTRL)  #8초간 켜줌.
     elif not active_speed_decel:
       self.speedCameraHapticEndFrame = -1
@@ -258,7 +260,7 @@ class CarController(CarControllerBase):
     # *** common hyundai stuff ***
 
     # tester present - w/ no response (keeps relevant ECU disabled)
-    if self.frame % 100 == 0 and not (self.CP.flags & HyundaiFlags.CANFD_CAMERA_SCC) and self.CP.openpilotLongitudinalControl:
+    if self.frame % 100 == 0 and not ((self.CP.flags & HyundaiFlags.CANFD_CAMERA_SCC) or self.escc_enabled) and self.CP.openpilotLongitudinalControl:
       # for longitudinal control, either radar or ADAS driving ECU
       addr, bus = 0x7d0, self.CAN.ECAN if self.CP.flags & HyundaiFlags.CANFD else 0
       if self.CP.flags & HyundaiFlags.CANFD_HDA2.value:
@@ -321,7 +323,7 @@ class CarController(CarControllerBase):
           can_sends.extend(hyundaicanfd.forward_button_message(self.packer, self.CAN, self.frame, CS, send_button, self.MainMode_ACC_trigger, self.LFA_trigger))
         else:
           can_sends.extend(self.create_button_messages(CC, CS, use_clu11=False))
-        
+
     else:
       can_sends.append(hyundaican.create_lkas11(self.packer, self.frame, self.CP, apply_torque, apply_steer_req,
                                                 torque_fault, CS.lkas11, sys_warning, sys_state, CC.enabled,
@@ -345,7 +347,7 @@ class CarController(CarControllerBase):
         else:
           can_sends.extend(hyundaican.create_acc_commands(self.packer, CC.enabled, accel, self.hyundai_jerk, int(self.frame / 2),
                                                 hud_control, set_speed_in_units, stopping,
-                                                CC.cruiseControl.override, use_fca, self.CP, CS, self.soft_hold_mode))
+                                                CC.cruiseControl.override, use_fca, self.CP, CS, self.soft_hold_mode, self.escc_enabled))
 
 
       # 20 Hz LFA MFA message
@@ -358,10 +360,10 @@ class CarController(CarControllerBase):
           if CS.scc13 is not None:
             can_sends.append(hyundaican.create_acc_opt_copy(CS, self.packer))
         else:
-          can_sends.extend(hyundaican.create_acc_opt(self.packer, self.CP))
+          can_sends.extend(hyundaican.create_acc_opt(self.packer, self.CP, self.escc_enabled))
 
       # 2 Hz front radar options
-      if self.frame % 50 == 0 and self.CP.openpilotLongitudinalControl and not camera_scc:
+      if self.frame % 50 == 0 and self.CP.openpilotLongitudinalControl and not camera_scc and not self.escc_enabled:
         can_sends.append(hyundaican.create_frt_radar_opt(self.packer))
 
     new_actuators = actuators.as_builder()
@@ -560,7 +562,7 @@ class HyundaiJerk:
             self.carrot_cruise_accel = max(carrot_cruise, self.carrot_cruise_accel - 1.0 * DT_CTRL) #  점진적으로 줄임.
     if self.carrot_cruise == 0:
       self.carrot_cruise_accel = CS.out.aEgo
-    
+
   def make_jerk(self, CP, CS, accel, actuators, hud_control):
     if actuators.longControlState == LongCtrlState.stopping:
       self.jerk = self.jerk_u_min / 2 - CS.out.aEgo

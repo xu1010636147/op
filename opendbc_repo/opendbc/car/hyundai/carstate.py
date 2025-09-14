@@ -316,7 +316,7 @@ class CarState(CarStateBase):
         self.escc_aeb_dec_cmd_act = cp.vl[aeb_src][aeb_braking_sig]
         self.escc_cmd_act = cp.vl[aeb_src][aeb_sig]
         self.escc_aeb_dec_cmd = cp.vl[aeb_src][aeb_braking_cmd]
-        print(f"USE_FCA={self.CP.flags & HyundaiFlags.USE_FCA}, aeb_src={aeb_src}, aeb_sig={aeb_sig}, aeb_warning_sig={aeb_warning_sig},"
+      print(f"USE_FCA={self.CP.flags & HyundaiFlags.USE_FCA}, aeb_src={aeb_src}, aeb_sig={aeb_sig}, aeb_warning_sig={aeb_warning_sig},"
               f"aeb_braking_sig={aeb_braking_sig},aeb_braking_cmd={aeb_braking_cmd},aeb_warning={aeb_warning},aeb_braking={aeb_braking}"
               )
 

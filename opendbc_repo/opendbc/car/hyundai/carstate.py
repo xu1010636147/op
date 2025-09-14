@@ -317,6 +317,12 @@ class CarState(CarStateBase):
         self.escc_cmd_act = cp.vl[aeb_src][aeb_sig]
         self.escc_aeb_dec_cmd = cp.vl[aeb_src][aeb_braking_cmd]
 
+      try:
+        escc_data = cp.vl["ESCC"]
+        print(f"ESCC消息接收成功: {escc_data}")
+      except KeyError:
+        print("ESCC消息未找到")
+
     if self.CP.enableBsm:
       ret.leftBlindspot = cp.vl["LCA11"]["CF_Lca_IndLeft"] != 0
       ret.rightBlindspot = cp.vl["LCA11"]["CF_Lca_IndRight"] != 0

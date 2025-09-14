@@ -1,6 +1,6 @@
 from opendbc.car import Bus, get_safety_config, structs
 from opendbc.car.hyundai.hyundaicanfd import CanBus
-from opendbc.car.hyundai.values import HyundaiFlags, CAR, DBC, CANFD_RADAR_SCC_CAR, \
+from opendbc.car.hyundai.values import HyundaiFlags, HyundaiFlagsSP, CAR, DBC, CANFD_RADAR_SCC_CAR, \
                                                    CANFD_UNSUPPORTED_LONGITUDINAL_CAR, \
                                                    UNSUPPORTED_LONGITUDINAL_CAR, HyundaiSafetyFlags, HyundaiExtFlags
 from opendbc.car.hyundai.radar_interface import RADAR_START_ADDR
@@ -76,7 +76,7 @@ class CarInterface(CarInterfaceBase):
           if 0x110 in fingerprint[CAN.CAM]: # 0x110(272): LKAS_ALT
             ret.flags |= HyundaiFlags.CANFD_HDA2_ALT_STEERING.value
             print("$$$CANFD ALT_STEERING1")
-          ## carrot_todo: sorento: 
+          ## carrot_todo: sorento:
           if 0x2a4 not in fingerprint[CAN.CAM]: # 0x2a4(676): CAM_0x2a4
             ret.flags |= HyundaiFlags.CANFD_HDA2_ALT_STEERING.value
             print("$$$CANFD ALT_STEERING2")
@@ -110,7 +110,7 @@ class CarInterface(CarInterfaceBase):
       else:
         ret.extFlags |= HyundaiExtFlags.CANFD_GEARS_NONE.value
         print("$$$CANFD GEARS_NONE")
-          
+
       cfgs = [get_safety_config(structs.CarParams.SafetyModel.hyundaiCanfd), ]
       if CAN.ECAN >= 4:
         cfgs.insert(0, get_safety_config(structs.CarParams.SafetyModel.noOutput))
@@ -141,6 +141,10 @@ class CarInterface(CarInterfaceBase):
         ret.flags |= HyundaiFlags.USE_FCA.value
         print("$$$USE_FCA")
 
+      if 0x2AB in fingerprint[0]:
+        ret.spFlags |= HyundaiFlagsSP.SP_ENHANCED_SCC.value
+        print("$$$ESCC")
+
       if ret.flags & HyundaiFlags.LEGACY:
         # these cars require a special panda safety mode due to missing counters and checksums in the messages
         ret.safetyConfigs = [get_safety_config(structs.CarParams.SafetyModel.hyundaiLegacy)]
@@ -151,6 +155,8 @@ class CarInterface(CarInterfaceBase):
       if ret.flags & HyundaiFlags.CAMERA_SCC:
         ret.safetyConfigs[0].safetyParam |= HyundaiSafetyFlags.CAMERA_SCC.value
         print("$$$CAMERA_SCC")
+      if ret.spFlags & HyundaiFlagsSP.SP_ENHANCED_SCC:
+        ret.safetyConfigs[0].safetyParam |= HyundaiSafetyFlags.ESCC.value
 
     # Common lateral control setup
 
@@ -179,6 +185,10 @@ class CarInterface(CarInterfaceBase):
       print(f"$$$OenpilotLongitudinalControl = {alpha_long}")
 
     #ret.radarUnavailable = False  # TODO: canfd... carrot, hyundai cars have radar
+
+    if DBC[ret.carFingerprint]["radar"] is None:
+      if ret.spFlags & (HyundaiFlagsSP.SP_ENHANCED_SCC | HyundaiFlagsSP.SP_CAMERA_SCC_LEAD):
+        ret.radarUnavailable = False
 
     ret.radarTimeStep = 0.05 if params.get_int("EnableRadarTracks") > 0 else 0.02
 
@@ -238,7 +248,8 @@ class CarInterface(CarInterfaceBase):
 
     Params().put('LongitudinalPersonalityMax', "4")
 
-    if CP.openpilotLongitudinalControl and not (CP.flags & HyundaiFlags.CANFD_CAMERA_SCC):
+    #if CP.openpilotLongitudinalControl and not (CP.flags & HyundaiFlags.CANFD_CAMERA_SCC):
+    if CP.openpilotLongitudinalControl and not ((CP.flags & HyundaiFlags.CANFD_CAMERA_SCC.value) or (CP.spFlags & HyundaiFlagsSP.SP_ENHANCED_SCC)):
       addr, bus = 0x7d0, 0
       if CP.flags & HyundaiFlags.CANFD_HDA2.value:
         addr, bus = 0x730, CanBus(CP).ECAN
@@ -277,7 +288,7 @@ def enable_radar_tracks(CP, logcan, sendcan):
         ret = True
         break
     except Exception as e:
-      print(f"Failed : {e}") 
+      print(f"Failed : {e}")
   except Exception as e:
     print("##############  Failed to enable tracks" + str(e))
   print("################ END Try to enable radar tracks")

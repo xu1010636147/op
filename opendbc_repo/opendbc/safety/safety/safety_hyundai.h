@@ -150,7 +150,7 @@ static void hyundai_rx_hook(const CANPacket_t *to_push) {
 
     // ACC steering wheel buttons
     if (addr == 1007) hyundai_cruise_buttons_alt = true; // CASPER_EV: 1007
-    if (addr == 1007) {      
+    if (addr == 1007) {
       int cruise_button = (GET_BYTE(to_push, 7) >> 4) & 0x07U;
       bool main_button = GET_BIT(to_push, 58U);
       hyundai_common_cruise_buttons_check(cruise_button, main_button);
@@ -219,7 +219,7 @@ static bool hyundai_tx_hook(const CANPacket_t *to_send) {
     }
   }
 
-  // ACCEL: safety check
+  // ACCEL: safety check SCC12发送消息
   if (addr == 0x421) {
     int cruise_engaged = (GET_BYTES(to_send, 0, 4) >> 13) & 0x3U;
     if (cruise_engaged) {
@@ -258,7 +258,7 @@ static bool hyundai_tx_hook(const CANPacket_t *to_send) {
   }
 
   // UDS: Only tester present ("\x02\x3E\x80\x00\x00\x00\x00\x00") allowed on diagnostics address
-  if (addr == 0x7D0) {
+  if ((addr == 0x7D0)  && !hyundai_escc && !hyundai_camera_scc) {
     if ((GET_BYTES(to_send, 0, 4) != 0x00803E02U) || (GET_BYTES(to_send, 4, 4) != 0x0U)) {
       tx = false;
     }

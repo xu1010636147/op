@@ -146,7 +146,7 @@ class CarState(CarStateBase):
     self.controls_ready_count = 0
 
     #ESCC
-    self.escc_enabled = True if Params().get_int("EnableEscc") == 1 else False
+    #self.escc_enabled = True if Params().get_int("EnableEscc") == 1 else False
     self.escc_aeb_warning = 0
     self.escc_aeb_dec_cmd_act = 0
     self.escc_cmd_act = 0

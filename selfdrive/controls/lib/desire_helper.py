@@ -217,6 +217,7 @@ class DesireHelper:
     self.atc_cancel = False
     self.atc_cancel_delay = 0
     self.xroadcate = -1
+    self.last_lane_count = 0
     #new
 
   def lane_change_audio(self, enable, turn_type, param=0):
@@ -577,7 +578,12 @@ class DesireHelper:
     if desire_enabled and lane_available and edge_available: #有变道请求，并且有检测到路沿
       road_edge_width_diff = distance_to_road_edge_avg - lane_width_side #计算距离边缘的宽度与侧面车道宽度的差值，如果大于2.5m则认为侧面不止一条车道
       if road_edge_width_diff > 1.5: #到路沿的距离比侧面车道还宽1.5米，说明侧面除了正常车道外，还有一条应急车道或正常道路
-        last_lane = False #侧面非最后一条车道
+        if self.last_lane_count > int(0.5/DT_MDL): #稳定检测时间超过0.5秒
+          last_lane = False #侧面非最后一条车道
+      else:
+        self.last_lane_count = 0
+    else:
+      self.last_lane_count = 0
 
     #在有应急车道的高速公路，侧面只剩最后一条车道(也可能是应急车道)，则清除需要变道的次数
     if desire_enabled: #如果没有检测到路沿，那有可以车辆在离路沿最远的车道上，edge_available成立的标志为宽度大于2.5m

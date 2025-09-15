@@ -365,38 +365,6 @@ class DesireHelper:
     if self.roadType < 0:
       self.xroadcate = self.xroadcate
 
-    #TEST语音测试
-    if False:
-      self.event_test_frame += 1
-      if self.event_test_frame == 20*10:
-        self.lane_change_audio(True, 1, 0)
-        print("lane_change_audio 1")
-      elif self.event_test_frame == 20 * 20:
-        self.lane_change_audio(True, 2, 0)
-        print("lane_change_audio 2")
-      elif self.event_test_frame == 20 * 30:
-        self.lane_change_audio(True, 3, 0)
-        print("lane_change_audio 3")
-      elif self.event_test_frame == 20 * 40:
-        self.lane_change_audio(True, 4, 0)
-        print("lane_change_audio 3")
-      elif self.event_test_frame == 20 * 50:
-        self.lane_change_audio(True, 5, 0)
-        print("lane_change_audio 3")
-      elif self.event_test_frame == 20 * 60:
-        self.lane_change_audio(True, 6, 0)
-        print("lane_change_audio 3")
-      elif self.event_test_frame >= 20 * 82:
-        self.event_test_frame = 0
-        print("event test end")
-      elif self.event_test_frame >= 20 * 70:
-        left_sec = int((self.event_test_frame - 20 * 70)/20)
-        if self.left_sec != left_sec:
-          self.dh_left_sec = left_sec
-          self.left_sec = left_sec
-          print(f"audio {left_sec}")
-    # TEST
-
     # new
     if 0 <= self.xroadcate <= 1: #高速
       autoEnTurnNewLaneTime = self.autoEnTurnNewLaneTimeH

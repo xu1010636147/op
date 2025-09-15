@@ -363,7 +363,7 @@ class DesireHelper:
 
     self.xroadcate = carrotMan.roadCate
     if self.roadType < 0:
-      self.xroadcate = self.roadType
+      self.xroadcate = self.xroadcate
 
     #TEST语音测试
     if False:

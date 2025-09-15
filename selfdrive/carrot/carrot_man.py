@@ -329,8 +329,20 @@ class CarrotMan:
     carrotIndex_last = self.carrot_serv.carrotIndex
     while self.is_running:
       try:
-        self.xroadcate = self.carrot_serv.xroadcate
-        self.carrot_serv.v_cruise_kph = self.v_cruise_kph
+        if self.sm.alive['carState']:
+          self.v_cruise_kph = self.sm['carState'].vCruise
+        if self.carrot_serv.roadType < 0:
+          # self.xroadcate = self.roadcate
+          if self.v_cruise_kph <= 70 or self.v_cruise_kph > 200:
+            self.xroadcate = 8
+          elif self.v_cruise_kph <= 85:
+            self.xroadcate = 0
+          else:
+            self.xroadcate = 1
+        else:
+          self.xroadcate = self.carrot_serv.roadType
+
+        self.carrot_serv.xroadcate = self.xroadcate
         self.sm.update(0)
         if self.sm.updated['navRouteNavd']:
           self.send_routes(self.sm['navRouteNavd'].coordinates, True)
@@ -516,7 +528,6 @@ class CarrotMan:
         v_ego_kph = int(carState.vEgoCluster * 3.6 + 0.5)
         log_carrot = carState.logCarrot
         v_cruise_kph = carState.vCruise
-        self.v_cruise_kph = v_cruise_kph
       if self.sm.alive['selfdriveState']:
         selfdrive = self.sm['selfdriveState']
         self.controls_active = selfdrive.active
@@ -1166,7 +1177,6 @@ class CarrotServ:
     self.param_frame = 0
     self.atc_speed_decal = 0
     self.fork_speed_keep_time = -1
-    self.v_cruise_kph = 255
     #new
 
     self.update_params()
@@ -2225,19 +2235,6 @@ class CarrotServ:
       self.nSdiPlusBlockSpeed = int(json.get("nSdiPlusBlockSpeed", 0))
       self.nSdiPlusBlockDist = int(json.get("nSdiPlusBlockDist", 0))
       self.roadcate = int(json.get("roadcate", 0))
-
-      # new
-      if self.roadType < 0:
-        #self.xroadcate = self.roadcate
-        if self.v_cruise_kph <= 70 or self.v_cruise_kph > 200:
-          self.xroadcate = 8
-        elif self.v_cruise_kph <= 85:
-          self.xroadcate = 0
-        else:
-          self.xroadcate = 1
-      else:
-        self.xroadcate = self.roadType
-      # new
 
       ## GuidePoint
       self.nTBTDist = int(json.get("nTBTDist", 0))

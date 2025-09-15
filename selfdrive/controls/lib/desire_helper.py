@@ -211,9 +211,12 @@ class DesireHelper:
     self.min_object_detected_count = int(-60.0 / DT_MDL)  # 最小计时
     self.min_object_detected_count_thr = int(-2.0 / DT_MDL)  # 判断是否无障碍的持续时间
     self.side_object_detected = False
-    self.min_drel_vego_time = 1.5
+    self.min_drel_vego_time = 1.0
+    self.min_vrel_vego_time = 1.0
     self.bsdDelayTime = 2.
     self.sideBsdDelayTime = 2.
+    self.sideRelDistTime = 1.
+    self.sidevRelDistTime = 1.
     self.atc_cancel = False
     self.atc_cancel_delay = 0
     self.xroadcate = -1
@@ -358,6 +361,10 @@ class DesireHelper:
       self.autoEnTurnNewLaneTime = self.params.get_int("AutoEnTurnNewLaneTime")
       self.bsdDelayTime = self.params.get_float("BsdDelayTime") * 0.1
       self.sideBsdDelayTime = self.params.get_int("SideBsdDelayTime") * 0.1
+      self.sideRelDistTime = self.params.get_int("SideRelDistTime") * 0.1
+      self.sidevRelDistTime = self.params.get_int("SidevRelDistTime") * 0.1
+      self.min_drel_vego_time = self.sideRelDistTime
+      self.min_vrel_vego_time = self.sidevRelDistTime
       self.min_object_detected_count_thr = int(-1*self.sideBsdDelayTime/DT_MDL)
       self.lane_count_stab_cnt = int(self.params.get_float("LaneStabTime") * 0.1/DT_MDL)
       #new
@@ -515,7 +522,7 @@ class DesireHelper:
       radar = radarState.leadLeft if blinker_state == BLINKER_LEFT else radarState.leadRight
       side_object_dist = radar.dRel + radar.vLead * 3.0 if radar.status else 255
       if radar.status:
-        object_detected = ((side_object_dist < v_ego * (3.0 + self.min_drel_vego_time)) or (radar.dRel < (v_ego*self.min_drel_vego_time))) and abs(radar.vLead) > 2.8
+        object_detected = ((side_object_dist < v_ego * (3.0 + self.min_vrel_vego_time)) or (radar.dRel < (v_ego*self.min_drel_vego_time))) and abs(radar.vLead) > 2.8
       else:
         object_detected = False
       #self.object_detected_count = max(1, self.object_detected_count + 1) if object_detected else min(-1, self.object_detected_count - 1)
@@ -544,7 +551,7 @@ class DesireHelper:
 
     #雷达调试信息
     if (self.showDebugLog & 16) > 0:
-      vego4x = v_ego * (3.0 + self.min_drel_vego_time)
+      vego4x = v_ego * (3.0 + self.min_vrel_vego_time)
       radar_left = radarState.leadLeft
       radar_right = radarState.leadRight
       if radar_left.status or radar_right.status:

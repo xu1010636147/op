@@ -889,6 +889,8 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   navToggles->addItem(new CValueControl("LaneStabTime", "车道数稳定检测时间(10x0.1s)", "当检测车道数稳定时间超过设定值后，则认为已经稳定，单位为0.1秒", 5, 100, 1));
   navToggles->addItem(new CValueControl("BsdDelayTime", "后盲区有车延时(20x0.1s)", "当后盲区有车信号消失后，经过延时的秒数后允许变道", 15, 100, 1));
   navToggles->addItem(new CValueControl("SideBsdDelayTime", "侧前方有车延时(20x0.1s)", "当侧前方有车信号消失后，经过延时的秒数后允许变道", 0, 100, 1));
+  navToggles->addItem(new CValueControl("SideRelDistTime", "侧前方有车时允许变道相对距离(10x0.1s)", "当与侧前方车辆相对距离小于本车速度x时间时不允许变道，单位0.1秒", 0, 50, 1));
+  navToggles->addItem(new CValueControl("SidevRelDistTime", "侧前方有车时允许变道等效距离(10x0.1s)", "侧前方车辆速度x3+相对距离小于本车速度x(时间+3)时，不允许变道，单位0.1秒", 0, 50, 1));
   navToggles->addItem(new CValueControl("SideRadarMinDist", "忽略小于雷达距离(50x0.1m)的侧面车辆", "在左右两侧的车道上，忽略小于此雷达探测距离的车辆，单位为0.1m", -50, 100, 1));
   navToggles->addItem(new CValueControl("AutoForkDistOffsetH", "H 高速提前变道靠边的距离(1000m)", "在距离匝道口多少米时开始变道到最侧面车道，设置为0则不提前变道", 0, 2000, 5));
   navToggles->addItem(new CValueControl("AutoEnTurnNewLaneTimeH", "H 高速再次提前变道的新车道出现时间(0s)", "车辆已在最侧边车道，若新车道出现的时间超过设置值后允许再次变道，推荐值20秒，0 关闭", 0, 120, 1));

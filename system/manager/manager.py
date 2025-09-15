@@ -186,6 +186,8 @@ def get_default_params():
     ("LaneStabTime", "10"),
     ("BsdDelayTime", "20"),
     ("SideBsdDelayTime", "20"),
+    ("SideRelDistTime", "10"),
+    ("SidevRelDistTime", "10"),
     ("SideRadarMinDist", "50"),
     ("AutoTurnDistOffset", "0"),
     ("AutoTurnInNotRoadEdge", "0"),

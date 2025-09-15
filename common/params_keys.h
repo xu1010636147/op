@@ -297,6 +297,8 @@ inline static std::unordered_map<std::string, uint32_t> keys = {
     {"LaneStabTime", PERSISTENT},
     {"BsdDelayTime", PERSISTENT},
     {"SideBsdDelayTime", PERSISTENT},
+    {"SideRelDistTime", PERSISTENT},
+    {"SidevRelDistTime", PERSISTENT},
     {"SideRadarMinDist", PERSISTENT},
     {"AutoTurnDistOffset", PERSISTENT},
     {"AutoTurnInNotRoadEdge", PERSISTENT},

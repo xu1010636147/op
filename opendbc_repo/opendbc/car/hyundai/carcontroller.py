@@ -148,7 +148,7 @@ class CarController(CarControllerBase):
     actuators = CC.actuators
     hud_control = CC.hudControl
 
-    if hud_control.modelDesire in [3,4]:
+    if hud_control.modelDesire in [3,4]: # 3 4为变道，1 2为转弯，0表示没有请求
       self.params.STEER_DELTA_UP = self.steerDeltaUpLC
       self.params.STEER_DELTA_DOWN = self.steerDeltaDownLC
     else:
@@ -180,7 +180,7 @@ class CarController(CarControllerBase):
       self.apply_angle_last = actuators.steeringAngleDeg
       self.lkas_max_torque = self.lkas_max_torque = max(self.lkas_max_torque - 20, 25)
     else:
-      if hud_control.modelDesire in [1,2]:
+      if hud_control.modelDesire in [1,2]:  # 3 4为变道，1 2为转弯，0表示没有请求
         base_max_torque = self.angle_max_torque
       else:
         curv = abs(actuators.curvature)

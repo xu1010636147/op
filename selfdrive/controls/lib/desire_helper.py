@@ -191,7 +191,7 @@ class DesireHelper:
     self.lane_change_disable = False
     self.lane_cnt_time = -1
     self.lane_count_last = -1
-    self.lane_count_stab_cnt = int(5 / DT_MDL)
+    self.lane_count_stab_cnt = int(1 / DT_MDL)
     self.trigger_name = ""
     self.trigger_type = 0
     self.newLaneWidthDiff = 0.8
@@ -358,6 +358,7 @@ class DesireHelper:
       self.bsdDelayTime = self.params.get_float("BsdDelayTime") * 0.1
       self.sideBsdDelayTime = self.params.get_int("SideBsdDelayTime") * 0.1
       self.min_object_detected_count_thr = int(-1*self.sideBsdDelayTime/DT_MDL)
+      self.lane_count_stab_cnt = int(self.params.get_float("LaneStabTime") * 0.1/DT_MDL)
       #new
     self.frame += 1
 

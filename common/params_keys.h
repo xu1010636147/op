@@ -294,6 +294,7 @@ inline static std::unordered_map<std::string, uint32_t> keys = {
 
     //new
     {"SameSpiCamFilter", PERSISTENT},
+    {"LaneStabTime", PERSISTENT},
     {"BsdDelayTime", PERSISTENT},
     {"SideBsdDelayTime", PERSISTENT},
     {"SideRadarMinDist", PERSISTENT},

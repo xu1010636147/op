@@ -424,6 +424,8 @@ class DesireHelper:
     turn_need_time = (self.continuousLaneChangeCnt+1)*self.continuousLaneChangeInterval + 20  # 计算所有次数需要的延时时间,预留20秒的时间
     turn_need_time = max(min(left_turn_sec, turn_need_time) - 20, 0)
     lane_change_interval = min(turn_need_time/(self.continuousLaneChangeCnt+1), self.continuousLaneChangeInterval)
+    if lane_change_interval < 2: #限制最小的变道延时时间
+      lane_change_interval = 2 if self.continuousLaneChangeInterval >= 2 else self.continuousLaneChangeInterval
 
     ##### check ATC's blinker state
     atc_left_right = False

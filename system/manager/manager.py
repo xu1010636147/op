@@ -122,7 +122,7 @@ def get_default_params():
     ("VEgoStopping", "50"),
     ("RadarReactionFactor", "100"),
     ("EnableRadarTracks", "1"),
-    #("EnableEscc", "1"),
+    ("EnableEscc", "1"),
     ("RadarLatFactor", "0"),
     ("EnableCornerRadar", "0"),
     ("HyundaiCameraSCC", "0"),

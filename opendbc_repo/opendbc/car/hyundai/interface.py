@@ -142,8 +142,11 @@ class CarInterface(CarInterfaceBase):
         print("$$$USE_FCA")
 
       if 0x2AB in fingerprint[0]:
-        ret.spFlags |= HyundaiFlagsSP.SP_ENHANCED_SCC.value
-        print("$$$ESCC")
+        if params.get_int("EnableEscc") == 1:
+          ret.spFlags |= HyundaiFlagsSP.SP_ENHANCED_SCC.value
+          print("$$$ESCC")
+        else:
+          print("$$$User disable ESCC")
 
       if ret.flags & HyundaiFlags.LEGACY:
         # these cars require a special panda safety mode due to missing counters and checksums in the messages

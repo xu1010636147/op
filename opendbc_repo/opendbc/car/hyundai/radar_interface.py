@@ -3,7 +3,7 @@ import math
 from opendbc.can import CANParser
 from opendbc.car import Bus, structs
 from opendbc.car.interfaces import RadarInterfaceBase
-from opendbc.car.hyundai.values import DBC, HyundaiFlags, HyundaiExtFlags
+from opendbc.car.hyundai.values import DBC, HyundaiFlags, HyundaiExtFlags, HyundaiFlagsSP
 from openpilot.common.params import Params
 from opendbc.car.hyundai.hyundaicanfd import CanBus
 from openpilot.common.filter_simple import MyMovingAverage
@@ -17,11 +17,15 @@ RADAR_MSG_COUNT2 = 32
 
 # POC for parsing corner radars: https://github.com/commaai/openpilot/pull/24221/
 
-def get_radar_can_parser(CP, radar_tracks, msg_start_addr, msg_count):
+def get_radar_can_parser(CP, radar_tracks, escc, msg_start_addr, msg_count):
+  if escc: #没有雷达DBC或者用户关了雷达跟踪
+    lead_src, bus = "ESCC", 0
+    messages = [(lead_src, 50)]
+    print(f"get_radar_can_parser, lead_src={lead_src},bus={bus}")
+    return CANParser(DBC[CP.carFingerprint][Bus.pt], messages, bus)
+
   if not radar_tracks:
     return None
-  #if Bus.radar not in DBC[CP.carFingerprint]:
-  #  return None
   print("RadarInterface: RadarTracks...")
 
   if CP.flags & HyundaiFlags.CANFD:
@@ -42,7 +46,7 @@ def get_radar_can_parser_scc(CP):
     messages = [("SCC11", 50)]
     bus = CAN.ECAN
 
-  print("$$$$$$$$ ECAN = ", CAN.ECAN)    
+  print("$$$$$$$$ ECAN = ", CAN.ECAN)
   bus = CAN.CAM if CP.flags & HyundaiFlags.CAMERA_SCC else bus
   return CANParser(DBC[CP.carFingerprint][Bus.pt], messages, bus)
 
@@ -70,10 +74,22 @@ class RadarInterface(RadarInterfaceBase):
 
     self.params = Params()
     self.radar_tracks = self.params.get_int("EnableRadarTracks") >= 1
-    self.rcp = get_radar_can_parser(CP, self.radar_tracks, self.radar_start_addr, self.radar_msg_count)
+    self.enhanced_scc = (CP.spFlags & HyundaiFlagsSP.SP_ENHANCED_SCC) and (Bus.radar not in DBC[CP.carFingerprint] or not self.radar_tracks)
+    print(f"$$$radar_tracks={self.radar_tracks}, enhanced_scc={self.enhanced_scc}")
+    self.rcp = get_radar_can_parser(CP, self.radar_tracks, self.enhanced_scc, self.radar_start_addr, self.radar_msg_count)
+    if self.rcp is None:
+      print("$$$self.rcp = get_radar_can_parser() is None")
+    else:
+      print("$$$self.rcp = get_radar_can_parser() success")
+      if self.enhanced_scc:
+        self.trigger_msg = 683
 
-    if not self.radar_tracks:
+    if not self.radar_tracks and not self.enhanced_scc and self.rcp is None:
       self.rcp = get_radar_can_parser_scc(CP)
+      if self.rcp is None:
+        print("$$$self.rcp = get_radar_can_parser_scc() is None")
+      else:
+        print("$$$self.rcp = get_radar_can_parser_scc() success")
       self.trigger_msg = 416 if self.canfd else 0x420
 
     # 50Hz (SCC), 20Hz (RadarTracks)
@@ -83,16 +99,16 @@ class RadarInterface(RadarInterfaceBase):
 
 
   def update(self, can_strings):
-    if self.radar_off_can or (self.rcp is None):
+    if self.radar_off_can or (self.rcp is None): #雷达不可用或解析器为空
       return super().update(None)
 
-    vls = self.rcp.update(can_strings)
+    vls = self.rcp.update(can_strings) #解析CAN消息
     self.updated_messages.update(vls)
 
     if self.trigger_msg not in self.updated_messages:
       return None
 
-    rr = self._update(self.updated_messages) if self.radar_tracks else self._update_scc(self.updated_messages)
+    rr = self._update(self.updated_messages) if self.radar_tracks or self.enhanced_scc else self._update_scc(self.updated_messages)
     self.updated_messages.clear()
 
     return rr
@@ -105,73 +121,101 @@ class RadarInterface(RadarInterfaceBase):
     if not self.rcp.can_valid:
       ret.errors.canError = True
 
-    for addr in range(self.radar_start_addr, self.radar_start_addr + self.radar_msg_count):
-      msg = self.rcp.vl[f"RADAR_TRACK_{addr:x}"]
+    #如果检测到ESCC，则使用ESCC的雷达数据
+    if self.enhanced_scc:
+      #escc_data = self.rcp.vl["ESCC"]
+      #print(f"ESCC: {escc_data}")
 
-      if addr not in self.pts:
-        self.pts[addr] = structs.RadarData.RadarPoint()
-        self.pts[addr].trackId = self.track_id
-        self.track_id += 1
+      msg_src = "ESCC"
+      msg = self.rcp.vl[msg_src]
+      valid = msg['ACC_ObjStatus']
+      for ii in range(1):
+        if valid:
+          if ii not in self.pts:
+            self.pts[ii] = structs.RadarData.RadarPoint()
+            self.pts[ii].trackId = self.track_id
+            self.track_id += 1
+          self.pts[ii].measured = True
+          self.pts[ii].dRel = msg['ACC_ObjDist']
+          self.pts[ii].yRel = -msg['ACC_ObjLatPos']
+          self.pts[ii].vRel = msg['ACC_ObjRelSpd']
+          #self.pts[ii].aRel = float('nan')
+          self.pts[ii].aRel = 0.0
+          #self.pts[ii].yvRel = float('nan')
+          self.pts[ii].yvRel = 0.0
 
-      if self.radar_group1:
-        valid = msg['VALID_CNT1'] > 0
-      elif self.canfd:
-        valid = msg['VALID'] > 0
-      else:
-        valid = msg['STATE'] in (3, 4)
-      if valid:
-        if self.radar_group1:
-          self.pts[addr].measured = True
-          self.pts[addr].dRel = msg['LONG_DIST1']
-          self.pts[addr].yRel = msg['LAT_DIST1']
-          self.pts[addr].vRel = msg['REL_SPEED1']
-          self.pts[addr].vLead = self.pts[addr].vRel + self.v_ego
-          self.pts[addr].aRel = msg['REL_ACCEL1']
-          self.pts[addr].yvRel = msg['LAT_SPEED1']
-        elif self.canfd:
-          self.pts[addr].measured = True
-          self.pts[addr].dRel = msg['LONG_DIST']
-          self.pts[addr].yRel = msg['LAT_DIST']
-          self.pts[addr].vRel = msg['REL_SPEED']
-          self.pts[addr].vLead = self.pts[addr].vRel + self.v_ego
-          self.pts[addr].aRel = msg['REL_ACCEL']
-          self.pts[addr].yvRel = msg['LAT_SPEED']
+          #print(f"escc trace valid,track id {self.track_id}")
         else:
-          azimuth = math.radians(msg['AZIMUTH'])
-          self.pts[addr].measured = True
-          self.pts[addr].dRel = math.cos(azimuth) * msg['LONG_DIST']
-          self.pts[addr].yRel = 0.5 * -math.sin(azimuth) * msg['LONG_DIST']
-          self.pts[addr].vRel = msg['REL_SPEED']
-          self.pts[addr].vLead = self.pts[addr].vRel + self.v_ego
-          self.pts[addr].aRel = msg['REL_ACCEL']
-          self.pts[addr].yvRel = 0.0
-
-      else:
-        del self.pts[addr]
-
-    # radar group1은 하나의 msg에 2개의 레이더가 들어있음.
-    if self.radar_group1:
+          if ii in self.pts:
+            del self.pts[ii]
+    else: #雷达跟踪数据
       for addr in range(self.radar_start_addr, self.radar_start_addr + self.radar_msg_count):
         msg = self.rcp.vl[f"RADAR_TRACK_{addr:x}"]
 
-        addr += 16
         if addr not in self.pts:
           self.pts[addr] = structs.RadarData.RadarPoint()
           self.pts[addr].trackId = self.track_id
           self.track_id += 1
 
-        valid = msg['VALID_CNT2'] > 0
+        if self.radar_group1:
+          valid = msg['VALID_CNT1'] > 0
+        elif self.canfd:
+          valid = msg['VALID'] > 0
+        else:
+          valid = msg['STATE'] in (3, 4)
         if valid:
-          self.pts[addr].measured = True
-          self.pts[addr].dRel = msg['LONG_DIST2']
-          self.pts[addr].yRel = msg['LAT_DIST2']
-          self.pts[addr].vRel = msg['REL_SPEED2']
-          self.pts[addr].vLead = self.pts[addr].vRel + self.v_ego
-          self.pts[addr].aRel = msg['REL_ACCEL2']
-          self.pts[addr].yvRel = msg['LAT_SPEED2']
+          if self.radar_group1:
+            self.pts[addr].measured = True
+            self.pts[addr].dRel = msg['LONG_DIST1']
+            self.pts[addr].yRel = msg['LAT_DIST1']
+            self.pts[addr].vRel = msg['REL_SPEED1']
+            self.pts[addr].vLead = self.pts[addr].vRel + self.v_ego
+            self.pts[addr].aRel = msg['REL_ACCEL1']
+            self.pts[addr].yvRel = msg['LAT_SPEED1']
+          elif self.canfd:
+            self.pts[addr].measured = True
+            self.pts[addr].dRel = msg['LONG_DIST']
+            self.pts[addr].yRel = msg['LAT_DIST']
+            self.pts[addr].vRel = msg['REL_SPEED']
+            self.pts[addr].vLead = self.pts[addr].vRel + self.v_ego
+            self.pts[addr].aRel = msg['REL_ACCEL']
+            self.pts[addr].yvRel = msg['LAT_SPEED']
+          else:
+            azimuth = math.radians(msg['AZIMUTH'])
+            self.pts[addr].measured = True
+            self.pts[addr].dRel = math.cos(azimuth) * msg['LONG_DIST']
+            self.pts[addr].yRel = 0.5 * -math.sin(azimuth) * msg['LONG_DIST']
+            self.pts[addr].vRel = msg['REL_SPEED']
+            self.pts[addr].vLead = self.pts[addr].vRel + self.v_ego
+            self.pts[addr].aRel = msg['REL_ACCEL']
+            self.pts[addr].yvRel = 0.0
+
         else:
           del self.pts[addr]
-      
+
+      # radar group1은 하나의 msg에 2개의 레이더가 들어있음.
+      if self.radar_group1:
+        for addr in range(self.radar_start_addr, self.radar_start_addr + self.radar_msg_count):
+          msg = self.rcp.vl[f"RADAR_TRACK_{addr:x}"]
+
+          addr += 16
+          if addr not in self.pts:
+            self.pts[addr] = structs.RadarData.RadarPoint()
+            self.pts[addr].trackId = self.track_id
+            self.track_id += 1
+
+          valid = msg['VALID_CNT2'] > 0
+          if valid:
+            self.pts[addr].measured = True
+            self.pts[addr].dRel = msg['LONG_DIST2']
+            self.pts[addr].yRel = msg['LAT_DIST2']
+            self.pts[addr].vRel = msg['REL_SPEED2']
+            self.pts[addr].vLead = self.pts[addr].vRel + self.v_ego
+            self.pts[addr].aRel = msg['REL_ACCEL2']
+            self.pts[addr].yvRel = msg['LAT_SPEED2']
+          else:
+            del self.pts[addr]
+
     ret.points = list(self.pts.values())
     return ret
 

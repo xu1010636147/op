@@ -189,11 +189,12 @@ class CarInterface(CarInterfaceBase):
 
     #ret.radarUnavailable = False  # TODO: canfd... carrot, hyundai cars have radar
 
-    if DBC[ret.carFingerprint]["radar"] is None:
+    if Bus.radar not in DBC[ret.carFingerprint]:
       if ret.spFlags & (HyundaiFlagsSP.SP_ENHANCED_SCC | HyundaiFlagsSP.SP_CAMERA_SCC_LEAD):
         ret.radarUnavailable = False
+        print(f"$$$RadarTracks disable, Escc enable")
 
-    ret.radarTimeStep = 0.05 if params.get_int("EnableRadarTracks") > 0 else 0.02
+    ret.radarTimeStep = 0.05 if params.get_int("EnableRadarTracks") > 0 or (ret.spFlags & HyundaiFlagsSP.SP_ENHANCED_SCC) else 0.02
 
     ret.pcmCruise = not ret.openpilotLongitudinalControl
     ret.startingState = False # True  # carrot

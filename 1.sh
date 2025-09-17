@@ -83,7 +83,7 @@ cat id_rsa.pub
 # 安装flask
 echo "install flask after 60s..."
 #python -m pip install flask
-(sleep 60; pip install flask) &
+(sleep 60; pip install flask --timeout 180 --retries 10) &
 
 # Cleanup will be called automatically due to trap on EXIT
 #echo "Operation completed successfully. System will reboot now."

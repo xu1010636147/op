@@ -593,7 +593,8 @@ class CarrotMan:
                 #  print(f"carrot_man_thread: send error...: {e}")
 
               except TimeoutError:
-                print("Waiting for data (timeout)...")
+                if (self.carrot_serv.showDebugLog & 32) > 0:
+                  print("Waiting for data (timeout)...")
                 self.remote_addr = None
                 time.sleep(1)
 
@@ -668,7 +669,8 @@ class CarrotMan:
                   print(data)
 
               except TimeoutError:
-                print("Waiting for data (timeout)...")
+                if (self.carrot_serv.showDebugLog & 32) > 0:
+                  print("Waiting for data (timeout)...")
                 #self.remote_addr = None
                 time.sleep(1)
 
@@ -829,7 +831,8 @@ class CarrotMan:
           echo = json.dumps({"tmux_send": json_obj['tmux_send'], "result": "success"})
           socket.send(echo.encode())
       except Exception as e:
-        print(f"carrot_cmd_zmq error: {e}")
+        if (self.carrot_serv.showDebugLog & 32) > 0:
+          print(f"carrot_cmd_zmq error: {e}")
         socket.close()
         time.sleep(1)
         socket, poller = setup_socket()

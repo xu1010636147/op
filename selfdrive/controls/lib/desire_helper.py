@@ -219,6 +219,8 @@ class DesireHelper:
     self.sidevRelDistTime = 1.
     self.atc_cancel = False
     self.atc_cancel_delay = 0
+    self.leftFrontBlind = 0
+    self.rightFrontBlind = 0
     self.xroadcate = -1
     self.last_lane_count = 0
     #new
@@ -413,6 +415,9 @@ class DesireHelper:
     if self.laneChangeNeedTorque < 0: # "变道扭矩需求"如果设置为-1，即使打灯了也不会变更车道。
       driver_desire_enabled = False
 
+    if driver_blinker_changed:
+      print(f"$$$driver blinker change: {driver_blinker_state}")
+
     #盲区检查状态处理
     ignore_bsd = True if self.laneChangeBsd < 0 else False #laneChangeBsd设置为-1表示忽略BSD盲区检测
     block_lanechange_bsd = True if self.laneChangeBsd == 1 else False #检查是否设置了盲区阻止变道
@@ -552,24 +557,36 @@ class DesireHelper:
       curr_lane_width_diff = 3.5
 
     #雷达调试信息
-    if (self.showDebugLog & 16) > 0:
-      vego4x = v_ego * (3.0 + self.min_vrel_vego_time)
-      radar_left = radarState.leadLeft
-      radar_right = radarState.leadRight
-      if radar_left.status or radar_right.status:
+    debugText = ""
+    vego4x = v_ego * (3.0 + self.min_vrel_vego_time)
+    radar_left = radarState.leadLeft
+    radar_right = radarState.leadRight
+    if radar_left.status or radar_right.status:
+      if (self.showDebugLog & 16) > 0:
         debugText = f"---Radar,"
-        if radar_left.status:
+      if radar_left.status:
+        side_object_dist = radar_left.dRel + radar_left.vLead * 3.0
+        side_object_block = (side_object_dist < vego4x or radar_left.dRel < (v_ego*self.min_drel_vego_time)) and abs(radar_left.vLead) > 2.8
+        if (self.showDebugLog & 16) > 0:
           debugText += f"L:{radar_left.status}"
-          side_object_dist = radar_left.dRel + radar_left.vLead * 3.0
-          side_object_block = side_object_dist < vego4x or radar_left.dRel < (v_ego*self.min_drel_vego_time)
           debugText += f",dRel={radar_left.dRel:.1f},V={radar_left.vLead:.1f},sDist={side_object_dist:.1f},block={side_object_block},"
+      else:
+        side_object_block = False
 
-        if radar_right.status:
+      self.leftFrontBlind = 1 if side_object_block else 0
+
+      if radar_right.status:
+        side_object_dist = radar_right.dRel + radar_right.vLead * 3.0
+        side_object_block = (side_object_dist < vego4x or radar_right.dRel < (v_ego*self.min_drel_vego_time))  and abs(radar_right.vLead) > 2.8
+        if (self.showDebugLog & 16) > 0:
           debugText += f"R:{radar_right.status}"
-          side_object_dist = radar_right.dRel + radar_right.vLead * 3.0
-          side_object_block = side_object_dist < vego4x or radar_right.dRel < (v_ego*self.min_drel_vego_time)
           debugText += f",dRel={radar_right.dRel:.1f},V={radar_right.vLead:.1f},sDist={side_object_dist:.1f},block=={side_object_block}"
+      else:
+        side_object_block = False
 
+      self.rightFrontBlind = 1 if side_object_block else 0
+
+      if (self.showDebugLog & 16) > 0:
         debugText += f",v_ego*4={vego4x:.1f},cnt={self.object_detected_count},{self.object_detected_count_new}"
         print(debugText)
 

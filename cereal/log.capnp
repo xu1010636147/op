@@ -157,6 +157,13 @@ struct OnroadEvent @0xc4fa6047f024e718 {
     audioAtcCancel @120;
     audioAtcResume @121;
 
+    audioPreLaneChangeLeft @122;
+    audioPreLaneChangeRight @123;
+    audioLaneChangeOk @124;
+    audioLastLane @125;
+    audioNewLane @126;
+    audioLaneChangeEnd @127;
+
     soundsUnavailableDEPRECATED @47;
   }
 }

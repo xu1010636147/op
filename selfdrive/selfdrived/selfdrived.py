@@ -316,6 +316,26 @@ class SelfdriveD:
       elif event_type_val == 6:  # 盲区有车
         self.events.add(EventName.laneChangeBlocked)
         print(f"Event: laneChangeBlocked, laneChangeBlocked={laneChangeBlocked},preLaneChangeLeft={preLaneChangeLeft},preLaneChangeRight={preLaneChangeRight},laneChange={laneChange}")
+      elif event_type_val == 7:  # 准备左变道
+        self.events.add(EventName.audioPreLaneChangeLeft)
+        print(f"Event: audioPreLaneChangeLeft, laneChangeBlocked={laneChangeBlocked},preLaneChangeLeft={preLaneChangeLeft},preLaneChangeRight={preLaneChangeRight},laneChange={laneChange}")
+      elif event_type_val == 8:  # 准备右变道
+        self.events.add(EventName.audioPreLaneChangeRight)
+        print(f"Event: audioPreLaneChangeRight, laneChangeBlocked={laneChangeBlocked},preLaneChangeLeft={preLaneChangeLeft},preLaneChangeRight={preLaneChangeRight},laneChange={laneChange}")
+      elif event_type_val == 9:  # 变道已完成
+        self.events.add(EventName.audioLaneChangeOk)
+        print(f"Event: audioLaneChangeOk, laneChangeBlocked={laneChangeBlocked},preLaneChangeLeft={preLaneChangeLeft},preLaneChangeRight={preLaneChangeRight},laneChange={laneChange}")
+      elif event_type_val == 10:  # 车辆已靠边
+        self.events.add(EventName.audioLastLane)
+        print(f"Event: audioLastLane, laneChangeBlocked={laneChangeBlocked},preLaneChangeLeft={preLaneChangeLeft},preLaneChangeRight={preLaneChangeRight},laneChange={laneChange}")
+      elif event_type_val == 11:  # 出现新车道
+        self.events.add(EventName.audioNewLane)
+        print(f"Event: audioNewLane, laneChangeBlocked={laneChangeBlocked},preLaneChangeLeft={preLaneChangeLeft},preLaneChangeRight={preLaneChangeRight},laneChange={laneChange}")
+      elif event_type_val == 12:  # 变道已结束
+        self.events.add(EventName.audioLaneChangeEnd)
+        print(f"Event: audioLaneChangeEnd, laneChangeBlocked={laneChangeBlocked},preLaneChangeLeft={preLaneChangeLeft},preLaneChangeRight={preLaneChangeRight},laneChange={laneChange}")
+
+
 
       self.model_event_type = model_event_type
       print(f"val={model_event_type},id={event_type_id},event_type={event_type_val}")

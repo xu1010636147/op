@@ -516,6 +516,13 @@ struct CarControl {
       preLaneChange @35;
       atcCancel @36;
       atcResume @37;
+
+      preLaneChangeLeft @38;
+      preLaneChangeRight @39;
+      laneChangeOk @40;
+      lastLane @41;
+      newLane @42;
+      laneChangeEnd @43;
     }
   }
 

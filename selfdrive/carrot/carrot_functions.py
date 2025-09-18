@@ -116,7 +116,7 @@ class CarrotPlanner:
 
     self.eco_over_speed = 2
     self.eco_target_speed = 0
-    
+
     self.autoNaviSpeedDecelRate = 1.5
 
     self.desireState = 0.0
@@ -140,7 +140,7 @@ class CarrotPlanner:
       if myDrivingMode != self.myDrivingMode_last:
         self.myDrivingMode_disable_auto = True
       self.myDrivingMode_last = myDrivingMode
-      
+
       self.myDrivingModeAuto = self.params.get_int("MyDrivingModeAuto")
       if self.myDrivingModeAuto > 0 and not self.myDrivingMode_disable_auto:
         self.myDrivingMode = self.drivingModeDetector.get_mode()
@@ -218,7 +218,7 @@ class CarrotPlanner:
     if self.desireState > 0.9 and self.desireStateCount < int(1.5 / DT_MDL):  # lane change state, 1.5초동안만.
       t_follow *= self.dynamicTFollowLC   # 차선변경시 t_follow를 줄임.
       self.jerk_factor_apply = self.jerk_factor * self.dynamicTFollowLC   # 차선변경시 jerk factor를 줄여 aggresive하게
-    elif lead.status:      
+    elif lead.status:
       if self.dynamicTFollow > 0.0:
         gap_dist_adjust = np.clip((desired_follow_distance - lead.dRel) * self.dynamicTFollow, - 0.1, 1.0) * 0.1
         t_follow += gap_dist_adjust
@@ -245,7 +245,7 @@ class CarrotPlanner:
                   model_x < np.interp(v[0] * 3.6, [60, 80], [120.0, 150]) and
                   ((model_v < 3.0) or (model_v < v[0] * 0.7)) and
                   abs(y[-1]) < 5.0)
-      # 정상주행중 감속하는 경우(카메라 감속등), 오감지가 많음. 
+      # 정상주행중 감속하는 경우(카메라 감속등), 오감지가 많음.
       # 회생감속시:v_cruise=0에는 신호호감지하도록함.
       if v_cruise != 0 and (self.xState == XState.e2eCruise and a_ego < -1.0):
         stopSign = False
@@ -282,7 +282,7 @@ class CarrotPlanner:
     if sm.alive['carrotMan']:
       carrot_man = sm['carrotMan']
       atc_turn_left = carrot_man.atcType in ["turn left", "atc left"]
-      trigger_start = self.carrot_staty_stop = False
+      trigger_start = self.carrot_stat_stop = False
       if atc_turn_left or sm['carState'].leftBlinker:
         if self.trafficState_carrot == 1 and carrot_man.trafficState == 3: # red -> left triggered
           trigger_start = True
@@ -367,7 +367,7 @@ class CarrotPlanner:
 
     v_cruise_kph = self.cruise_eco_control(v_ego_cluster_kph, v_cruise_kph)
     v_cruise_kph, atc_active = self._update_carrot_man(sm, v_ego_kph, v_cruise_kph)
-    
+
     if atc_active and not self.atc_active and self.xState not in [XState.e2eStop, XState.e2eStopped, XState.lead]:
       if self.atcType in ["turn left", "turn right", "atc left", "atc right"]:
         self.xState = XState.e2ePrepare

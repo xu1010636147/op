@@ -593,7 +593,7 @@ class DesireHelper:
       else:
         self.last_lane_count = 0
     else:
-      self.last_lane_count = 0
+      self.last_lane_count = -1
 
     #在有应急车道的高速公路，侧面只剩最后一条车道(也可能是应急车道)，则清除需要变道的次数
     if desire_enabled: #如果没有检测到路沿，那有可以车辆在离路沿最远的车道上，edge_available成立的标志为宽度大于2.5m
@@ -694,7 +694,7 @@ class DesireHelper:
         print(f"---State:{self.lane_change_state},turn: {self.atc_turn_cnt},trig:{auto_lane_change_trigger}="
               f"lane_change_enable'{self.auto_lane_change_enable}'&&!blocked'{auto_lane_change_blocked}'&&edge_available'{edge_available}'&&"
               f"(lane_available_trig'{lane_available_trigger}'||lane_appeared'{lane_appeared}')&!object_detected'{side_object_detected}' "
-              f"obj_cnt={self.object_detected_count:.1f},{self.object_detected_count_new},active={self.atc_active},last_lane={last_lane} cnt:{self.last_lane_count}")
+              f"obj_cnt={self.object_detected_count:.1f},{self.object_detected_count_new},active={self.atc_active},last_lane={last_lane} time:{self.last_lane_count}")
 
     if not lateral_active or self.lane_change_timer > LANE_CHANGE_TIME_MAX: #横向未激活或变道时间超过10秒时，退出变道控制
       if self.lane_change_state != LaneChangeState.off:

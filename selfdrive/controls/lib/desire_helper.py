@@ -225,6 +225,7 @@ class DesireHelper:
     self.last_lane_count = 0
     self.blinker = "none"
     self.blinker_val = BLINKER_NONE
+    self.stockBlinkerCtrl = 0
     #new
 
   def lane_change_audio(self, enable, turn_type, param=0):
@@ -371,6 +372,7 @@ class DesireHelper:
       self.min_vrel_vego_time = self.sidevRelDistTime
       self.min_object_detected_count_thr = int(-1*self.sideBsdDelayTime/DT_MDL)
       self.lane_count_stab_cnt = int(self.params.get_float("LaneStabTime") * 0.1/DT_MDL)
+      self.stockBlinkerCtrl = self.params.get_int("StockBlinkerCtrl")
       #new
     self.frame += 1
 
@@ -858,7 +860,8 @@ class DesireHelper:
                 trigger_type = -3
                 trigger_name = "no torque"
             elif (driver_desire_enabled and  #驾驶员打灯变道
-                  (self.blinker_val == BLINKER_NONE or not atc_desire_enabled or #没有esp32打灯或不在自动变道情况下
+                  (self.stockBlinkerCtrl == 0 or #未通过外挂控制原车Blinker
+                    self.blinker_val == BLINKER_NONE or not atc_desire_enabled or #没有esp32打灯或不在自动变道情况下
                     (atc_desire_enabled and driver_blinker_state != atc_blinker_state)  #或者用户打的灯和自动变道的方向相反
                      or torque_applied #或者用户施加了方向盘扭矩
                      or (auto_lane_change_trigger and (lane_change_interval < 0.5 or self.lane_change_disable_count == 0 or not atc_left_right))) #或符合了自动变道条件

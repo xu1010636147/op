@@ -1040,7 +1040,8 @@ class DesireHelper:
 
     self.atc_cancel_delay = min(-1, self.atc_cancel_delay - 1)
     if self.atc_cancel_delay == 0:
-      self.lane_change_audio(True, 4, 0)  # 播报领航已退出
+      if self.atc_cancel:
+        self.lane_change_audio(True, 4, 0)  # 播报领航已退出
       self.atc_cancel = False
 
     if self.turn_direction != TurnDirection.none:

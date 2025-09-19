@@ -397,6 +397,7 @@ def main(demo=False):
       #new
       modelv2_send.modelV2.meta.eventType = int(DH.event_type + DH.event_type_id*256)
       modelv2_send.modelV2.meta.leftSec = int(DH.dh_left_sec)
+      modelv2_send.modelV2.meta.blinker = DH.blinker
       if DH.event_test_frame > 0:
         modelv2_send.modelV2.meta.laneChangeState = LaneChangeState.preLaneChange
         modelv2_send.modelV2.meta.laneChangeDirection = LaneChangeDirection.left

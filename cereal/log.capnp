@@ -1188,6 +1188,7 @@ struct ModelDataV2 {
     #new
     eventType @17 :Int32;
     leftSec @18 :Int32;
+    blinker @19 :Text;
 
     # deprecated
     brakeDisengageProbDEPRECATED @2 :Float32;

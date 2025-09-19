@@ -223,6 +223,8 @@ class DesireHelper:
     self.rightFrontBlind = 0
     self.xroadcate = -1
     self.last_lane_count = 0
+    self.blinker = "none"
+    self.blinker_val = BLINKER_NONE
     #new
 
   def lane_change_audio(self, enable, turn_type, param=0):
@@ -516,6 +518,11 @@ class DesireHelper:
     desire_enabled = driver_desire_enabled or atc_desire_enabled #变道请求
     blinker_state = driver_blinker_state if driver_desire_enabled else atc_blinker_state #根据是谁打的灯选择转向灯状态
 
+    if atc_blinker_state == BLINKER_NONE:
+      self.blinker_val = BLINKER_NONE
+    elif turn_left_right:
+      self.blinker_val = atc_blinker_state
+
     #目前只有现代的carState里有这个leftLaneLine/rightLaneLine，但是大部车没有这个信息，包括Santa Fe，所以lane_line_info为0
     lane_line_info = carstate.leftLaneLine if blinker_state == BLINKER_LEFT else carstate.rightLaneLine
 
@@ -718,6 +725,7 @@ class DesireHelper:
               f"lane_change_enable'{self.auto_lane_change_enable}'&&!blocked'{auto_lane_change_blocked}'&&edge_available'{edge_available}'&&"
               f"(lane_available_trig'{lane_available_trigger}'||lane_appeared'{lane_appeared}')&!object_detected'{side_object_detected}' "
               f"obj_cnt={self.object_detected_count:.1f},{self.object_detected_count_new},active={self.atc_active},last_lane={last_lane} time:{self.last_lane_count}")
+        print(f"---blinker_state={blinker_state},atc_blinker_state={atc_blinker_state},driver_blinker_state={driver_blinker_state},esp32 blinker={self.blinker}")
 
     if not lateral_active or self.lane_change_timer > LANE_CHANGE_TIME_MAX: #横向未激活或变道时间超过10秒时，退出变道控制
       if self.lane_change_state != LaneChangeState.off:
@@ -732,8 +740,8 @@ class DesireHelper:
       if self.lane_change_state != LaneChangeState.off:
         if (self.showDebugLog & 32) > 0:
           print("---Desire Turning")
-        if atc_desire_enabled and (fork_left_right or atc_left_right):
-          self.lane_change_audio(True, 4, 0)  # 播报领航已退出
+        #if atc_desire_enabled and (fork_left_right or atc_left_right):
+        #  self.lane_change_audio(True, 4, 0)  # 播报领航已退出
       self.lane_change_state = LaneChangeState.off
       self.turn_direction = TurnDirection.turnLeft if blinker_state == BLINKER_LEFT else TurnDirection.turnRight #转弯方向
       self.lane_change_direction = self.turn_direction #LaneChangeDirection.none
@@ -742,8 +750,8 @@ class DesireHelper:
       if self.lane_change_state != LaneChangeState.off:
         if (self.showDebugLog & 32) > 0:
           print("---Desire after turning")
-        if atc_desire_enabled and (fork_left_right or atc_left_right):
-          self.lane_change_audio(True, 4, 0)  # 播报领航已退出
+        #if atc_desire_enabled and (fork_left_right or atc_left_right):
+        #  self.lane_change_audio(True, 4, 0)  # 播报领航已退出
       self.lane_change_state = LaneChangeState.off
       self.lane_change_direction = LaneChangeDirection.none
       self.turn_direction = TurnDirection.none
@@ -820,6 +828,10 @@ class DesireHelper:
           trigger_type = -1
           trigger_name = "desire disable"
         else:
+          if not driver_desire_enabled and self.atc_turn_cnt >= 0:
+            self.blinker_val = atc_blinker_state
+          else:
+            self.blinker_val = BLINKER_NONE
           #此处根据条件决定是否进入开始变道或转弯的流程，lane_change_available为真时表示旁边车道或者路沿的宽度稳定大于2.5米
           if lane_change_available and self.lane_change_delay == 0: #允许变道并且没有延时时间要求
             self.lane_change_delay_start = False
@@ -845,7 +857,12 @@ class DesireHelper:
               else:
                 trigger_type = -3
                 trigger_name = "no torque"
-            elif driver_desire_enabled: #驾驶员打灯变道，直接进入LaneChangeState.laneChangeStarting
+            elif (driver_desire_enabled and  #驾驶员打灯变道
+                  (self.blinker_val == BLINKER_NONE or not atc_desire_enabled or #没有esp32打灯或不在自动变道情况下
+                    (atc_desire_enabled and driver_blinker_state != atc_blinker_state)  #或者用户打的灯和自动变道的方向相反
+                     or torque_applied #或者用户施加了方向盘扭矩
+                     or (auto_lane_change_trigger and (lane_change_interval < 0.5 or self.lane_change_disable_count == 0 or not atc_left_right))) #或符合了自动变道条件
+                ):
               if not side_object_detected or (torque_applied and not block_lanechange_bsd): #侧前方无车或用户打了方向盘
                 self.lane_change_state = LaneChangeState.laneChangeStarting
                 trigger_type = 3
@@ -920,6 +937,8 @@ class DesireHelper:
         if self.lane_change_state == LaneChangeState.laneChangeStarting:
           self.trigger_type = trigger_type
           self.trigger_name = trigger_name
+          if not driver_desire_enabled:
+            self.blinker_val = atc_blinker_state
 
         if (self.showDebugLog & 4) > 0:
           print(f"---Pre:lane_change_available={lane_change_available},lane_change_trig={auto_lane_change_trigger},"
@@ -986,6 +1005,9 @@ class DesireHelper:
           if self.atc_turn_cnt < 0:
             self.lane_change_audio(True, 9, 0) #变道已结束
 
+          if self.lane_change_state == LaneChangeState.off or self.atc_turn_cnt < 0:
+            self.blinker_val = BLINKER_NONE
+
         if (self.showDebugLog & 4) > 0:
           print(f"---Finishing: ll_prob={self.lane_change_ll_prob:.1f};dir={self.lane_change_direction};trig:name={self.trigger_name},type={self.trigger_type};state new={self.lane_change_state},atc resume={self.atc_resume}")
 
@@ -1040,3 +1062,7 @@ class DesireHelper:
         self.keep_pulse_timer = 0.0
       elif self.desire in (log.Desire.keepLeft, log.Desire.keepRight):
         self.desire = log.Desire.none
+
+    if not turn_left_right and self.lane_change_state == LaneChangeState.off:
+      self.blinker_val = BLINKER_NONE
+    self.blinker = "left" if self.blinker_val == BLINKER_LEFT else "right" if self.blinker_val == BLINKER_RIGHT else "none"

@@ -255,6 +255,13 @@ class CarrotMan:
     self.ip_address = "0.0.0.0"
     self.remote_addr = None
 
+    self.esp32_broadcast_ip = self.get_broadcast_address()
+    self.esp32_broadcast_port = 4210
+    self.esp32_port = 4211
+    self.esp32_connection = None
+    self.esp32_ip_address = "0.0.0.0"
+    self.esp32_remote_addr = None
+
     #new
     self.autoCurveSpeedFactor = 1.0
     self.autoCurveSpeedAggressiveness = 1.0
@@ -283,6 +290,11 @@ class CarrotMan:
 
     self.is_running = True
     threading.Thread(target=self.broadcast_version_info).start()
+
+    self.esp32_is_running = True
+    threading.Thread(target=self.resp_32_broadcast_info).start()
+
+    threading.Thread(target=self.esp32_comm_thread).start()
 
     self.navi_points = []
     self.navi_points_start_index = 0
@@ -396,6 +408,126 @@ class CarrotMan:
         frame += 1
       except Exception as e:
         print(f"broadcast_version_info error...: {e}")
+        traceback.print_exc()
+        time.sleep(1)
+
+  def esp32_comm_thread(self):
+    blinker_frame = 0
+    while True:
+      try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+          sock.settimeout(10)  # 超时10秒
+          sock.bind(('0.0.0.0', self.esp32_port))  # UDP端口
+          print("#########esp32_comm_thread: UDP thread started...")
+
+          while True:
+            try:
+              try:
+                data, remote_addr = sock.recvfrom(4096)  # 최대 4096 바이트 수신
+                #print(f"Received data from {self.remote_addr}")
+
+                if not data:
+                  raise ConnectionError("No data received")
+
+                if self.esp32_remote_addr is None:
+                  print("Connected from: ", remote_addr)
+                self.esp32_remote_addr = remote_addr
+                try:
+                  json_obj = json.loads(data.decode())
+                  print(json_obj)
+                except Exception as e:
+                  print(f"esp32_comm_thread: json error...: {e}")
+                  print(data)
+
+                # 生成和发送应答信息(UDP使用sendto)
+                #try:
+                #  msg = self.make_esp32_message("left")
+                #  sock.sendto(msg.encode('utf-8'), self.esp32_remote_addr)
+                #except Exception as e:
+                #  print(f"esp32_comm_thread: send error...: {e}")
+
+              except TimeoutError:
+                print("Waiting for data (timeout)...")
+                self.esp32_remote_addr = None
+                time.sleep(1)
+
+              except Exception as e:
+                print(f"esp32_comm_thread: error...: {e}")
+                self.esp32_remote_addr = None
+                break
+
+            except Exception as e:
+              print(f"esp32_comm_thread: recv error...: {e}")
+              self.esp32_remote_addr = None
+              break
+
+          time.sleep(1)
+      except Exception as e:
+        self.esp32_remote_addr = None
+        print(f"Network error, retrying...: {e}")
+        time.sleep(2)
+
+  def resp_32_broadcast_info(self):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    frame = 0
+    blinker_frame = 0
+    blinker_state = 0
+    send_test_msg = False
+    rk = Ratekeeper(10, print_delay_threshold=None)
+
+    while self.esp32_is_running:
+      try:
+        remote_addr = self.esp32_remote_addr
+        remote_ip = remote_addr[0] if remote_addr is not None else ""
+
+        if remote_addr is not None and send_test_msg:
+          try:
+            blinker_frame += 1
+            if 0 == (blinker_frame % 10):
+              blinker_state += 1
+              blinker_state_str = "none"
+              if blinker_state == 1:
+                blinker_state_str = "left"
+              elif blinker_state == 2:
+                blinker_state_str = "right"
+              else:
+                blinker_state = 0
+              msg = self.make_esp32_test_message(blinker_state_str)
+              sock.sendto(msg.encode('utf-8'), self.esp32_remote_addr)
+          except Exception as e:
+            print(f"esp32_comm_thread: send error...: {e}")
+
+        if frame % 20 == 0 or remote_addr is not None:
+          try:
+            self.esp32_broadcast_ip = self.get_broadcast_address() if remote_addr is None else remote_addr[0]
+            if not PC:
+              ip_address = socket.gethostbyname(socket.gethostname())
+            else:
+              ip_address = self.get_local_ip()
+            if ip_address != self.esp32_ip_address:
+              self.esp32_ip_address = ip_address
+              self.esp32_remote_addr = None
+
+            msg = self.make_esp32_send_message()
+            if self.esp32_broadcast_ip is not None:
+              dat = msg.encode('utf-8')
+              sock.sendto(dat, (self.esp32_broadcast_ip, self.esp32_broadcast_port))
+
+            if remote_addr is None:
+              print(f"esp32 broadcasting: {self.esp32_broadcast_ip}:{self.esp32_broadcast_port},{msg}")
+
+          except Exception as e:
+            if self.esp32_connection:
+              self.esp32_connection.close()
+            self.esp32_connection = None
+            print(f"##### esp32_broadcast_error...: {e}")
+            traceback.print_exc()
+
+        rk.keep_time()
+        frame += 1
+      except Exception as e:
+        print(f"esp32_broadcast_info error...: {e}")
         traceback.print_exc()
         time.sleep(1)
 
@@ -544,6 +676,19 @@ class CarrotMan:
     msg['active'] = self.controls_active
     msg['xState'] = self.xState
     msg['trafficState'] = self.trafficState
+    return json.dumps(msg)
+
+  def make_esp32_send_message(self):
+    msg = {}
+    msg['ip'] = self.esp32_ip_address
+    msg['port'] = self.esp32_port
+    if self.sm.alive['modelV2']:
+      msg['blinker'] = self.sm['modelV2'].meta.blinker
+    return json.dumps(msg)
+
+  def make_esp32_test_message(self, blinker):
+    msg = {}
+    msg['blinker'] = blinker
     return json.dumps(msg)
 
   def receive_fixed_length_data(self, sock, length):

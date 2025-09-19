@@ -884,7 +884,7 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
 
   //new
   navToggles = new ListWidget(this);
-  navToggles->addItem(new CValueControl("RoadType", "手动设置道路类型(-1)", "-1:自动(<=70km/h公路,<=85快速路,>85高速)，0:高速(无应急车道) 1:高速(有应急车道), >=2:其它道路", -1, 100, 1));
+  navToggles->addItem(new CValueControl("RoadType", "手动设置道路类型(-1)", "-2:导航获取,-1:自动(<=70km/h公路,<=85快速路,>85高速)，0:高速(无应急车道) 1:高速(有应急车道), >=2:其它道路", -10, 100, 1));
   navToggles->addItem(new CValueControl("SameSpiCamFilter", "过滤相同的测速数据(1)", "0:关闭, 1:打开", 0, 1, 1));
   navToggles->addItem(new CValueControl("StockBlinkerCtrl", "通过外挂控制原车转向灯(0)", "0:关闭, 1:打开", 0, 1, 1));
   navToggles->addItem(new CValueControl("LaneStabTime", "车道数稳定检测时间(10x0.1s)", "当检测车道数稳定时间超过设定值后，则认为已经稳定，单位为0.1秒", 5, 100, 1));

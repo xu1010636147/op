@@ -404,13 +404,15 @@ class CarrotMan:
             if self.connection:
               self.connection.close()
             self.connection = None
-            print(f"##### broadcast_error...: {e}")
+            if (self.carrot_serv.showDebugLog & 32) > 0:
+              print(f"##### broadcast_error...: {e}")
             traceback.print_exc()
 
         rk.keep_time()
         frame += 1
       except Exception as e:
-        print(f"broadcast_version_info error...: {e}")
+        if (self.carrot_serv.showDebugLog & 32) > 0:
+          print(f"broadcast_version_info error...: {e}")
         traceback.print_exc()
         time.sleep(1)
 
@@ -437,10 +439,12 @@ class CarrotMan:
                 self.esp32_remote_addr = remote_addr
                 try:
                   json_obj = json.loads(data.decode())
-                  print(json_obj)
+                  if (self.carrot_serv.showDebugLog & 32) > 0:
+                    print(json_obj)
                 except Exception as e:
-                  print(f"esp32_comm_thread: json error...: {e}")
-                  print(data)
+                  if (self.carrot_serv.showDebugLog & 32) > 0:
+                    print(f"esp32_comm_thread: json error...: {e}")
+                    print(data)
 
                 # 生成和发送应答信息(UDP使用sendto)
                 #try:
@@ -450,24 +454,28 @@ class CarrotMan:
                 #  print(f"esp32_comm_thread: send error...: {e}")
 
               except TimeoutError:
-                print("Waiting for data (timeout)...")
+                if (self.carrot_serv.showDebugLog & 32) > 0:
+                  print("Waiting for data (timeout)...")
                 self.esp32_remote_addr = None
                 time.sleep(1)
 
               except Exception as e:
-                print(f"esp32_comm_thread: error...: {e}")
+                if (self.carrot_serv.showDebugLog & 32) > 0:
+                  print(f"esp32_comm_thread: error...: {e}")
                 self.esp32_remote_addr = None
                 break
 
             except Exception as e:
-              print(f"esp32_comm_thread: recv error...: {e}")
+              if (self.carrot_serv.showDebugLog & 32) > 0:
+                print(f"esp32_comm_thread: recv error...: {e}")
               self.esp32_remote_addr = None
               break
 
           time.sleep(1)
       except Exception as e:
         self.esp32_remote_addr = None
-        print(f"Network error, retrying...: {e}")
+        if (self.carrot_serv.showDebugLog & 32) > 0:
+          print(f"Network error, retrying...: {e}")
         time.sleep(2)
 
   def resp_32_broadcast_info(self):
@@ -499,7 +507,8 @@ class CarrotMan:
               msg = self.make_esp32_test_message(blinker_state_str)
               sock.sendto(msg.encode('utf-8'), self.esp32_remote_addr)
           except Exception as e:
-            print(f"esp32_comm_thread: send error...: {e}")
+            if (self.carrot_serv.showDebugLog & 32) > 0:
+              print(f"esp32_comm_thread: send error...: {e}")
 
         if frame % 20 == 0 or remote_addr is not None:
           try:
@@ -518,19 +527,22 @@ class CarrotMan:
               sock.sendto(dat, (self.esp32_broadcast_ip, self.esp32_broadcast_port))
 
             if remote_addr is None:
-              print(f"esp32 broadcasting: {self.esp32_broadcast_ip}:{self.esp32_broadcast_port},{msg}")
+              if (self.carrot_serv.showDebugLog & 32) > 0:
+                print(f"esp32 broadcasting: {self.esp32_broadcast_ip}:{self.esp32_broadcast_port},{msg}")
 
           except Exception as e:
             if self.esp32_connection:
               self.esp32_connection.close()
             self.esp32_connection = None
-            print(f"##### esp32_broadcast_error...: {e}")
+            if (self.carrot_serv.showDebugLog & 32) > 0:
+              print(f"##### esp32_broadcast_error...: {e}")
             traceback.print_exc()
 
         rk.keep_time()
         frame += 1
       except Exception as e:
-        print(f"esp32_broadcast_info error...: {e}")
+        if (self.carrot_serv.showDebugLog & 32) > 0:
+          print(f"esp32_broadcast_info error...: {e}")
         traceback.print_exc()
         time.sleep(1)
 

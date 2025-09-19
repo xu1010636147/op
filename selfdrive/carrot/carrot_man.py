@@ -343,16 +343,19 @@ class CarrotMan:
       try:
         if self.sm.alive['carState']:
           self.v_cruise_kph = self.sm['carState'].vCruise
-        if self.carrot_serv.roadType < 0:
-          # self.xroadcate = self.roadcate
+        if self.carrot_serv.roadType >= 0:
+          self.xroadcate = self.carrot_serv.roadType
+          self.carrot_serv.xroadcate = self.xroadcate
+        elif self.carrot_serv.roadType == -1: #-1表示根据巡航设定速度判断道路类型
           if self.v_cruise_kph <= 70 or self.v_cruise_kph > 200:
             self.xroadcate = 8
           elif self.v_cruise_kph <= 85:
             self.xroadcate = 0
           else:
             self.xroadcate = 1
-        else:
-          self.xroadcate = self.carrot_serv.roadType
+          self.carrot_serv.xroadcate = self.xroadcate
+        else: #-2
+          self.xroadcate = self.carrot_serv.xroadcate
 
         self.carrot_serv.xroadcate = self.xroadcate
         self.sm.update(0)
@@ -2383,6 +2386,10 @@ class CarrotServ:
       self.nSdiPlusBlockSpeed = int(json.get("nSdiPlusBlockSpeed", 0))
       self.nSdiPlusBlockDist = int(json.get("nSdiPlusBlockDist", 0))
       self.roadcate = int(json.get("roadcate", 0))
+
+      #道路类型转换
+      if self.roadType == -2:
+        self.xroadcate = 1 if self.roadcate == 10 else 8
 
       ## GuidePoint
       self.nTBTDist = int(json.get("nTBTDist", 0))

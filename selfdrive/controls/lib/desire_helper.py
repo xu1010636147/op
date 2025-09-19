@@ -377,8 +377,8 @@ class DesireHelper:
     self.frame += 1
 
     self.xroadcate = carrotMan.roadCate
-    if self.roadType < 0:
-      self.xroadcate = self.xroadcate
+    if self.roadType >= 0: #大于0表示用户指定道路类型
+      self.xroadcate = self.roadType
 
     # new
     if 0 <= self.xroadcate <= 1: #高速

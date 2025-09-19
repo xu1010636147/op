@@ -183,6 +183,7 @@ def get_default_params():
 
     # new
     ("SameSpiCamFilter", "1"),
+    ("StockBlinkerCtrl", "1"),
     ("LaneStabTime", "10"),
     ("BsdDelayTime", "20"),
     ("SideBsdDelayTime", "20"),

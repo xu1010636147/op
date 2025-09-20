@@ -344,8 +344,8 @@ class VCruiseCarrot:
     else:
       self.v_cruise_kph = max(20, self.v_ego_kph_set) #V_CRUISE_UNSET
       self.v_cruise_cluster_kph = self.v_cruise_kph #V_CRUISE_UNSET
-      #if self.cruise_state_available_last: # 최초 한번이라도 cruiseState.available이 True였다면
-      #  self._lat_enabled = False
+      if self.cruise_state_available_last: # 최초 한번이라도 cruiseState.available이 True였다면
+        self._lat_enabled = False
 
     self.cruise_state_available_last = CS.cruiseState.available
     self.enabled_last = CC.enabled

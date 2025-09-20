@@ -830,7 +830,7 @@ class DesireHelper:
           trigger_type = -1
           trigger_name = "desire disable"
         else:
-          if not driver_desire_enabled and self.atc_turn_cnt >= 0:
+          if (not driver_desire_enabled or self.stockBlinkerCtrl == 1) and self.atc_turn_cnt >= 0: #手动打灯(或者resp32控制的原车打灯)，不再通过外控制转身灯
             self.blinker_val = atc_blinker_state
           else:
             self.blinker_val = BLINKER_NONE
@@ -1069,4 +1069,7 @@ class DesireHelper:
 
     if not turn_left_right and self.lane_change_state == LaneChangeState.off:
       self.blinker_val = BLINKER_NONE
-    self.blinker = "left" if self.blinker_val == BLINKER_LEFT else "right" if self.blinker_val == BLINKER_RIGHT else "none"
+    if self.stockBlinkerCtrl == 1:
+      self.blinker = "stockleft" if self.blinker_val == BLINKER_LEFT else "stockright" if self.blinker_val == BLINKER_RIGHT else "none"
+    else:
+      self.blinker = "left" if self.blinker_val == BLINKER_LEFT else "right" if self.blinker_val == BLINKER_RIGHT else "none"

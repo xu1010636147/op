@@ -96,6 +96,7 @@ class RadarInterface(RadarInterfaceBase):
     self.vLead_filter = MyMovingAverage(13) # for SCC radar 0.1 unit
     self.vRel_last = 0
     self.dRel_last = 0
+    self.showDebugLog = self.params.get_int("ShowDebugLog")
 
 
   def update(self, can_strings):
@@ -134,6 +135,8 @@ class RadarInterface(RadarInterfaceBase):
           if ii not in self.pts:
             self.pts[ii] = structs.RadarData.RadarPoint()
             self.pts[ii].trackId = self.track_id
+            if (self.showDebugLog & 128) > 0:
+              print(f"add trace{self.track_id} to pts[{ii}]")
             self.track_id += 1
           self.pts[ii].measured = True
           self.pts[ii].dRel = msg['ACC_ObjDist']
@@ -143,6 +146,10 @@ class RadarInterface(RadarInterfaceBase):
           self.pts[ii].aRel = 0.0
           #self.pts[ii].yvRel = float('nan')
           self.pts[ii].yvRel = 0.0
+
+          if (self.showDebugLog & 128) > 0:
+            print(f"***update escc: ACC_ObjStatus: {msg['ACC_ObjStatus']},pts[{ii}]: "
+                  f"dRel={self.pts[ii].dRel},yRel={self.pts[ii].yRel},vRel={self.pts[ii].vRel},aRel={self.pts[ii].aRel},yvRel={self.pts[ii].yvRel}")
 
           #print(f"escc trace valid,track id {self.track_id}")
         else:
@@ -190,6 +197,9 @@ class RadarInterface(RadarInterfaceBase):
             self.pts[addr].aRel = msg['REL_ACCEL']
             self.pts[addr].yvRel = 0.0
 
+          if (self.showDebugLog & 128) > 0:
+            print(f"***update track: pts[{addr}]: dRel={self.pts[addr].dRel},yRel={self.pts[addr].yRel},vRel={self.pts[addr].vRel},aRel={self.pts[addr].aRel},yvRel={self.pts[addr].yvRel}")
+
         else:
           del self.pts[addr]
 
@@ -213,6 +223,10 @@ class RadarInterface(RadarInterfaceBase):
             self.pts[addr].vLead = self.pts[addr].vRel + self.v_ego
             self.pts[addr].aRel = msg['REL_ACCEL2']
             self.pts[addr].yvRel = msg['LAT_SPEED2']
+
+            if (self.showDebugLog & 128) > 0:
+              print(f"***update track group1: pts[{addr}]: dRel={self.pts[addr].dRel},yRel={self.pts[addr].yRel},vRel={self.pts[addr].vRel},aRel={self.pts[addr].aRel},yvRel={self.pts[addr].yvRel}")
+
           else:
             del self.pts[addr]
 

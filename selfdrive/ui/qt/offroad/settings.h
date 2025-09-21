@@ -95,6 +95,7 @@ private:
   LabelControl *versionLbl;
   ButtonControl *installBtn;
   ButtonControl *downloadBtn;
+  ButtonControl *onOffRoadBtn;
   ButtonControl *targetBranchBtn;
 
   Params params;

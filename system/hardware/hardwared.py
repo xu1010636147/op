@@ -172,7 +172,7 @@ def update_restart_condition(current_time, restart_triggered_ts, params, onroad_
       if softRestartTriggered == 2:
         print("Parameter set to default")
         set_default_params()
-        
+
       params.put_int("SoftRestartTriggered", 0)
       restart_triggered_ts = current_time
   return restart_triggered_ts
@@ -218,6 +218,8 @@ def hardware_thread(end_event, hw_queue) -> None:
   thermal_config = HARDWARE.get_thermal_config()
 
   fan_controller = None
+
+  device_go_off_road = False
 
   restart_triggered_ts = 0.
 
@@ -353,7 +355,9 @@ def hardware_thread(end_event, hw_queue) -> None:
             pass
 
     # Handle offroad/onroad transition
-    should_start = all(onroad_conditions.values())
+    if count % 6 == 0:
+      device_go_off_road = params.get_bool("device_go_off_road")
+    should_start = not device_go_off_road and all(onroad_conditions.values())
     if started_ts is None:
       should_start = should_start and all(startup_conditions.values())
 

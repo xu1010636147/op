@@ -129,7 +129,7 @@ class RadarInterface(RadarInterfaceBase):
 
       msg_src = "ESCC"
       msg = self.rcp.vl[msg_src]
-      valid = msg['ACC_ObjStatus']
+      valid = msg['ACC_ObjStatus'] #and msg['ACC_ObjDist'] < 204.6
       for ii in range(1):
         if valid:
           if ii not in self.pts:
@@ -142,6 +142,7 @@ class RadarInterface(RadarInterfaceBase):
           self.pts[ii].dRel = msg['ACC_ObjDist']
           self.pts[ii].yRel = -msg['ACC_ObjLatPos']
           self.pts[ii].vRel = msg['ACC_ObjRelSpd']
+          self.pts[ii].vLead = self.pts[ii].vRel + self.v_ego
           #self.pts[ii].aRel = float('nan')
           self.pts[ii].aRel = 0.0
           #self.pts[ii].yvRel = float('nan')

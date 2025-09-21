@@ -11,6 +11,7 @@ from openpilot.selfdrive.modeld.constants import index_function
 from openpilot.selfdrive.controls.radard import _LEAD_ACCEL_TAU
 # from openpilot.selfdrive.carrot.carrot_functions import CarrotPlanner
 from openpilot.selfdrive.carrot.carrot_functions import XState
+from openpilot.common.params import Params
 
 if __name__ == '__main__':  # generating code
   from openpilot.third_party.acados.acados_template import AcadosModel, AcadosOcp, AcadosOcpSolver
@@ -248,6 +249,11 @@ class LongitudinalMpc:
     self.desired_distance = 0.0
     self.lead_danger_factor = LEAD_DANGER_FACTOR
 
+    #new
+    self.showDebugLog = 0
+    self.frame = 0
+
+
 
   def reset(self):
     # self.solver = AcadosOcpSolverCython(MODEL_NAME, ACADOS_SOLVER_TYPE, N)
@@ -325,7 +331,7 @@ class LongitudinalMpc:
     x_lead_traj = x_lead + np.cumsum(T_DIFFS * v_lead_traj)
     lead_xv = np.column_stack((x_lead_traj, v_lead_traj))
     return lead_xv
-  
+
   def process_lead(self, lead, j_lead):
     v_ego = self.x0[1]
     if lead is not None and lead.status:
@@ -362,6 +368,10 @@ class LongitudinalMpc:
     self.max_a = max_a
 
   def update(self, carrot, reset_state, radarstate, v_cruise, x, v, a, j, personality=log.LongitudinalPersonality.standard):
+    if 0 == (self.frame % 100):
+      self.showDebugLog = Params().get_int("ShowDebugLog")
+    self.frame += 1
+
     t_follow = carrot.get_T_FOLLOW(personality)
     v_ego = self.x0[1]
     a_ego = self.x0[2]
@@ -379,7 +389,7 @@ class LongitudinalMpc:
     mode = self.mode
     comfort_brake = carrot.comfort_brake
     stop_distance = carrot.stop_distance
-    
+
     if mode == 'blended':
       stop_x = 1000.0
     else:
@@ -392,12 +402,19 @@ class LongitudinalMpc:
     # and then treat that as a stopped car/obstacle at this new distance.
     lead_0_obstacle = lead_xv_0[:,0] + get_stopped_equivalence_factor(lead_xv_0[:,1])
     lead_1_obstacle = lead_xv_1[:,0] + get_stopped_equivalence_factor(lead_xv_1[:,1])
-    
+
     self.desired_distance = desired_follow_distance(v_ego, lead_v_0, comfort_brake, stop_distance, t_follow)
 
     self.params[:,0] = ACCEL_MIN if not reset_state else a_ego
     # negative accel constraint causes problems because negative speed is not allowed
     self.params[:,1] = max(0.0, self.max_a if not reset_state else a_ego)
+
+    if (self.showDebugLog & 128) > 0:
+      print(f"v_ego={v_ego:.1f}, lead_xv_0_dist={lead_xv_0[0, 0]:.1f}, lead_v_0={lead_v_0:.1f}, "
+            f"lead_xv_1_dist={lead_xv_1[0, 0]:.1f}, desired_distance={self.desired_distance:.1f}, "
+            f"t_follow={t_follow:.1f}, lead_0_obstacle={lead_0_obstacle[0]:.1f}, "
+            f"lead_1_obstacle={lead_1_obstacle[0]:.1f}, comfort_brake={comfort_brake:.1f}, "
+            f"stop_distance={stop_distance:.1f}, mode={mode}")
 
     # Update in ACC mode or ACC/e2e blend
     if mode == 'acc':
@@ -436,7 +453,7 @@ class LongitudinalMpc:
       #safe_distance = lead_0_obstacle[0] - get_safe_obstacle_distance(v_ego, comfort_brake, stop_distance)
       self.lead_danger_factor = LEAD_DANGER_FACTOR #np.interp(safe_distance, [-30.0, 0.0], [0.9, LEAD_DANGER_FACTOR]) # 이걸적용하니, 사고방지턱 감속시 너무 급정거하는것 같음.
       self.params[:,5] = self.lead_danger_factor
-      
+
     elif mode == 'blended':
       self.params[:,5] = 1.0
 

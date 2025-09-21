@@ -155,6 +155,7 @@ class RadarInterface(RadarInterfaceBase):
         else:
           if ii in self.pts:
             del self.pts[ii]
+            print(f"delete pts[{ii}]")
     else: #雷达跟踪数据
       for addr in range(self.radar_start_addr, self.radar_start_addr + self.radar_msg_count):
         msg = self.rcp.vl[f"RADAR_TRACK_{addr:x}"]

@@ -437,11 +437,13 @@ class RadarD:
     self.current_time = 1e-9*max(sm.logMonoTime.values())
 
     self.enable_radar_tracks = self.params.get_int("EnableRadarTracks")
+    self.enable_escc = self.params.get_int("EnableEscc")
     self.enable_corner_radar = self.params.get_int("EnableCornerRadar")
     self.radar_lat_factor = self.params.get_float("RadarLatFactor") * 0.01
     self.radar_reaction_factor = self.params.get_float("RadarReactionFactor") * 0.01
     self.detect_cut_in = self.radar_lat_factor > 0
     self.sideRadarMinDist = self.params.get_float("SideRadarMinDist") * 0.1
+    self.showDebugLog = self.params.get_int("ShowDebugLog")
 
     leads_v3 = sm['modelV2'].leadsV3
     if sm.recv_frame['carState'] != self.last_v_ego_frame:
@@ -459,9 +461,14 @@ class RadarD:
 
       self.tracks[track_id].update(sm['modelV2'], pt, self.ready, self.radar_reaction_factor)
 
+      if (self.showDebugLog & 128) > 0:
+        print(f"Track{track_id} found")
+
     for tid in list(self.tracks.keys()):
       if tid not in valid_ids:
         self.tracks.pop(tid)
+        if (self.showDebugLog & 128) > 0:
+          print(f"pop Track{tid}")
 
     # *** publish radarState ***
     self.radar_state_valid = sm.all_checks()
@@ -489,6 +496,35 @@ class RadarD:
 
       self.radar_state.leadOne, self.radar_detected = self.get_lead(sm['carState'], sm['modelV2'], self.tracks, 0, leads_v3[0], model_v_ego, low_speed_override=False)
       self.radar_state.leadTwo, _ = self.get_lead(sm['carState'], sm['modelV2'], self.tracks, 1, leads_v3[1], model_v_ego, low_speed_override=False)
+
+      if (self.showDebugLog & 128) > 0:
+        if self.radar_state.leadOne.status:
+          print(f"leadOne: dist={self.radar_state.leadOne.dRel:.1f}m, "
+                f"yRel={self.radar_state.leadOne.yRel:.1f}m, "
+                f"vRel={self.radar_state.leadOne.vRel:.1f}m/s, "
+                f"vLead={self.radar_state.leadOne.vLead:.1f}m/s, "
+                f"aLead={self.radar_state.leadOne.aLead:.2f}m/s², "
+                f"radar={self.radar_state.leadOne.radar}, "
+                f"trackId={self.radar_state.leadOne.radarTrackId}, "
+                f"prob={self.radar_state.leadOne.modelProb:.2f}")
+        else:
+          print("leadOne: No lead detected")
+
+        if self.radar_state.leadTwo.status:
+          print(f"leadTwo: dist={self.radar_state.leadTwo.dRel:.1f}m, "
+                f"yRel={self.radar_state.leadTwo.yRel:.1f}m, "
+                f"vRel={self.radar_state.leadTwo.vRel:.1f}m/s, "
+                f"vLead={self.radar_state.leadTwo.vLead:.1f}m/s, "
+                f"aLead={self.radar_state.leadTwo.aLead:.2f}m/s², "
+                f"radar={self.radar_state.leadTwo.radar}, "
+                f"trackId={self.radar_state.leadTwo.radarTrackId}, "
+                f"prob={self.radar_state.leadTwo.modelProb:.2f}")
+        else:
+          print("leadTwo: No lead detected")
+
+          # 额外的系统状态信息
+        print(f"LeadOne detected: {self.radar_detected}, Ready: {self.ready}, "
+              f"Tracks count: {len(self.tracks)}, v_ego: {self.v_ego:.1f}m/s")
 
       ll, lc, lr, leadCenter, self.radar_state.leadLeft, self.radar_state.leadRight, leadCutIn = get_lead_side(self.sideRadarMinDist, self.v_ego, self.tracks, sm['modelV2'], 3.2, model_v_ego, self.radar_lat_factor)
 

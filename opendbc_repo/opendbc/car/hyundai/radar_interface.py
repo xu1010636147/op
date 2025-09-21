@@ -129,7 +129,7 @@ class RadarInterface(RadarInterfaceBase):
 
       msg_src = "ESCC"
       msg = self.rcp.vl[msg_src]
-      valid = msg['ACC_ObjStatus'] #and msg['ACC_ObjDist'] < 204.6
+      valid = msg['ACC_ObjStatus'] and msg['ACC_ObjDist'] < 204.6
       for ii in range(1):
         if valid:
           if ii not in self.pts:

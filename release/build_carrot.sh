@@ -25,5 +25,5 @@ git add -f .
 
 VERSION="carrot_v$(date +%y%m%d)"
 git commit -m $VERSION
-git branch -m "escc-cp"
-git push -f origin "escc-cp"
+git branch -m "escc-cpv9"
+git push -f origin "escc-cpv9"

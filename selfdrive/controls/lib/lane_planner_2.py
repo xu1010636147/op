@@ -55,8 +55,6 @@ class LanePlanner:
     self.lll_prob = 0.
     self.rll_prob = 0.
     self.d_prob = 0.
-    self.llll_prob = 0.
-    self.rrll_prob = 0.
 
     self.lll_std = 0.
     self.rll_std = 0.
@@ -91,8 +89,6 @@ class LanePlanner:
       self.rll_prob = md.laneLineProbs[2]
       self.lll_std = md.laneLineStds[1]
       self.rll_std = md.laneLineStds[2]
-      self.llll_prob = md.laneLineProbs[0]
-      self.rrll_prob = md.laneLineProbs[3]
 
     if len(edges[0].t) == TRAJECTORY_SIZE:
       self.le_y = np.array(edges[0].y) + md.roadEdgeStds[0] * 0.4
@@ -190,7 +186,7 @@ class LanePlanner:
         lane_path_y = path_from_left_lane if l_prob > 0.5 or l_prob > r_prob else path_from_right_lane
     elif l_prob > 0.7 and r_prob > 0.7:
       lane_path_y = (path_from_left_lane + path_from_right_lane) / 2.
-      # lane_width filtering에 의해서, 점점 줄어들때, 중앙선으로 붙어가는 현상이 생김..
+      # lane_width filtering에 의해서, 점점 줄어들때, 중앙선으로 붙어가는 현상이 생김.. 
       #if self.lane_width > 3.2:
       #  lane_path_y = path_from_right_lane
       #else:
@@ -234,7 +230,7 @@ class LanePlanner:
     #  self.d_prob, self.lanefull_mode,
     #  self.lane_width_left_filtered.x, self.lane_width, self.lane_width_right_filtered.x)
 
-    adjustLaneTime = self.params.get_float("LatMpcInputOffset") * 0.01 # 0.06
+    adjustLaneTime = self.params.get_float("LatMpcInputOffset") * 0.01 # 0.06 
     laneline_active = False
     self.d_prob_count = self.d_prob_count + 1 if self.d_prob > 0.3 else 0
     if self.lanefull_mode and self.d_prob_count > int(1 / DT_MDL):

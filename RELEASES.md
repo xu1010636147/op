@@ -1,7 +1,7 @@
 Carrot2-v9 (2025-09-21)
 ========================
 * GWM Model
-* Lead + 1 detect (通用场景)
+* Lead + 1 detect (前前车检测功能)
 * Improve radar vision matching
 * Auto safe-mode on stopped vehicle detection
 

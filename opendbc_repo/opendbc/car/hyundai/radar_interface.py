@@ -80,7 +80,7 @@ class RadarInterface(RadarInterfaceBase):
     #new
     self.updated_tracks = set()
     self.updated_scc = set()
-    self.rcp_tracks = get_radar_can_parser(CP, self.radar_tracks, self.radar_start_addr, self.radar_msg_count)
+    self.rcp_tracks = get_radar_can_parser(CP, self.radar_tracks, self.enhanced_scc, self.radar_start_addr, self.radar_msg_count)
     self.rcp_scc = get_radar_can_parser_scc(CP)
     self.trigger_msg_scc = 416 if self.canfd else 0x420
 

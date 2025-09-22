@@ -25,7 +25,7 @@ from openpilot.common.realtime import config_realtime_process, DT_MDL
 from openpilot.common.transformations.camera import DEVICE_CAMERAS
 from openpilot.common.transformations.model import get_warp_matrix
 from openpilot.system import sentry
-from openpilot.selfdrive.controls.lib.desire_helper import DesireHelper
+from openpilot.selfdrive.controls.lib.desire_helper import DesireHelper, LaneChangeDirection, LaneChangeState
 from openpilot.selfdrive.controls.lib.drive_helpers import get_accel_from_plan, smooth_value, get_curvature_from_plan
 from openpilot.selfdrive.modeld.parse_model_outputs import Parser
 from openpilot.selfdrive.modeld.fill_model_msg import fill_model_msg, fill_pose_msg, PublishState
@@ -314,7 +314,7 @@ def main(demo=False):
       #lat_smooth_seconds = params.get_float("SteerSmoothSec") * 0.01
       long_delay = params.get_float("LongActuatorDelay")*0.01
       vEgoStopping = params.get_float("VEgoStopping") * 0.01
-      
+
     if custom_lat_delay > 0.0:
       lat_delay = custom_lat_delay + lat_smooth_seconds
     else:
@@ -430,6 +430,8 @@ def main(demo=False):
       modelv2_send.modelV2.meta.eventType = int(DH.event_type + DH.event_type_id*256)
       modelv2_send.modelV2.meta.leftSec = int(DH.dh_left_sec)
       modelv2_send.modelV2.meta.blinker = DH.blinker
+      modelv2_send.modelV2.meta.leftFrontBlind = int(DH.leftFrontBlind)
+      modelv2_send.modelV2.meta.rightFrontBlind = int(DH.rightFrontBlind)
       if DH.event_test_frame > 0:
         modelv2_send.modelV2.meta.laneChangeState = LaneChangeState.preLaneChange
         modelv2_send.modelV2.meta.laneChangeDirection = LaneChangeDirection.left

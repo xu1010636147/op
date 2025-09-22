@@ -8,6 +8,7 @@ from openpilot.common.params import Params
 from opendbc.car.hyundai.hyundaicanfd import CanBus
 from openpilot.common.filter_simple import MyMovingAverage
 
+ESCC_TID = 1
 SCC_TID = 0
 RADAR_START_ADDR = 0x500
 RADAR_MSG_COUNT = 32
@@ -115,6 +116,9 @@ class RadarInterface(RadarInterfaceBase):
     self.pts[SCC_TID] = structs.RadarData.RadarPoint()
     self.pts[SCC_TID].trackId = SCC_TID
 
+    self.pts[ESCC_TID] = structs.RadarData.RadarPoint()
+    self.pts[ESCC_TID].trackId = ESCC_TID
+
     self.frame = 0
 
 
@@ -123,6 +127,17 @@ class RadarInterface(RadarInterfaceBase):
     if self.radar_off_can or (self.rcp_tracks is None and self.rcp_scc is None):
       return super().update(None)
 
+    if self.rcp_scc is not None:
+      vls_s = self.rcp_scc.update(can_strings)
+      self.updated_scc.update(vls_s)
+      if not self.radar_tracks and not self.enhanced_scc and self.frame % 5 == 0:
+        self._update_scc(self.updated_scc)
+        self.updated_scc.clear()
+        ret = structs.RadarData()
+        if not self.rcp_scc.can_valid:
+          ret.errors.canError = True
+        ret.points = list(self.pts.values())
+        return ret
     if (self.radar_tracks or self.enhanced_scc) and self.rcp_tracks is not None:
       vls_t = self.rcp_tracks.update(can_strings)
       self.updated_tracks.update(vls_t)
@@ -136,54 +151,41 @@ class RadarInterface(RadarInterfaceBase):
           ret.errors.canError = True
         ret.points = list(self.pts.values())
         return ret
-    if self.rcp_scc is not None:
-      vls_s = self.rcp_scc.update(can_strings)
-      self.updated_scc.update(vls_s)
-      if not self.radar_tracks and self.frame % 5 == 0:
-        self._update_scc(self.updated_scc)
-        self.updated_scc.clear()
-        ret = structs.RadarData()
-        if not self.rcp_scc.can_valid:
-          ret.errors.canError = True
-        ret.points = list(self.pts.values())
-        return ret
 
     return None
 
   def _update(self, updated_messages):
-    if self.enhanced_scc: #如果检测到ESCC，则使用ESCC的雷达数据
-      #escc_data = self.rcp_tracks.vl["ESCC"]
-      #print(f"ESCC: {escc_data}")
-      msg_src = "ESCC"
-      msg = self.rcp_tracks.vl[msg_src]
+    if self.enhanced_scc:  # 如果检测到ESCC，则使用ESCC的雷达数据
+      msg = self.rcp_tracks.vl["ESCC"]
       valid = msg['ACC_ObjStatus'] and msg['ACC_ObjDist'] < 204.6
-      for ii in range(1):
-        if valid:
-          if ii not in self.pts:
-            self.pts[ii] = structs.RadarData.RadarPoint()
-            self.pts[ii].trackId = self.track_id
-            if (self.showDebugLog & 128) > 0:
-              print(f"add trace{self.track_id} to pts[{ii}]")
-            self.track_id += 1
-          self.pts[ii].measured = True
-          self.pts[ii].dRel = msg['ACC_ObjDist']
-          self.pts[ii].yRel = -msg['ACC_ObjLatPos']
-          self.pts[ii].vRel = msg['ACC_ObjRelSpd']
-          self.pts[ii].vLead = self.pts[ii].vRel + self.v_ego
-          #self.pts[ii].aRel = float('nan')
-          self.pts[ii].aRel = 0.0
-          #self.pts[ii].yvRel = float('nan')
-          self.pts[ii].yvRel = 0.0
 
-          if (self.showDebugLog & 128) > 0:
-            print(f"***update escc: ACC_ObjStatus: {msg['ACC_ObjStatus']},pts[{ii}]: "
-                  f"dRel={self.pts[ii].dRel},yRel={self.pts[ii].yRel},vRel={self.pts[ii].vRel},aRel={self.pts[ii].aRel},yvRel={self.pts[ii].yvRel}")
+      ii = ESCC_TID
+      if valid:
+        self.pts[ii].measured = True
+        self.pts[ii].trackId = ESCC_TID
+        self.pts[ii].dRel = msg['ACC_ObjDist']
+        self.pts[ii].yRel = -msg['ACC_ObjLatPos']
+        self.pts[ii].vRel = msg['ACC_ObjRelSpd']
+        self.pts[ii].vLead = self.pts[ii].vRel + self.v_ego
+        self.pts[ii].aRel = 0.0
+        self.pts[ii].yvRel = 0.0
 
-          #print(f"escc trace valid,track id {self.track_id}")
-        else:
-          if ii in self.pts:
-            del self.pts[ii]
-            print(f"delete pts[{ii}]")
+        if (self.showDebugLog & 128) > 0:
+          print(f"***update escc: ACC_ObjStatus: {msg['ACC_ObjStatus']}, "
+                f"pts[{ii}]: dRel={self.pts[ii].dRel}, yRel={self.pts[ii].yRel}, "
+                f"vRel={self.pts[ii].vRel}, aRel={self.pts[ii].aRel}, yvRel={self.pts[ii].yvRel}")
+      else:
+        # key 已经存在，只需标记为 invalid
+        self.pts[ii].measured = False
+        self.pts[ii].dRel = 0
+        self.pts[ii].yRel = 0
+        self.pts[ii].vRel = 0
+        self.pts[ii].vLead = 0
+        self.pts[ii].aRel = float('nan')
+        self.pts[ii].yvRel = 0
+        if (self.showDebugLog & 128) > 0:
+          print(f"mark pts[{ii}] invalid")
+
     else: #雷达跟踪数据
       t_id = 32
       for addr in range(self.radar_start_addr, self.radar_start_addr + self.radar_msg_count):

@@ -127,6 +127,17 @@ class RadarInterface(RadarInterfaceBase):
     if self.radar_off_can or (self.rcp_tracks is None and self.rcp_scc is None):
       return super().update(None)
 
+    if self.rcp_scc is not None:
+      vls_s = self.rcp_scc.update(can_strings)
+      self.updated_scc.update(vls_s)
+      if not self.radar_tracks and not self.enhanced_scc and self.frame % 5 == 0:
+        self._update_scc(self.updated_scc)
+        self.updated_scc.clear()
+        ret = structs.RadarData()
+        if not self.rcp_scc.can_valid:
+          ret.errors.canError = True
+        ret.points = list(self.pts.values())
+        return ret
     if (self.radar_tracks or self.enhanced_scc) and self.rcp_tracks is not None:
       vls_t = self.rcp_tracks.update(can_strings)
       self.updated_tracks.update(vls_t)
@@ -137,17 +148,6 @@ class RadarInterface(RadarInterfaceBase):
         self.updated_tracks.clear()
         ret = structs.RadarData()
         if not self.rcp_tracks.can_valid:
-          ret.errors.canError = True
-        ret.points = list(self.pts.values())
-        return ret
-    if self.rcp_scc is not None:
-      vls_s = self.rcp_scc.update(can_strings)
-      self.updated_scc.update(vls_s)
-      if not self.radar_tracks and not self.enhanced_scc and self.frame % 5 == 0:
-        self._update_scc(self.updated_scc)
-        self.updated_scc.clear()
-        ret = structs.RadarData()
-        if not self.rcp_scc.can_valid:
           ret.errors.canError = True
         ret.points = list(self.pts.values())
         return ret

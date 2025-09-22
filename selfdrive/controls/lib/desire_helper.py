@@ -347,6 +347,11 @@ class DesireHelper:
       self.desire_disable_count = int(2.0/DT_MDL) #转向2秒后才允许变道
     else:
       self.desire_disable_count = max(0, self.desire_disable_count - 1)
+
+    if abs(carstate.steeringAngleDeg) > 80:
+      self.turn_disable_count = int(10.0/DT_MDL)
+    else:
+      self.turn_disable_count = max(0, self.turn_disable_count - 1)
     #print(f"desire_state = {desire_state}, turn_desire_state = {self.turn_desire_state}, disable_count = {self.desire_disable_count}")
 
   def update(self, carstate, modeldata, lateral_active, lane_change_prob, carrotMan, radarState):

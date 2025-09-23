@@ -612,6 +612,9 @@ class DesireHelper:
       if (self.showDebugLog & 16) > 0:
         debugText += f",v_ego*4={vego4x:.1f},cnt={self.object_detected_count},{self.object_detected_count_new}"
         print(debugText)
+    else:
+      self.leftFrontBlind = 0
+      self.rightFrontBlind = 0
 
     #self.lane_available_trigger = not self.lane_available_last and lane_available
     lane_change_available = (lane_available or edge_available) and lane_line_info < 20 # lane_line_info小于20为白色虚线(注：SantaFe没有这个车道线识别功能)。

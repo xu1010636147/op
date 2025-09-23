@@ -303,7 +303,6 @@ class CarrotMan:
         else: #-2
           self.xroadcate = self.carrot_serv.xroadcate
 
-        self.carrot_serv.xroadcate = self.xroadcate
         self.sm.update(0)
         if self.sm.updated['navRouteNavd']:
           self.send_routes(self.sm['navRouteNavd'].coordinates, True)

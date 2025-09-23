@@ -1311,10 +1311,6 @@ class CarrotServ:
       self.nSdiPlusBlockDist = int(json.get("nSdiPlusBlockDist", 0))
       self.roadcate = int(json.get("roadcate", 0))
 
-      #道路类型转换
-      if self.roadType == -2:
-        self.xroadcate = 1 if self.roadcate == 10 else 8
-
       ## GuidePoint
       self.nTBTDist = int(json.get("nTBTDist", 0))
       self.nTBTTurnType = int(json.get("nTBTTurnType", -1))

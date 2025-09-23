@@ -293,15 +293,20 @@ class CarrotMan:
           self.xroadcate = self.carrot_serv.roadType
           self.carrot_serv.xroadcate = self.xroadcate
         elif self.carrot_serv.roadType == -1: #-1表示根据巡航设定速度判断道路类型
-          if self.v_cruise_kph <= 70 or self.v_cruise_kph > 200:
+          if self.v_cruise_kph < 85 or self.v_cruise_kph > 200:
             self.xroadcate = 8
-          elif self.v_cruise_kph <= 85:
+          elif self.v_cruise_kph < 100:
             self.xroadcate = 0
           else:
             self.xroadcate = 1
           self.carrot_serv.xroadcate = self.xroadcate
         else: #-2
-          self.xroadcate = self.carrot_serv.xroadcate
+          xroadcate = 1 if self.carrot_serv.roadcate == 10 else 8
+          if xroadcate == 1:
+            if self.v_cruise_kph < 100:
+              xroadcate = 0
+          self.xroadcate = xroadcate
+          self.carrot_serv.xroadcate = self.xroadcate
 
         self.sm.update(0)
         if self.sm.updated['navRouteNavd']:

@@ -177,7 +177,7 @@ class DesireHelper:
     self.turn_disable_count = 0 #
     self.blindspot_detected_counter = 0
     self.auto_lane_change_enable = False
-    self.next_lane_change = False #
+    #self.next_lane_change = False #
 
     #new
     self.allowContinuousLaneChange = 0
@@ -802,7 +802,7 @@ class DesireHelper:
 
         self.lane_change_disable_count = lane_change_interval #重置连续变道延时
         self.lane_change_disable = False
-        self.next_lane_change = False
+        #self.next_lane_change = False
 
         #提示领航已恢复
         if (desire_enabled and self.prev_desire_enabled and driver_blinker_changed and
@@ -872,7 +872,7 @@ class DesireHelper:
                 #  self.lane_change_disable = True
               #盲区有车时重置变道延时计数器
               self.lane_change_disable_count = lane_change_interval
-            elif self.laneChangeNeedTorque > 0 or self.next_lane_change: # 需要轻推方向盘变道
+            elif self.laneChangeNeedTorque > 0:# or self.next_lane_change: # 需要轻推方向盘变道
               if torque_applied:
                 self.lane_change_state = LaneChangeState.laneChangeStarting
                 trigger_type = 2
@@ -991,7 +991,7 @@ class DesireHelper:
           self.lane_change_direction = LaneChangeDirection.none
           if desire_enabled: #如果变道需求还在，则重新进入preLaneChange状态
             self.lane_change_state = LaneChangeState.preLaneChange
-            self.next_lane_change = True
+            #self.next_lane_change = True
           else:
             self.lane_change_state = LaneChangeState.off
 

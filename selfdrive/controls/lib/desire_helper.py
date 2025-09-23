@@ -230,6 +230,7 @@ class DesireHelper:
     self.blinker = "none"
     self.blinker_val = BLINKER_NONE
     self.stockBlinkerCtrl = 0
+    self.blinkerMode = 0
     #new
 
   def lane_change_audio(self, enable, turn_type, param=0):
@@ -382,6 +383,7 @@ class DesireHelper:
       self.min_object_detected_count_thr = int(-1*self.sideBsdDelayTime/DT_MDL)
       self.lane_count_stab_cnt = int(self.params.get_float("LaneStabTime") * 0.1/DT_MDL)
       self.stockBlinkerCtrl = self.params.get_int("StockBlinkerCtrl")
+      self.blinkerMode = self.params.get_int("BlinkerMode")
       #new
     self.frame += 1
 
@@ -751,7 +753,8 @@ class DesireHelper:
       self.lane_change_state = LaneChangeState.off
       self.lane_change_direction = LaneChangeDirection.none
       self.turn_direction = TurnDirection.none
-    elif desire_enabled and ((below_lane_change_speed and not carstate.standstill and self.enable_turn_desires) or self.turn_desire_state): #激活转弯控制模式（并不走变道流程）
+    elif ( (self.blinkerMode == 0 or not driver_desire_enabled or turn_left_right) and
+           desire_enabled and ((below_lane_change_speed and not carstate.standstill and self.enable_turn_desires) or self.turn_desire_state)): #激活转弯控制模式（并不走变道流程）
       if self.lane_change_state != LaneChangeState.off:
         if (self.showDebugLog & 32) > 0:
           print("---Desire Turning")

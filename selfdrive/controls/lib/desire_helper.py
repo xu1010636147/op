@@ -231,6 +231,7 @@ class DesireHelper:
     self.blinker_val = BLINKER_NONE
     self.stockBlinkerCtrl = 0
     self.blinkerMode = 0
+    self.autoLaneChangeMinSpeed = 0
     #new
 
   def lane_change_audio(self, enable, turn_type, param=0):
@@ -384,6 +385,7 @@ class DesireHelper:
       self.lane_count_stab_cnt = int(self.params.get_float("LaneStabTime") * 0.1/DT_MDL)
       self.stockBlinkerCtrl = self.params.get_int("StockBlinkerCtrl")
       self.blinkerMode = self.params.get_int("BlinkerMode")
+      self.autoLaneChangeMinSpeed = self.params.get_int("AutoLaneChangeMinSpeed")
       #new
     self.frame += 1
 
@@ -416,7 +418,10 @@ class DesireHelper:
         self.left_sec = left_sec
 
     v_ego = carstate.vEgo
-    below_lane_change_speed = v_ego < LANE_CHANGE_SPEED_MIN
+    if self.autoLaneChangeMinSpeed < 0:
+      below_lane_change_speed = v_ego < LANE_CHANGE_SPEED_MIN
+    else:
+      below_lane_change_speed = v_ego < (self.autoLaneChangeMinSpeed * CV.KPH_TO_MS)
 
     ##### check lane state
     self.check_lane_state(modeldata, v_ego)

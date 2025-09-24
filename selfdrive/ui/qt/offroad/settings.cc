@@ -887,7 +887,8 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   navToggles = new ListWidget(this);
   navToggles->addItem(new CValueControl("RoadType", "手动设置道路类型(-1)", "-2:从导航获取(>=85快速路,>=100高速,公路类型由导航决定),-1:自动(<85km/h公路,>=85快速路,>=100高速)，0:高速(无应急车道) 1:高速(有应急车道), >=2:其它道路", -10, 100, 1));
   navToggles->addItem(new CValueControl("SameSpiCamFilter", "过滤相同的测速数据(1)", "0:关闭, 1:打开", 0, 1, 1));
-  navToggles->addItem(new CValueControl("StockBlinkerCtrl", "通过外挂控制原车转向灯(0)", "0:关闭, 1:打开", 0, 1, 1));
+  navToggles->addItem(new CValueControl("StockBlinkerCtrl", "外接控制器控制原车转向灯拔杆(0)", "0:关闭, 1:打开", 0, 1, 1));
+  navToggles->addItem(new CValueControl("ExtBlinkerCtrlTest", "对外接转向灯控制器自检(1)", "0:关闭, 1:打开", 0, 1, 1));
   navToggles->addItem(new CValueControl("BlinkerMode", "手动打灯控制模式(0)", "0:自动, 1:仅变道", 0, 1, 1));
   navToggles->addItem(new CValueControl("LaneStabTime", "车道数稳定检测时间(10x0.1s)", "当检测车道数稳定时间超过设定值后，则认为已经稳定，单位为0.1秒", 5, 100, 1));
   navToggles->addItem(new CValueControl("BsdDelayTime", "后盲区有车延时(20x0.1s)", "当后盲区有车信号消失后，经过延时的秒数后允许变道", 15, 100, 1));

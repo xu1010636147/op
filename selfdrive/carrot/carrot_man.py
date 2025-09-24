@@ -434,31 +434,32 @@ class CarrotMan:
     frame = 0
     blinker_frame = 0
     blinker_state = 0
-    send_test_msg = False
+    blinker_state_str = "none"
+    blinker_test = 0
+    showDebugLog = 0
     rk = Ratekeeper(10, print_delay_threshold=None)
 
     while self.esp32_is_running:
+      if frame % 40 == 0:
+        showDebugLog = self.params.get_int("ShowDebugLog")
       try:
         remote_addr = self.esp32_remote_addr
         remote_ip = remote_addr[0] if remote_addr is not None else ""
 
-        if remote_addr is not None and send_test_msg:
-          try:
-            blinker_frame += 1
-            if 0 == (blinker_frame % 10):
-              blinker_state += 1
-              blinker_state_str = "none"
-              if blinker_state == 1:
-                blinker_state_str = "left"
-              elif blinker_state == 2:
-                blinker_state_str = "right"
-              else:
-                blinker_state = 0
-              msg = self.make_esp32_test_message(blinker_state_str)
-              sock.sendto(msg.encode('utf-8'), self.esp32_remote_addr)
-          except Exception as e:
-            if (self.carrot_serv.showDebugLog & 32) > 0:
-              print(f"esp32_comm_thread: send error...: {e}")
+        if remote_addr is not None and (showDebugLog & 1024) > 0:
+          blinker_test = 1
+          blinker_frame += 1
+          if 0 == (blinker_frame % 10):
+            blinker_state += 1
+            blinker_state_str = "none"
+            if blinker_state == 1:
+              blinker_state_str = "left"
+            elif blinker_state == 2:
+              blinker_state_str = "right"
+            else:
+              blinker_state = 0
+        else:
+          blinker_test = 0
 
         if frame % 20 == 0 or remote_addr is not None:
           try:
@@ -471,7 +472,7 @@ class CarrotMan:
               self.esp32_ip_address = ip_address
               self.esp32_remote_addr = None
 
-            msg = self.make_esp32_send_message()
+            msg = self.make_esp32_send_message(blinker_test, blinker_state_str)
             if self.esp32_broadcast_ip is not None:
               dat = msg.encode('utf-8')
               sock.sendto(dat, (self.esp32_broadcast_ip, self.esp32_broadcast_port))
@@ -643,12 +644,15 @@ class CarrotMan:
     msg['trafficState'] = self.trafficState
     return json.dumps(msg)
 
-  def make_esp32_send_message(self):
+  def make_esp32_send_message(self, blinker_test, blinker_state_str):
     msg = {}
     msg['ip'] = self.esp32_ip_address
     msg['port'] = self.esp32_port
-    if self.sm.alive['modelV2']:
-      msg['blinker'] = self.sm['modelV2'].meta.blinker
+    if 0 == blinker_test:
+      if self.sm.alive['modelV2']:
+        msg['blinker'] = self.sm['modelV2'].meta.blinker
+    else:
+      msg['blinker'] = blinker_state_str
     return json.dumps(msg)
 
   def make_esp32_test_message(self, blinker):

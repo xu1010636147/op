@@ -438,6 +438,9 @@ class CarrotMan:
     blinker_test = 0
     showDebugLog = 0
     rk = Ratekeeper(10, print_delay_threshold=None)
+    stockBlinkerCtrl = self.params.get_int("StockBlinkerCtrl")
+    extBlinkerCtrlTest = self.params.get_int("ExtBlinkerCtrlTest")
+    blinker_test_cnt = 0
 
     while self.esp32_is_running:
       if frame % 40 == 0:
@@ -446,20 +449,39 @@ class CarrotMan:
         remote_addr = self.esp32_remote_addr
         remote_ip = remote_addr[0] if remote_addr is not None else ""
 
-        if remote_addr is not None and (showDebugLog & 1024) > 0:
-          blinker_test = 1
-          blinker_frame += 1
-          if 0 == (blinker_frame % 10):
-            blinker_state += 1
-            blinker_state_str = "none"
-            if blinker_state == 1:
-              blinker_state_str = "left"
-            elif blinker_state == 2:
-              blinker_state_str = "right"
-            else:
+        if remote_addr is not None and ((showDebugLog & 1024) > 0 or extBlinkerCtrlTest):
+          if 0 == (blinker_frame % 10): #每秒一个周期
+            blinker_test = 1
+            if blinker_test_cnt >= 3:  # 测试3个循环后退出测试
+              extBlinkerCtrlTest = 0
               blinker_state = 0
+              blinker_test = 0
+              blinker_state_str = "none"
+            else:
+              blinker_state += 1
+            if blinker_state == 1:
+              if stockBlinkerCtrl:
+                blinker_state_str = "stockleft"
+              else:
+                blinker_state_str = "left"
+            elif blinker_state == 2:
+              if stockBlinkerCtrl:
+                blinker_state_str = "stockright"
+              else:
+                blinker_state_str = "right"
+            elif blinker_state == 3:
+              blinker_state = 0
+              blinker_state_str = "none"
+              blinker_test_cnt += 1
+          blinker_frame += 1
         else:
           blinker_test = 0
+          blinker_state_str = "none"
+
+        if frame >= 600:  # 启动60秒后禁止外挂转向灯自检
+          extBlinkerCtrlTest = 0
+          blinker_test = 0
+          blinker_state_str = "none"
 
         if frame % 20 == 0 or remote_addr is not None:
           try:

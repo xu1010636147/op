@@ -21,6 +21,11 @@ from openpilot.selfdrive.navd.helpers import Coordinate
 from opendbc.car.common.conversions import Conversions as CV
 from openpilot.common.realtime import DT_MDL
 
+BLINKER_NONE = 0
+BLINKER_LEFT = 1
+BLINKER_RIGHT = 2
+BLINKER_BOTH = 3
+
 nav_type_mapping = {
   12: ("turn", "left", 1),
   16: ("turn", "sharp left", 1),
@@ -252,6 +257,8 @@ class CarrotServ:
     self.param_frame = 0
     self.atc_speed_decal = 0
     self.fork_speed_keep_time = -1
+    self.ext_blinker = BLINKER_NONE
+    self.ext_state = 0
     #new
 
     self.update_params()
@@ -1117,6 +1124,8 @@ class CarrotServ:
     msg.carrotMan.xDistToTurnMaxCnt = int(self.xDistToTurnMaxCnt)
     msg.carrotMan.xLeftTurnSec = int(left_turn_sec)
     msg.carrotMan.roadCate = int(self.xroadcate)
+    msg.carrotMan.extBlinker = int(self.ext_blinker)
+    msg.carrotMan.extState = int(self.ext_state)
     #new
 
     msg.carrotMan.xPosSpeed = float(v_ego_kph) #float(self.nPosSpeed)

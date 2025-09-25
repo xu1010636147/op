@@ -33,6 +33,11 @@ except ImportError:
 
 NetworkType = log.DeviceState.NetworkType
 
+BLINKER_NONE = 0
+BLINKER_LEFT = 1
+BLINKER_RIGHT = 2
+BLINKER_BOTH = 3
+
 ################ CarrotNavi
 ## 국가법령정보센터: 도로설계기준
 #V_CURVE_LOOKUP_BP = [0., 1./800., 1./670., 1./560., 1./440., 1./360., 1./265., 1./190., 1./135., 1./85., 1./55., 1./30., 1./15.]
@@ -216,6 +221,7 @@ class CarrotMan:
     self.param_frame = 0
     self.v_cruise_kph = 255
     self.xroadcate = 8
+    self.ext_blinker = BLINKER_NONE
     #new
 
     self.turn_speed_last = 250
@@ -367,7 +373,6 @@ class CarrotMan:
         time.sleep(1)
 
   def esp32_comm_thread(self):
-    blinker_frame = 0
     while True:
       try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
@@ -389,20 +394,24 @@ class CarrotMan:
                 self.esp32_remote_addr = remote_addr
                 try:
                   json_obj = json.loads(data.decode())
+                  if "blinker" in json_obj:
+                    ext_blinker = json_obj.get("blinker")
+                    if ext_blinker in ["left","stockleft"]:
+                      self.ext_blinker = BLINKER_LEFT
+                    elif ext_blinker in ["right","stockright"]:
+                      self.ext_blinker = BLINKER_RIGHT
+                    else:
+                      self.ext_blinker = BLINKER_NONE
+                  else:
+                    self.ext_blinker = BLINKER_NONE
+
                   if (self.carrot_serv.showDebugLog & 32) > 0:
                     print(json_obj)
                 except Exception as e:
+                  self.ext_blinker = BLINKER_NONE
                   if (self.carrot_serv.showDebugLog & 32) > 0:
                     print(f"esp32_comm_thread: json error...: {e}")
                     print(data)
-
-                # 生成和发送应答信息(UDP使用sendto)
-                #try:
-                #  msg = self.make_esp32_message("left")
-                #  sock.sendto(msg.encode('utf-8'), self.esp32_remote_addr)
-                #except Exception as e:
-                #  print(f"esp32_comm_thread: send error...: {e}")
-
               except TimeoutError:
                 if (self.carrot_serv.showDebugLog & 32) > 0:
                   print("Waiting for data (timeout)...")
@@ -420,6 +429,12 @@ class CarrotMan:
                 print(f"esp32_comm_thread: recv error...: {e}")
               self.esp32_remote_addr = None
               break
+
+            self.carrot_serv.ext_blinker = self.ext_blinker
+            if self.esp32_remote_addr  is not None:
+              self.carrot_serv.ext_state = 1
+            else:
+              self.carrot_serv.ext_state = 0
 
           time.sleep(1)
       except Exception as e:
@@ -452,7 +467,7 @@ class CarrotMan:
         if remote_addr is not None and ((showDebugLog & 1024) > 0 or extBlinkerCtrlTest):
           if 0 == (blinker_frame % 10): #每秒一个周期
             blinker_test = 1
-            if blinker_test_cnt >= 3:  # 测试3个循环后退出测试
+            if (blinker_test_cnt >= 3) and ((showDebugLog & 1024) == 0):  # 测试3个循环后退出测试
               extBlinkerCtrlTest = 0
               blinker_state = 0
               blinker_test = 0
@@ -478,7 +493,7 @@ class CarrotMan:
           blinker_test = 0
           blinker_state_str = "none"
 
-        if frame >= 600:  # 启动60秒后禁止外挂转向灯自检
+        if (frame >= 600) and ((showDebugLog & 1024) == 0):  # 启动60秒后禁止外挂转向灯自检
           extBlinkerCtrlTest = 0
           blinker_test = 0
           blinker_state_str = "none"

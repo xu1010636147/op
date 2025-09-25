@@ -1266,6 +1266,8 @@ public:
 };
 bool _right_blinker = false;
 bool _left_blinker = false;
+int _ext_blinker = 0;
+int _ext_state = 0;
 class DesireDrawer : ModelDrawer {
 protected:
     int icon_size = 256;
@@ -1321,6 +1323,8 @@ public:
         const auto carrot_man = sm["carrotMan"].getCarrotMan();
         const auto car_state = sm["carState"].getCarState();
         QString atc_type = QString::fromStdString(carrot_man.getAtcType());
+        _ext_blinker = carrot_man.getExtBlinker();
+        _ext_state = carrot_man.getExtState();
 
         bool left_blinker = car_state.getLeftBlinker() || atc_type=="fork left" || atc_type =="turn left" || atc_type == "atc left";
         bool right_blinker = car_state.getRightBlinker() || atc_type=="fork right" || atc_type =="turn right" || atc_type == "atc right";
@@ -1329,11 +1333,11 @@ public:
         _left_blinker = false;
         if (blinker_timer <= 8) {
             if (right_blinker) {
-		_right_blinker = true;
+                _right_blinker = true;
                 ui_draw_image(s, { x - icon_size / 2, y - icon_size / 2, icon_size, icon_size }, "ic_blinker_r", 1.0f);
             }
             if (left_blinker) {
-		_left_blinker = true;
+                _left_blinker = true;
                 ui_draw_image(s, { x - icon_size / 2, y - icon_size / 2, icon_size, icon_size }, "ic_blinker_l", 1.0f);
             }
         }
@@ -2466,16 +2470,25 @@ public:
         active_carrot = 2;
 #endif
         if (active_carrot >= 2) {
-            ui_fill_rect(s->vg, { dx - 55, dy - 38, 110, 48 }, COLOR_GREEN, 15, 2);
-            ui_draw_text(s, dx, dy, "APN", 40, COLOR_WHITE, BOLD);
+          // 显示 N（绿色背景）
+          ui_fill_rect(s->vg, { dx - 55, dy - 38, 50, 48 }, COLOR_GREEN, 10, 2);
+          ui_draw_text(s, dx-30, dy, "N", 40, COLOR_WHITE, BOLD);
+
+        } else if (active_carrot >= 1) {
+          // 显示 M（蓝色背景）
+          ui_fill_rect(s->vg, { dx - 55, dy - 38, 50, 48 }, COLOR_BLUE_ALPHA(210), 10, 2);
+          ui_draw_text(s, dx-30, dy, "M", 40, COLOR_WHITE, BOLD);
         }
-        else if (active_carrot >= 1) {
-            ui_fill_rect(s->vg, { dx - 55, dy - 38, 110, 48 }, COLOR_BLUE_ALPHA(210), 15, 2);
-            ui_draw_text(s, dx, dy, "APM", 40, COLOR_WHITE, BOLD);
-        }
+
+        // 新加的 E
+        // 在 N/M 矩形右侧留出空位，偏移 60 像素
+        ui_fill_rect(s->vg, { dx + 5, dy - 38, 50, 48 }, _ext_state ? COLOR_GREEN : COLOR_RED, 10, 2);
+        ui_draw_text(s, dx + 30, dy, "E", 40, COLOR_WHITE, BOLD);
+
+        // ROUTE 标签保持不变
         if (nav_path_vertex_count > 1) {
             ui_draw_text(s, dx, dy - 45, "ROUTE", 30, COLOR_WHITE, BOLD);
-		}
+		    }
 #ifdef __UI_TEST
         active_carrot = 2;
         nRoadLimitSpeed = 30;
@@ -2946,8 +2959,18 @@ public:
         ui_fill_rect(vg, { 0,0, w, h / 2  - 100}, bg, 15);
         ui_fill_rect(vg, { 0, h / 2 + 100, w, h }, bg_long, 15);
 
-        ui_fill_rect(vg, {w - 50, h/2 - 95, 50, 190}, (_right_blinker)?COLOR_ORANGE:COLOR_BLACK, 15);
-        ui_fill_rect(vg, {0, h/2 - 95, 50, 190}, (_left_blinker)?COLOR_ORANGE:COLOR_BLACK, 15);
+        if(_ext_blinker != 2){
+          ui_fill_rect(vg, {w - 50, h/2 - 95, 50, 190}, (_right_blinker)?COLOR_ORANGE:COLOR_BLACK, 15);
+        }
+        else{
+          ui_fill_rect(vg, {w - 50, h/2 - 95, 50, 190}, COLOR_RED, 15);
+        }
+        if(_ext_blinker != 1){
+          ui_fill_rect(vg, {0, h/2 - 95, 50, 190}, (_left_blinker)?COLOR_ORANGE:COLOR_BLACK, 15);
+        }
+        else{
+          ui_fill_rect(vg, {0, h/2 - 95, 50, 190}, COLOR_RED, 15);
+        }
 
         const SubMaster& sm = *(s->sm);
         auto car_state = sm["carState"].getCarState();

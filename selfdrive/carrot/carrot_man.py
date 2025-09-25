@@ -430,11 +430,12 @@ class CarrotMan:
               self.esp32_remote_addr = None
               break
 
-            self.carrot_serv.ext_blinker = self.ext_blinker
             if self.esp32_remote_addr  is not None:
               self.carrot_serv.ext_state = 1
             else:
               self.carrot_serv.ext_state = 0
+              self.ext_blinker = BLINKER_NONE
+            self.carrot_serv.ext_blinker = self.ext_blinker
 
           time.sleep(1)
       except Exception as e:

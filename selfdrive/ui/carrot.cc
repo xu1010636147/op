@@ -2963,13 +2963,13 @@ public:
           ui_fill_rect(vg, {w - 50, h/2 - 95, 50, 190}, (_right_blinker)?COLOR_ORANGE:COLOR_BLACK, 15);
         }
         else{
-          ui_fill_rect(vg, {w - 50, h/2 - 95, 50, 190}, COLOR_RED, 15);
+          ui_fill_rect(vg, {w - 50, h/2 - 95, 50, 190}, (_right_blinker)?COLOR_RED:COLOR_BLACK, 15);
         }
         if(_ext_blinker != 1){
           ui_fill_rect(vg, {0, h/2 - 95, 50, 190}, (_left_blinker)?COLOR_ORANGE:COLOR_BLACK, 15);
         }
         else{
-          ui_fill_rect(vg, {0, h/2 - 95, 50, 190}, COLOR_RED, 15);
+          ui_fill_rect(vg, {0, h/2 - 95, 50, 190}, (_left_blinker)?COLOR_RED:COLOR_BLACK, 15);
         }
 
         const SubMaster& sm = *(s->sm);

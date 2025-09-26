@@ -691,6 +691,9 @@ class CarrotMan:
         msg['blinker'] = self.sm['modelV2'].meta.blinker
     else:
       msg['blinker'] = blinker_state_str
+    if self.sm.alive['selfdriveState']:
+      selfdrive = self.sm['selfdriveState']
+      msg['active'] = "on" if selfdrive.active else "off"
     return json.dumps(msg)
 
   def make_esp32_test_message(self, blinker):

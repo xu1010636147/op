@@ -2483,7 +2483,7 @@ public:
         // 新加的 E
         // 在 N/M 矩形右侧留出空位，偏移 60 像素
         ui_fill_rect(s->vg, { dx + 5, dy - 38, 50, 48 }, _ext_state ? COLOR_GREEN : COLOR_RED, 10, 2);
-        ui_draw_text(s, dx + 30, dy, "E", 40, COLOR_WHITE, BOLD);
+        ui_draw_text(s, dx + 30, dy, QString::number(_ext_state).toStdString().c_str(), 40, COLOR_WHITE, BOLD);
 
         // ROUTE 标签保持不变
         if (nav_path_vertex_count > 1) {

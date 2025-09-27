@@ -222,6 +222,7 @@ class CarrotMan:
     self.v_cruise_kph = 255
     self.xroadcate = 8
     self.ext_blinker = BLINKER_NONE
+    self.esp32_clients = {}  # 保存多个客户端
     #new
 
     self.turn_speed_last = 250
@@ -377,28 +378,30 @@ class CarrotMan:
       try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
           sock.settimeout(10)  # 超时10秒
-          sock.bind(('0.0.0.0', self.esp32_port))  # UDP端口
+          sock.bind(('0.0.0.0', self.esp32_port))
           print("#########esp32_comm_thread: UDP thread started...")
 
           while True:
             try:
               try:
-                data, remote_addr = sock.recvfrom(4096)  # 최대 4096 바이트 수신
-                #print(f"Received data from {self.remote_addr}")
+                data, remote_addr = sock.recvfrom(4096)
 
                 if not data:
                   raise ConnectionError("No data received")
 
-                if self.esp32_remote_addr is None:
-                  print("Connected from: ", remote_addr)
-                self.esp32_remote_addr = remote_addr
+                ip, port = remote_addr
+                # 修改: 保存多个客户端地址及最后活跃时间
+                if not hasattr(self, "esp32_clients"):
+                  self.esp32_clients = {}  # {ip: last_seen_time}
+                self.esp32_clients[ip] = time.time()
+
                 try:
                   json_obj = json.loads(data.decode())
                   if "blinker" in json_obj:
                     ext_blinker = json_obj.get("blinker")
-                    if ext_blinker in ["left","stockleft"]:
+                    if ext_blinker in ["left", "stockleft"]:
                       self.ext_blinker = BLINKER_LEFT
-                    elif ext_blinker in ["right","stockright"]:
+                    elif ext_blinker in ["right", "stockright"]:
                       self.ext_blinker = BLINKER_RIGHT
                     else:
                       self.ext_blinker = BLINKER_NONE
@@ -415,31 +418,30 @@ class CarrotMan:
               except TimeoutError:
                 if (self.carrot_serv.showDebugLog & 32) > 0:
                   print("Waiting for data (timeout)...")
-                self.esp32_remote_addr = None
-                time.sleep(1)
-
               except Exception as e:
                 if (self.carrot_serv.showDebugLog & 32) > 0:
                   print(f"esp32_comm_thread: error...: {e}")
-                self.esp32_remote_addr = None
                 break
+
+              # 修改: 清理超过 10 秒未活跃的客户端
+              now = time.time()
+              self.esp32_clients = {ip: ts for ip, ts in self.esp32_clients.items() if now - ts < 10}
+
+              if self.esp32_clients:
+                self.carrot_serv.ext_state = len(self.esp32_clients)
+              else:
+                self.carrot_serv.ext_state = 0
+                self.ext_blinker = BLINKER_NONE
+
+              self.carrot_serv.ext_blinker = self.ext_blinker
 
             except Exception as e:
               if (self.carrot_serv.showDebugLog & 32) > 0:
                 print(f"esp32_comm_thread: recv error...: {e}")
-              self.esp32_remote_addr = None
               break
-
-            if self.esp32_remote_addr  is not None:
-              self.carrot_serv.ext_state = 1
-            else:
-              self.carrot_serv.ext_state = 0
-              self.ext_blinker = BLINKER_NONE
-            self.carrot_serv.ext_blinker = self.ext_blinker
 
           time.sleep(1)
       except Exception as e:
-        self.esp32_remote_addr = None
         if (self.carrot_serv.showDebugLog & 32) > 0:
           print(f"Network error, retrying...: {e}")
         time.sleep(2)
@@ -451,73 +453,84 @@ class CarrotMan:
     blinker_frame = 0
     blinker_state = 0
     blinker_state_str = "none"
+    active_str = "off"
     blinker_test = 0
     showDebugLog = 0
     rk = Ratekeeper(10, print_delay_threshold=None)
-    stockBlinkerCtrl = self.params.get_int("StockBlinkerCtrl")
     extBlinkerCtrlTest = self.params.get_int("ExtBlinkerCtrlTest")
     blinker_test_cnt = 0
+    broadcast_cnt = 0
 
     while self.esp32_is_running:
       if frame % 40 == 0:
         showDebugLog = self.params.get_int("ShowDebugLog")
       try:
-        remote_addr = self.esp32_remote_addr
-        remote_ip = remote_addr[0] if remote_addr is not None else ""
+        # 修改: 获取当前活跃客户端
+        active_clients = list(getattr(self, "esp32_clients", {}).keys())
 
-        if remote_addr is not None and ((showDebugLog & 1024) > 0 or extBlinkerCtrlTest):
-          if 0 == (blinker_frame % 10): #每秒一个周期
+        if active_clients and ((showDebugLog & 1024) > 0 or extBlinkerCtrlTest):
+          if 0 == (blinker_frame % 10):
             blinker_test = 1
-            if (blinker_test_cnt >= 3) and ((showDebugLog & 1024) == 0):  # 测试3个循环后退出测试
+            if (blinker_test_cnt >= 3) and ((showDebugLog & 1024) == 0):
               extBlinkerCtrlTest = 0
               blinker_state = 0
               blinker_test = 0
               blinker_state_str = "none"
+              active_str = "off"
             else:
               blinker_state += 1
             if blinker_state == 1:
-              if stockBlinkerCtrl:
-                blinker_state_str = "stockleft"
-              else:
-                blinker_state_str = "left"
+              blinker_state_str = "left"
+              active_str = "on"
             elif blinker_state == 2:
-              if stockBlinkerCtrl:
-                blinker_state_str = "stockright"
-              else:
-                blinker_state_str = "right"
+              blinker_state_str = "right"
+              active_str = "on"
             elif blinker_state == 3:
               blinker_state = 0
               blinker_state_str = "none"
+              active_str = "off"
               blinker_test_cnt += 1
           blinker_frame += 1
         else:
           blinker_test = 0
           blinker_state_str = "none"
+          active_str = "off"
 
-        if (frame >= 600) and ((showDebugLog & 1024) == 0):  # 启动60秒后禁止外挂转向灯自检
+        if (frame >= 600) and ((showDebugLog & 1024) == 0):
           extBlinkerCtrlTest = 0
           blinker_test = 0
           blinker_state_str = "none"
+          active_str = "off"
 
-        if frame % 20 == 0 or remote_addr is not None:
+        if frame % 20 == 0 or active_clients:
           try:
-            self.esp32_broadcast_ip = self.get_broadcast_address() if remote_addr is None else remote_addr[0]
             if not PC:
               ip_address = socket.gethostbyname(socket.gethostname())
             else:
               ip_address = self.get_local_ip()
             if ip_address != self.esp32_ip_address:
               self.esp32_ip_address = ip_address
-              self.esp32_remote_addr = None
+              self.esp32_clients = {}  # 修改: 本地 IP 变化时清空客户端
 
-            msg = self.make_esp32_send_message(blinker_test, blinker_state_str)
-            if self.esp32_broadcast_ip is not None:
-              dat = msg.encode('utf-8')
-              sock.sendto(dat, (self.esp32_broadcast_ip, self.esp32_broadcast_port))
+            msg = self.make_esp32_send_message(blinker_test, blinker_state_str, active_str)
+            dat = msg.encode('utf-8')
 
-            if remote_addr is None:
-              if (self.carrot_serv.showDebugLog & 32) > 0:
-                print(f"esp32 broadcasting: {self.esp32_broadcast_ip}:{self.esp32_broadcast_port},{msg}")
+            if active_clients:
+              # 修改: 向所有客户端发送
+              for ip in active_clients:
+                try:
+                  sock.sendto(dat, (ip, self.esp32_broadcast_port))
+                except Exception as e:
+                  if (self.carrot_serv.showDebugLog & 32) > 0:
+                    print(f"sendto {ip} failed: {e}")
+            if frame % 20 == 0 and broadcast_cnt < 60:
+              # 修改: 无客户端 → 广播
+              self.esp32_broadcast_ip = self.get_broadcast_address()
+              if self.esp32_broadcast_ip is not None:
+                sock.sendto(dat, (self.esp32_broadcast_ip, self.esp32_broadcast_port))
+                broadcast_cnt += 1
+                if (self.carrot_serv.showDebugLog & 32) > 0:
+                  print(f"esp32 broadcasting: {self.esp32_broadcast_ip}:{self.esp32_broadcast_port},{msg}")
 
           except Exception as e:
             if self.esp32_connection:

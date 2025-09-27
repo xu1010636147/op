@@ -695,18 +695,20 @@ class CarrotMan:
     msg['trafficState'] = self.trafficState
     return json.dumps(msg)
 
-  def make_esp32_send_message(self, blinker_test, blinker_state_str):
+  def make_esp32_send_message(self, blinker_test, blinker_state_str, active_str):
     msg = {}
     msg['ip'] = self.esp32_ip_address
     msg['port'] = self.esp32_port
     if 0 == blinker_test:
       if self.sm.alive['modelV2']:
         msg['blinker'] = self.sm['modelV2'].meta.blinker
+      if self.sm.alive['controlsState']:
+        control_state = self.sm['controlsState']
+        msg['active'] = "on" if control_state.active else "off"
     else:
       msg['blinker'] = blinker_state_str
-    if self.sm.alive['selfdriveState']:
-      selfdrive = self.sm['selfdriveState']
-      msg['active'] = "on" if selfdrive.active else "off"
+      msg['active'] = active_str
+
     return json.dumps(msg)
 
   def make_esp32_test_message(self, blinker):

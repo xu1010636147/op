@@ -405,8 +405,6 @@ class CarrotMan:
                       self.ext_blinker = BLINKER_RIGHT
                     else:
                       self.ext_blinker = BLINKER_NONE
-                  else:
-                    self.ext_blinker = BLINKER_NONE
 
                   if (self.carrot_serv.showDebugLog & 32) > 0:
                     print(json_obj)
@@ -702,9 +700,9 @@ class CarrotMan:
     if 0 == blinker_test:
       if self.sm.alive['modelV2']:
         msg['blinker'] = self.sm['modelV2'].meta.blinker
-      if self.sm.alive['controlsState']:
-        control_state = self.sm['controlsState']
-        msg['active'] = "on" if control_state.active else "off"
+      if self.sm.alive['selfdriveState']:
+        selfdrive = self.sm['selfdriveState']
+        msg['active'] = "on" if selfdrive.active else "off"
     else:
       msg['blinker'] = blinker_state_str
       msg['active'] = active_str

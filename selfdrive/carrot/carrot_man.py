@@ -405,9 +405,17 @@ class CarrotMan:
                       self.ext_blinker = BLINKER_RIGHT
                     else:
                       self.ext_blinker = BLINKER_NONE
+                  if "index" in json_obj:
+                    self.carrot_serv.esp32Index = int(json_obj.get("index"))
+                  if "cmd" in json_obj:
+                    self.carrot_serv.carrotCmdIndex = self.carrot_serv.esp32Index
+                    self.carrot_serv.carrotCmd = json_obj.get("cmd")
+                    self.carrot_serv.carrotArg = json_obj.get("arg")
+                    if (self.carrot_serv.showDebugLog & 32) > 0:
+                      print(f"carrot: carrotCmdIndex={self.carrot_serv.esp32Index}, carrotCmd={self.carrot_serv.carrotCmd},carrotArg={self.carrot_serv.carrotArg}")
 
                   if (self.carrot_serv.showDebugLog & 32) > 0:
-                    print(json_obj)
+                    print(f"receive: {json_obj}")
                 except Exception as e:
                   self.ext_blinker = BLINKER_NONE
                   if (self.carrot_serv.showDebugLog & 32) > 0:
@@ -518,6 +526,8 @@ class CarrotMan:
               for ip in active_clients:
                 try:
                   sock.sendto(dat, (ip, self.esp32_broadcast_port))
+                  if (self.carrot_serv.showDebugLog & 32) > 0:
+                    print(f"sendto {ip}: {dat}")
                 except Exception as e:
                   if (self.carrot_serv.showDebugLog & 32) > 0:
                     print(f"sendto {ip} failed: {e}")
@@ -697,6 +707,17 @@ class CarrotMan:
     msg = {}
     msg['ip'] = self.esp32_ip_address
     msg['port'] = self.esp32_port
+    isOnroad = self.params.get_bool("IsOnroad")
+    msg['IsOnroad'] = isOnroad
+    v_ego_kph = 0
+    v_cruise_kph = 0
+    if isOnroad:
+      if self.sm.alive['carState']:
+        carState = self.sm['carState']
+        v_ego_kph = int(carState.vEgoCluster * 3.6 + 0.5)
+        v_cruise_kph = carState.vCruise
+    msg['v_cruise_kph'] = v_cruise_kph
+    msg['v_ego_kph'] = v_ego_kph
     if 0 == blinker_test:
       if self.sm.alive['modelV2']:
         msg['blinker'] = self.sm['modelV2'].meta.blinker

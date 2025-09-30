@@ -460,11 +460,13 @@ class VCruiseCarrot:
 
       elif self.carrot_cmd == "SPEED":
         if self.carrot_arg == "UP":
-          v_cruise_kph = self._auto_speed_up(v_cruise_kph)
+          #v_cruise_kph = self._auto_speed_up(v_cruise_kph)
+          if v_cruise_kph < 140:
+            v_cruise_kph += 5
           self._add_log("Cruise speed up (carrot command)")
         elif self.carrot_arg == "DOWN":
           if v_cruise_kph > 20:
-            v_cruise_kph -= 10
+            v_cruise_kph -= 5
             self._add_log("Cruise speed downup (carrot command)")
         else:
           speed_kph = int(self.carrot_arg)

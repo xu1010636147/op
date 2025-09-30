@@ -107,7 +107,7 @@ def get_default_params():
     ("PaddleMode", "0"),
     ("MyDrivingMode", "1"),
     ("MyDrivingModeAuto", "0"),
-    ("TrafficLightDetectMode", "1"),
+    ("TrafficLightDetectMode", "2"),
     ("CruiseMaxVals0", "80"),
     ("CruiseMaxVals1", "100"),
     ("CruiseMaxVals2", "120"),

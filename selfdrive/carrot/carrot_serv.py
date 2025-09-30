@@ -184,6 +184,7 @@ class CarrotServ:
     self.navType, self.navModifier = "invalid", ""
     self.navTypeNext, self.navModifierNext = "invalid", ""
 
+    self.esp32Index = -1 #new
     self.carrotIndex = 0
     self.carrotCmdIndex = 0
     self.carrotCmd = ""

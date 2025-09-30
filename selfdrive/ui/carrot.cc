@@ -1332,13 +1332,17 @@ public:
         _right_blinker = false;
         _left_blinker = false;
         if (blinker_timer <= 8) {
-            if (right_blinker) {
+            if (right_blinker || _ext_blinker == 2) {
                 _right_blinker = true;
-                ui_draw_image(s, { x - icon_size / 2, y - icon_size / 2, icon_size, icon_size }, "ic_blinker_r", 1.0f);
+                if(right_blinker){
+                  ui_draw_image(s, { x - icon_size / 2, y - icon_size / 2, icon_size, icon_size }, "ic_blinker_r", 1.0f);
+                }
             }
-            if (left_blinker) {
+            if (left_blinker || _ext_blinker == 1) {
                 _left_blinker = true;
-                ui_draw_image(s, { x - icon_size / 2, y - icon_size / 2, icon_size, icon_size }, "ic_blinker_l", 1.0f);
+                if(left_blinker){
+                  ui_draw_image(s, { x - icon_size / 2, y - icon_size / 2, icon_size, icon_size }, "ic_blinker_l", 1.0f);
+                }
             }
         }
     }

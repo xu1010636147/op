@@ -1410,6 +1410,9 @@ public:
         auto meta = sm["modelV2"].getModelV2().getMeta();
         bool leftFrontBlind = meta.getLeftFrontBlind();
         bool rightFrontBlind = meta.getRightFrontBlind();
+        auto carrotMan = sm["carrotMan"].getCarrotMan();
+        bool carrotLeftBlind = carrotMan.getLeftBlind();
+        bool carrotRightBlind = carrotMan.getRightBlind();
         /*
         auto laneChangeState = meta.getLaneChangeState();
         auto laneChangeDirection = meta.getLaneChangeDirection();
@@ -1422,14 +1425,14 @@ public:
 #if 0
         left_blindspot = right_blindspot = true;
 #endif
-        if (left_blindspot) {
+        if (left_blindspot || carrotLeftBlind) {
             ui_draw_bsd(s, lane_barrier_vertices[0], &color, false);
         }
         else if (leftFrontBlind) {
             ui_draw_bsd(s, lane_barrier_vertices[0], &color2, false);
         }
 
-        if (right_blindspot) {
+        if (right_blindspot || carrotRightBlind) {
             ui_draw_bsd(s, lane_barrier_vertices[1], &color, true);
         }
         else if (rightFrontBlind){

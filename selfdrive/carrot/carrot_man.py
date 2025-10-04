@@ -374,6 +374,12 @@ class CarrotMan:
         time.sleep(1)
 
   def esp32_comm_thread(self):
+    blinker_alive = False
+    blinker_time = time.time()
+    l_blindspot_alive = False
+    l_blindspot_time = time.time()
+    r_blindspot_alive = False
+    r_blindspot_time = time.time()
     while True:
       try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
@@ -405,6 +411,8 @@ class CarrotMan:
                       self.ext_blinker = BLINKER_RIGHT
                     else:
                       self.ext_blinker = BLINKER_NONE
+                    blinker_alive = True
+                    blinker_time = time.time()
                   if "index" in json_obj:
                     self.carrot_serv.esp32Index = int(json_obj.get("index"))
                   if "cmd" in json_obj:
@@ -413,6 +421,14 @@ class CarrotMan:
                     self.carrot_serv.carrotArg = json_obj.get("arg")
                     if (self.carrot_serv.showDebugLog & 32) > 0:
                       print(f"carrot: carrotCmdIndex={self.carrot_serv.esp32Index}, carrotCmd={self.carrot_serv.carrotCmd},carrotArg={self.carrot_serv.carrotArg}")
+                  if "left_blind" in json_obj:
+                    self.carrot_serv.left_blind = json_obj.get("left_blind")
+                    l_blindspot_alive = False
+                    l_blindspot_time = time.time()
+                  if "right_blind" in json_obj:
+                    self.carrot_serv.right_blind = json_obj.get("right_blind")
+                    r_blindspot_alive = False
+                    r_blindspot_time = time.time()
 
                   if (self.carrot_serv.showDebugLog & 32) > 0:
                     print(f"receive: {json_obj}")
@@ -432,6 +448,16 @@ class CarrotMan:
               # 修改: 清理超过 10 秒未活跃的客户端
               now = time.time()
               self.esp32_clients = {ip: ts for ip, ts in self.esp32_clients.items() if now - ts < 10}
+              #超过10秒后重启转向灯和盲区状态
+              if blinker_alive and (now - blinker_time) > 10:
+                self.ext_blinker = BLINKER_NONE
+                blinker_alive = False
+              if l_blindspot_alive and (now - l_blindspot_time) > 10:
+                self.carrot_serv.left_blind = False
+                l_blindspot_alive = False
+              if r_blindspot_alive and (now - r_blindspot_time) > 10:
+                self.carrot_serv.right_blind = False
+                r_blindspot_alive = False
 
               if self.esp32_clients:
                 self.carrot_serv.ext_state = len(self.esp32_clients)

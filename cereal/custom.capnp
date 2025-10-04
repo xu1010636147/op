@@ -50,6 +50,9 @@ struct CarrotMan @0x81c2f05a394cf4af {
 	roadCate @34 : Int32;
 	extBlinker @35 : Int32;
 	extState @36 : Int32;
+
+	leftBlind @37 : Int32;
+	rightBlind @38 : Int32;
 }
 
 struct CustomReserved1 @0xaedffd8f31e7b55d {

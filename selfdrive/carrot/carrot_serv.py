@@ -261,6 +261,8 @@ class CarrotServ:
     self.ext_blinker = BLINKER_NONE
     self.ext_state = 0
     self.desired_speed = 30
+    self.left_blind = False
+    self.right_blind = False
     #new
 
     self.update_params()
@@ -1129,6 +1131,8 @@ class CarrotServ:
     msg.carrotMan.roadCate = int(self.xroadcate)
     msg.carrotMan.extBlinker = int(self.ext_blinker)
     msg.carrotMan.extState = int(self.ext_state)
+    msg.carrotMan.leftBlind = int(self.left_blind)
+    msg.carrotMan.rightBlind = int(self.right_blind)
     #new
 
     msg.carrotMan.xPosSpeed = float(v_ego_kph) #float(self.nPosSpeed)

@@ -300,52 +300,52 @@ class SelfdriveD:
       event_type_id = int((model_event_type-event_type_val)/256)
       if event_type_val == 1:  # 准备变道
         self.events.add(EventName.audioPreLaneChange)
-        print(f"Event: audioPreLaneChange, laneChangeBlocked={laneChangeBlocked},preLaneChangeLeft={preLaneChangeLeft},preLaneChangeRight={preLaneChangeRight},laneChange={laneChange}")
+        print(f"Event: audioPreLaneChange")
       elif event_type_val == 2:  # 变道
         self.events.add(EventName.audioLaneChange)
-        print(f"Event: audioLaneChange, laneChangeBlocked={laneChangeBlocked},preLaneChangeLeft={preLaneChangeLeft},preLaneChangeRight={preLaneChangeRight},laneChange={laneChange}")
+        print(f"Event: audioLaneChange")
       elif event_type_val == 3:  # 转弯
         self.events.add(EventName.audioTurn)
-        print(f"Event: audioTurn, laneChangeBlocked={laneChangeBlocked},preLaneChangeLeft={preLaneChangeLeft},preLaneChangeRight={preLaneChangeRight},laneChange={laneChange}")
+        print(f"Event: audioTurn")
       elif event_type_val == 4:  # 领航已退出
         self.events.add(EventName.audioAtcCancel)
-        print(f"Event: audioAtcCancel, laneChangeBlocked={laneChangeBlocked},preLaneChangeLeft={preLaneChangeLeft},preLaneChangeRight={preLaneChangeRight},laneChange={laneChange}")
+        print(f"Event: audioAtcCancel")
       elif event_type_val == 5:  # 领航已恢复
         self.events.add(EventName.audioAtcResume)
-        print(f"Event: audioAtcResume, laneChangeBlocked={laneChangeBlocked},preLaneChangeLeft={preLaneChangeLeft},preLaneChangeRight={preLaneChangeRight},laneChange={laneChange}")
+        print(f"Event: audioAtcResume")
       elif event_type_val == 6:  # 盲区有车
         self.events.add(EventName.laneChangeBlocked)
-        print(f"Event: laneChangeBlocked, laneChangeBlocked={laneChangeBlocked},preLaneChangeLeft={preLaneChangeLeft},preLaneChangeRight={preLaneChangeRight},laneChange={laneChange}")
+        print(f"Event: laneChangeBlocked")
       elif event_type_val == 7:  # 准备左变道
         self.events.add(EventName.audioPreLaneChangeLeft)
-        print(f"Event: audioPreLaneChangeLeft, laneChangeBlocked={laneChangeBlocked},preLaneChangeLeft={preLaneChangeLeft},preLaneChangeRight={preLaneChangeRight},laneChange={laneChange}")
+        print(f"Event: audioPreLaneChangeLeft")
       elif event_type_val == 8:  # 准备右变道
         self.events.add(EventName.audioPreLaneChangeRight)
-        print(f"Event: audioPreLaneChangeRight, laneChangeBlocked={laneChangeBlocked},preLaneChangeLeft={preLaneChangeLeft},preLaneChangeRight={preLaneChangeRight},laneChange={laneChange}")
+        print(f"Event: audioPreLaneChangeRight")
       elif event_type_val == 9:  # 变道已完成
         self.events.add(EventName.audioLaneChangeOk)
-        print(f"Event: audioLaneChangeOk, laneChangeBlocked={laneChangeBlocked},preLaneChangeLeft={preLaneChangeLeft},preLaneChangeRight={preLaneChangeRight},laneChange={laneChange}")
+        print(f"Event: audioLaneChangeOk")
       elif event_type_val == 10:  # 车辆已靠边
         self.events.add(EventName.audioLastLane)
-        print(f"Event: audioLastLane, laneChangeBlocked={laneChangeBlocked},preLaneChangeLeft={preLaneChangeLeft},preLaneChangeRight={preLaneChangeRight},laneChange={laneChange}")
+        print(f"Event: audioLastLane")
       elif event_type_val == 11:  # 出现新车道
         self.events.add(EventName.audioNewLane)
-        print(f"Event: audioNewLane, laneChangeBlocked={laneChangeBlocked},preLaneChangeLeft={preLaneChangeLeft},preLaneChangeRight={preLaneChangeRight},laneChange={laneChange}")
+        print(f"Event: audioNewLane")
       elif event_type_val == 12:  # 变道已结束
         self.events.add(EventName.audioLaneChangeEnd)
-        print(f"Event: audioLaneChangeEnd, laneChangeBlocked={laneChangeBlocked},preLaneChangeLeft={preLaneChangeLeft},preLaneChangeRight={preLaneChangeRight},laneChange={laneChange}")
+        print(f"Event: audioLaneChangeEnd")
 
 
 
       self.model_event_type = model_event_type
-      print(f"val={model_event_type},id={event_type_id},event_type={event_type_val}")
+      #print(f"val={model_event_type},id={event_type_id},event_type={event_type_val}")
 
       # 添加调试信息
-      print(f"Current alert types: {self.state_machine.current_alert_types}")
+      #print(f"Current alert types: {self.state_machine.current_alert_types}")
       #print(f"Clear event types: {clear_event_types}")
-      print(f"System state: {self.state_machine.state}")
-      print(f"System enabled: {self.enabled}")
-      print(f"System active: {self.active}")
+      #print(f"System state: {self.state_machine.state}")
+      #print(f"System enabled: {self.enabled}")
+      #print(f"System active: {self.active}")
 
     for i, pandaState in enumerate(self.sm['pandaStates']):
       # All pandas must match the list of safetyConfigs, and if outside this list, must be silent or noOutput

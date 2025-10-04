@@ -234,6 +234,7 @@ class DesireHelper:
     self.blinkerMode = 0
     self.autoLaneChangeMinSpeed = 0
     self.lane_change_state_last = LaneChangeState.off
+    self.lane_change_state_prev = LaneChangeState.off
     #new
 
   def lane_change_audio(self, enable, turn_type, param=0):
@@ -845,6 +846,7 @@ class DesireHelper:
               f"atc_desire_enabled={atc_desire_enabled}")
         #new
         self.lane_change_state_last = self.lane_change_state
+        self.lane_change_state_prev = LaneChangeState.off
 
       # =============LaneChangeState.preLaneChange==============
       elif self.lane_change_state == LaneChangeState.preLaneChange:
@@ -882,8 +884,9 @@ class DesireHelper:
             self.blinker_val = atc_blinker_state
           else:
             self.blinker_val = BLINKER_NONE
-          if self.lane_change_state_last != self.lane_change_state:
-            print(f"---[{time.strftime("%H:%M:%S")}]ext_blinker state:{self.blinker_val},driver_desire_enabled={driver_desire_enabled},"
+          if self.lane_change_state_prev != self.lane_change_state:
+            self.lane_change_state_prev = self.lane_change_state
+            print(f"---[{time.strftime("%H:%M:%S")}]Pre:ext_blinker state:{self.blinker_val},driver_desire_enabled={driver_desire_enabled},"
                   f"stockBlinkerCtrl={self.stockBlinkerCtrl},turn_cnt={self.atc_turn_cnt},carrot_blinker_state={self.carrot_blinker_state}")
           #此处根据条件决定是否进入开始变道或转弯的流程，lane_change_available为真时表示旁边车道或者路沿的宽度稳定大于2.5米
           if lane_change_available and self.lane_change_delay == 0: #允许变道并且没有延时时间要求
@@ -996,7 +999,8 @@ class DesireHelper:
           self.trigger_name = trigger_name
           if not driver_desire_enabled:
             self.blinker_val = atc_blinker_state
-          print(f"---[{time.strftime("%H:%M:%S")}]lane_change_state:{LaneChangeState.preLaneChange}->{LaneChangeState.laneChangeStarting},ext_blinker state:{self.blinker_val}")
+          print(f"---[{time.strftime("%H:%M:%S")}]Pre:lane_change_state:{LaneChangeState.preLaneChange}->{LaneChangeState.laneChangeStarting},ext_blinker state:{self.blinker_val}")
+          self.lane_change_state_prev = LaneChangeState.preLaneChange
 
         if (self.showDebugLog & 4) > 0 or self.lane_change_state_last != self.lane_change_state:
           print(f"---{'[' + time.strftime('%H:%M:%S') + ']' if self.lane_change_state_last != self.lane_change_state else ''}Pre:lane_change_available={lane_change_available},lane_change_trig={auto_lane_change_trigger},"
@@ -1085,6 +1089,7 @@ class DesireHelper:
 
           print(f"---[{time.strftime('%H:%M:%S')}]Finishing: new state={self.lane_change_state},atc resume={self.atc_resume},"
                 f"turn cnt={self.atc_turn_cnt},prev_desire_enabled={self.prev_desire_enabled}")
+          self.lane_change_state_prev = LaneChangeState.laneChangeFinishing
         elif (self.showDebugLog & 4) > 0 or self.lane_change_state_last != self.lane_change_state:
           print(f"---{'[' + time.strftime('%H:%M:%S') + ']' if self.lane_change_state_last != self.lane_change_state else ''}Finishing: ll_prob={self.lane_change_ll_prob:.1f};dir={self.lane_change_direction};trig:name={self.trigger_name},type={self.trigger_type}")
 
@@ -1156,7 +1161,7 @@ class DesireHelper:
       if self.carrot_lane_change_count > 0 or self.carrot_blinker_state != BLINKER_NONE:
         print(f"---[{time.strftime('%H:%M:%S')}]LaneChangeState.off,reset carrot_lane_change_count {self.carrot_lane_change_count}->0,"
               f"carrot_blinker_state {self.carrot_blinker_state}->0")
-      #self.carrot_blinker_state = BLINKER_NONE
-      #self.carrot_lane_change_count = 0
+        self.carrot_blinker_state = BLINKER_NONE
+        self.carrot_lane_change_count = 0
     if lane_change_state != self.lane_change_state:
-      print(f"---lane_change_state change: {lane_change_state}->{self.lane_change_state}")
+      print(f"---[{time.strftime('%H:%M:%S')}]End:lane_change_state change: {lane_change_state}->{self.lane_change_state}")

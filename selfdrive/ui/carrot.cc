@@ -1399,6 +1399,7 @@ public:
 
         NVGcolor color = nvgRGBA(255, 215, 0, 150);
         NVGcolor color2 = nvgRGBA(0, 204, 0, 150);
+        NVGcolor color3 = nvgRGBA(0, 0, 255, 150);
 
         SubMaster& sm = *(s->sm);
         auto car_state = sm["carState"].getCarState();
@@ -1425,15 +1426,21 @@ public:
 #if 0
         left_blindspot = right_blindspot = true;
 #endif
-        if (left_blindspot || carrotLeftBlind) {
+        if (left_blindspot) {
             ui_draw_bsd(s, lane_barrier_vertices[0], &color, false);
+        }
+        else if (carrotLeftBlind) {
+            ui_draw_bsd(s, lane_barrier_vertices[0], &color3, false);
         }
         else if (leftFrontBlind) {
             ui_draw_bsd(s, lane_barrier_vertices[0], &color2, false);
         }
 
-        if (right_blindspot || carrotRightBlind) {
+        if (right_blindspot) {
             ui_draw_bsd(s, lane_barrier_vertices[1], &color, true);
+        }
+        else if (carrotRightBlind) {
+            ui_draw_bsd(s, lane_barrier_vertices[1], &color3, true);
         }
         else if (rightFrontBlind){
             ui_draw_bsd(s, lane_barrier_vertices[1], &color2, true);

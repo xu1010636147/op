@@ -720,6 +720,14 @@ class CarrotMan:
         #new
         if hasattr(carState, 'vEgo') and carState.vEgo:
           msg["current_speed"] = int(carState.vEgo * 3.6)
+        if hasattr(carState, 'aEgo') and carState.aEgo:
+          msg["aego"] = carState.aEgo
+        if hasattr(carState, 'steeringAngleDeg') and carState.steeringAngleDeg:
+          msg["steer_angle"] = carState.steeringAngleDeg
+        if hasattr(carState, 'gasPressed') and carState.gasPressed:
+          msg["gas_press"] = carState.gasPressed
+        if hasattr(carState, 'brakePressed') and carState.brakePressed:
+          msg["break_press"] = carState.brakePressed
         if hasattr(carState, 'cruiseState') and carState.cruiseState:
           msg["engaged"] = carState.cruiseState.enabled
         # 盲区检测
@@ -738,6 +746,8 @@ class CarrotMan:
             msg["lead_speed"] = int(radar_state.leadOne.vLead * 3.6)
           if hasattr(radar_state.leadOne, 'vRel'):
             msg["lead_relative_speed"] = int(radar_state.leadOne.vRel * 3.6)
+          if hasattr(radar_state.leadOne, 'aRel'):
+            msg["lead_accel"] = radar_state.leadOne.aRel
         # 左侧前车
         if hasattr(radar_state, 'leadLeft') and radar_state.leadLeft and hasattr(radar_state.leadLeft,'status') and radar_state.leadLeft.status:
           msg["left_lead_detected"] = True

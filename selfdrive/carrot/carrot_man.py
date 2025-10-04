@@ -793,7 +793,7 @@ class CarrotMan:
           if hasattr(radar_state.leadRight, 'vRel'):
             msg["right_lead_relative_speed"] = int(radar_state.leadRight.vRel * 3.6)
 
-    msg["desire_speed"] = int(self.carrot_serv.desired_speed*3.6) # 期望速度
+    msg["desire_speed"] = int(self.carrot_serv.desired_speed) # 期望速度
     msg["cruise_speed"] = v_cruise_kph # 巡航速度
     msg['v_cruise_kph'] = v_cruise_kph # 巡航速度
     msg['v_ego_kph'] = v_ego_kph #当前速度

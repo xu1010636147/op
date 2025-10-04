@@ -9,6 +9,7 @@ git remote add origin https://jihulab.com/fishop/openpilot.git
 
 # Cleanup
 echo "cleanup"
+find . -name '*.cc' -delete
 find . -name '*.a' -delete
 find . -name '*.o' -delete
 find . -name '*.os' -delete

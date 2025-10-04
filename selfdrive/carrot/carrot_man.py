@@ -721,9 +721,9 @@ class CarrotMan:
         if hasattr(carState, 'vEgo') and carState.vEgo:
           msg["current_speed"] = int(carState.vEgo * 3.6)
         if hasattr(carState, 'aEgo') and carState.aEgo:
-          msg["aego"] = carState.aEgo
+          msg["aego"] = round(carState.aEgo,1)
         if hasattr(carState, 'steeringAngleDeg') and carState.steeringAngleDeg:
-          msg["steer_angle"] = carState.steeringAngleDeg
+          msg["steer_angle"] = round(carState.steeringAngleDeg,1)
         if hasattr(carState, 'gasPressed') and carState.gasPressed:
           msg["gas_press"] = carState.gasPressed
         if hasattr(carState, 'brakePressed') and carState.brakePressed:
@@ -767,7 +767,7 @@ class CarrotMan:
           if hasattr(radar_state.leadRight, 'vRel'):
             msg["right_lead_relative_speed"] = int(radar_state.leadRight.vRel * 3.6)
 
-    msg["desire_speed"] = self.carrot_serv.desired_speed*3.6 # 期望速度
+    msg["desire_speed"] = int(self.carrot_serv.desired_speed*3.6) # 期望速度
     msg["cruise_speed"] = v_cruise_kph # 巡航速度
     msg['v_cruise_kph'] = v_cruise_kph # 巡航速度
     msg['v_ego_kph'] = v_ego_kph #当前速度
@@ -777,10 +777,10 @@ class CarrotMan:
         msg['blinker'] = self.sm['modelV2'].meta.blinker
         msg['l_front_blind'] = self.sm['modelV2'].meta.leftFrontBlind
         msg['r_front_blind'] = self.sm['modelV2'].meta.rightFrontBlind
-        msg['l_lane_width'] = self.sm['modelV2'].meta.laneWidthLeft
-        msg['r_lane_width'] = self.sm['modelV2'].meta.laneWidthRight
-        msg['l_rodg_dist'] = self.sm['modelV2'].meta.distanceToRoadEdgeLeft
-        msg['l_rodg_dist'] = self.sm['modelV2'].meta.distanceToRoadEdgeRight
+        msg['l_lane_width'] = round(self.sm['modelV2'].meta.laneWidthLeft,1)
+        msg['r_lane_width'] = round(self.sm['modelV2'].meta.laneWidthRight,1)
+        msg['l_edge_dist'] = round(self.sm['modelV2'].meta.distanceToRoadEdgeLeft,1)
+        msg['r_edge_dist'] = round(self.sm['modelV2'].meta.distanceToRoadEdgeRight,1)
       if self.sm.alive['selfdriveState']:
         selfdrive = self.sm['selfdriveState']
         msg['active'] = "on" if selfdrive.active else "off"

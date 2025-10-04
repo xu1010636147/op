@@ -775,8 +775,12 @@ class CarrotMan:
     if 0 == blinker_test:
       if self.sm.alive['modelV2']:
         msg['blinker'] = self.sm['modelV2'].meta.blinker
-        msg['lfront_blind'] = self.sm['modelV2'].meta.leftFrontBlind
-        msg['rfront_blind'] = self.sm['modelV2'].meta.rightFrontBlind
+        msg['l_front_blind'] = self.sm['modelV2'].meta.leftFrontBlind
+        msg['r_front_blind'] = self.sm['modelV2'].meta.rightFrontBlind
+        msg['l_lane_width'] = self.sm['modelV2'].meta.laneWidthLeft
+        msg['r_lane_width'] = self.sm['modelV2'].meta.laneWidthRight
+        msg['l_rodg_dist'] = self.sm['modelV2'].meta.distanceToRoadEdgeLeft
+        msg['l_rodg_dist'] = self.sm['modelV2'].meta.distanceToRoadEdgeRight
       if self.sm.alive['selfdriveState']:
         selfdrive = self.sm['selfdriveState']
         msg['active'] = "on" if selfdrive.active else "off"

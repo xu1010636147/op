@@ -732,9 +732,9 @@ class CarrotMan:
           msg["engaged"] = carState.cruiseState.enabled
         # 盲区检测
         if hasattr(carState, 'leftBlindspot'):
-          msg["left_front_blindspot"] = int(carState.leftBlindspot)
+          msg["left_blindspot"] = int(carState.leftBlindspot)
         if hasattr(carState, 'rightBlindspot'):
-          msg["right_front_blindspot"] = int(carState.rightBlindspot)
+          msg["right_blindspot"] = int(carState.rightBlindspot)
       # 前车信息
       if self.sm.alive['radarState']:# and self.sm.updated['radarState']:
         radar_state = self.sm['radarState']
@@ -775,6 +775,8 @@ class CarrotMan:
     if 0 == blinker_test:
       if self.sm.alive['modelV2']:
         msg['blinker'] = self.sm['modelV2'].meta.blinker
+        msg['lfront_blind'] = self.sm['modelV2'].meta.leftFrontBlind
+        msg['rfront_blind'] = self.sm['modelV2'].meta.rightFrontBlind
       if self.sm.alive['selfdriveState']:
         selfdrive = self.sm['selfdriveState']
         msg['active'] = "on" if selfdrive.active else "off"

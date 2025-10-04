@@ -260,6 +260,7 @@ class CarrotServ:
     self.fork_speed_keep_time = -1
     self.ext_blinker = BLINKER_NONE
     self.ext_state = 0
+    self.desired_speed = 30
     #new
 
     self.update_params()
@@ -1054,6 +1055,7 @@ class CarrotServ:
       self.debugText += f"route={route_speed:.1f}"#f"desired={desired_speed:.1f},{source},g={self.gas_override_speed:.0f}"
 
     #new 根据当前速度计算到转弯引导点需要的时间
+    self.desired_speed = desired_speed
     if self.xDistToTurn > 0:
       left_turn_sec = min(1000, int(min(200000,max(self.xDistToTurn - v_ego, 1)) / max(1, v_ego) + 0.5))
     else:

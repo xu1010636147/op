@@ -192,7 +192,7 @@ class CarrotMan:
     print("************************************************CarrotMan init************************************************")
     self.params = Params()
     self.params_memory = Params("/dev/shm/params")
-    self.sm = messaging.SubMaster(['deviceState', 'carState', 'controlsState', 'longitudinalPlan', 'modelV2', 'selfdriveState', 'carControl', 'navRouteNavd', 'liveLocationKalman', 'navInstruction'])
+    self.sm = messaging.SubMaster(['deviceState', 'carState', 'controlsState', 'longitudinalPlan', 'modelV2', 'selfdriveState', 'carControl', 'navRouteNavd', 'liveLocationKalman', 'navInstruction', 'radarState'])
     self.pm = messaging.PubMaster(['carrotMan', "navRoute", "navInstructionCarrot"])
 
     self.carrot_serv = CarrotServ()
@@ -712,12 +712,56 @@ class CarrotMan:
     v_ego_kph = 0
     v_cruise_kph = 0
     if isOnroad:
-      if self.sm.alive['carState']:
+      #车辆状态
+      if self.sm.alive['carState']:# and self.sm.updated['carState']:
         carState = self.sm['carState']
         v_ego_kph = int(carState.vEgoCluster * 3.6 + 0.5)
         v_cruise_kph = carState.vCruise
-    msg['v_cruise_kph'] = v_cruise_kph
-    msg['v_ego_kph'] = v_ego_kph
+        #new
+        if hasattr(carState, 'vEgo') and carState.vEgo:
+          msg["current_speed"] = int(carState.vEgo * 3.6)
+        if hasattr(carState, 'cruiseState') and carState.cruiseState:
+          msg["engaged"] = carState.cruiseState.enabled
+        # 盲区检测
+        if hasattr(carState, 'leftBlindspot'):
+          msg["left_front_blindspot"] = int(carState.leftBlindspot)
+        if hasattr(carState, 'rightBlindspot'):
+          msg["right_front_blindspot"] = int(carState.rightBlindspot)
+      # 前车信息
+      if self.sm.alive['radarState']:# and self.sm.updated['radarState']:
+        radar_state = self.sm['radarState']
+        # 当前车道前车
+        if hasattr(radar_state, 'leadOne') and radar_state.leadOne and hasattr(radar_state.leadOne,'status') and radar_state.leadOne.status:
+          if hasattr(radar_state.leadOne, 'dRel'):
+            msg["lead_distance"] = int(radar_state.leadOne.dRel)
+          if hasattr(radar_state.leadOne, 'vLead'):
+            msg["lead_speed"] = int(radar_state.leadOne.vLead * 3.6)
+          if hasattr(radar_state.leadOne, 'vRel'):
+            msg["lead_relative_speed"] = int(radar_state.leadOne.vRel * 3.6)
+        # 左侧前车
+        if hasattr(radar_state, 'leadLeft') and radar_state.leadLeft and hasattr(radar_state.leadLeft,'status') and radar_state.leadLeft.status:
+          msg["left_lead_detected"] = True
+          if hasattr(radar_state.leadLeft, 'dRel'):
+            msg["left_lead_distance"] = int(radar_state.leadLeft.dRel)
+          if hasattr(radar_state.leadLeft, 'vLead'):
+            msg["left_lead_speed"] = int(radar_state.leadLeft.vLead * 3.6)
+          if hasattr(radar_state.leadLeft, 'vRel'):
+            msg["left_lead_relative_speed"] = int(radar_state.leadLeft.vRel * 3.6)
+        # 右侧前车
+        if hasattr(radar_state, 'leadRight') and radar_state.leadRight and hasattr(radar_state.leadRight,'status') and radar_state.leadRight.status:
+          msg["right_lead_detected"] = True
+          if hasattr(radar_state.leadRight, 'dRel'):
+            msg["right_lead_distance"] = int(radar_state.leadRight.dRel)
+          if hasattr(radar_state.leadRight, 'vLead'):
+            msg["right_lead_speed"] = int(radar_state.leadRight.vLead * 3.6)
+          if hasattr(radar_state.leadRight, 'vRel'):
+            msg["right_lead_relative_speed"] = int(radar_state.leadRight.vRel * 3.6)
+
+    msg["desire_speed"] = self.carrot_serv.desired_speed*3.6 # 期望速度
+    msg["cruise_speed"] = v_cruise_kph # 巡航速度
+    msg['v_cruise_kph'] = v_cruise_kph # 巡航速度
+    msg['v_ego_kph'] = v_ego_kph #当前速度
+
     if 0 == blinker_test:
       if self.sm.alive['modelV2']:
         msg['blinker'] = self.sm['modelV2'].meta.blinker

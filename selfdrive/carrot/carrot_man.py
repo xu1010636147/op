@@ -223,6 +223,8 @@ class CarrotMan:
     self.xroadcate = 8
     self.ext_blinker = BLINKER_NONE
     self.esp32_clients = {}  # 保存多个客户端
+    self.lat_a = 0
+    self.max_curve = 0
     #new
 
     self.turn_speed_last = 250
@@ -793,20 +795,23 @@ class CarrotMan:
           if hasattr(radar_state.leadRight, 'vRel'):
             msg["right_lead_relative_speed"] = int(radar_state.leadRight.vRel * 3.6)
 
-    msg["desire_speed"] = int(self.carrot_serv.desired_speed) # 期望速度
-    msg["cruise_speed"] = v_cruise_kph # 巡航速度
-    msg['v_cruise_kph'] = v_cruise_kph # 巡航速度
-    msg['v_ego_kph'] = v_ego_kph #当前速度
+      msg["desire_speed"] = int(self.carrot_serv.desired_speed) # 期望速度
+      msg["cruise_speed"] = v_cruise_kph # 巡航速度
+      msg['v_cruise_kph'] = v_cruise_kph # 巡航速度
+      msg['v_ego_kph'] = v_ego_kph #当前速度
+      msg['lat_a'] = round(self.lat_a,1)
+      msg['max_curve'] = round(self.max_curve,1)
 
     if 0 == blinker_test:
       if self.sm.alive['modelV2']:
         msg['blinker'] = self.sm['modelV2'].meta.blinker
-        msg['l_front_blind'] = self.sm['modelV2'].meta.leftFrontBlind
-        msg['r_front_blind'] = self.sm['modelV2'].meta.rightFrontBlind
-        msg['l_lane_width'] = round(self.sm['modelV2'].meta.laneWidthLeft,1)
-        msg['r_lane_width'] = round(self.sm['modelV2'].meta.laneWidthRight,1)
-        msg['l_edge_dist'] = round(self.sm['modelV2'].meta.distanceToRoadEdgeLeft,1)
-        msg['r_edge_dist'] = round(self.sm['modelV2'].meta.distanceToRoadEdgeRight,1)
+        if isOnroad:
+          msg['l_front_blind'] = self.sm['modelV2'].meta.leftFrontBlind
+          msg['r_front_blind'] = self.sm['modelV2'].meta.rightFrontBlind
+          msg['l_lane_width'] = round(self.sm['modelV2'].meta.laneWidthLeft,1)
+          msg['r_lane_width'] = round(self.sm['modelV2'].meta.laneWidthRight,1)
+          msg['l_edge_dist'] = round(self.sm['modelV2'].meta.distanceToRoadEdgeLeft,1)
+          msg['r_edge_dist'] = round(self.sm['modelV2'].meta.distanceToRoadEdgeRight,1)
       if self.sm.alive['selfdriveState']:
         selfdrive = self.sm['selfdriveState']
         msg['active'] = "on" if selfdrive.active else "off"
@@ -1270,6 +1275,9 @@ class CarrotMan:
 
     # Get the maximum curve based on the current velocity
     max_curve = max_pred_lat_acc / (v_ego**2)
+
+    self.lat_a = max_pred_lat_acc
+    self.max_curve = max_curve
 
     # Set the target lateral acceleration
     #new

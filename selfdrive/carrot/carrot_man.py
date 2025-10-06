@@ -801,6 +801,7 @@ class CarrotMan:
       msg['v_ego_kph'] = v_ego_kph #当前速度
       msg['lat_a'] = round(self.lat_a,1)
       msg['max_curve'] = round(self.max_curve,1)
+      msg['atc_type'] = self.carrot_serv.atcType
 
     if 0 == blinker_test:
       if self.sm.alive['modelV2']:

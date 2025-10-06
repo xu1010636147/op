@@ -570,6 +570,10 @@ class DesireHelper:
       self.lane_appeared = self.lane_appeared or lane_exist_counter == int(0.2 / DT_MDL) #
       curr_lane_width_diff = self.lane_width_left_curr_diff if blinker_state == BLINKER_LEFT else self.lane_width_right_curr_diff #当前车道宽度和旁边车道宽度的差值
 
+      carrot_left_blind = carrotMan.leftBlind
+      carrot_right_blind = carrotMan.rightBlind
+      carrot_blind = carrot_left_blind if blinker_state == BLINKER_LEFT else carrot_right_blind
+
       radar = radarState.leadLeft if blinker_state == BLINKER_LEFT else radarState.leadRight
       side_object_dist = radar.dRel + radar.vLead * 3.0 if radar.status else 255
       if radar.status:
@@ -577,14 +581,14 @@ class DesireHelper:
       else:
         object_detected = False
       #self.object_detected_count = max(1, self.object_detected_count + 1) if object_detected else min(-1, self.object_detected_count - 1)
-      if object_detected: #检测到
+      if object_detected or carrot_blind: #检测到
         self.object_detected_count = 1
       else:
         self.object_detected_count -= 1
         if self.object_detected_count < self.min_object_detected_count:
           self.object_detected_count = self.min_object_detected_count
 
-      if object_detected:
+      if object_detected or carrot_blind:
         self.object_detected_count_new = 1
       else:
         self.object_detected_count_new -= 1

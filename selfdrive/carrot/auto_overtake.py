@@ -524,7 +524,8 @@ class AutoOvertakeController:
                 elif self.path == '/status':
                     self.send_json_status()
                 else:
-                    self.send_error(404, "页面未找到")
+                  print(f"page {self.path} not found!")
+                  # self.send_error(404, "页面未找到")
 
             def do_POST(self):
                 try:

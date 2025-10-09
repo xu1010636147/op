@@ -421,8 +421,7 @@ class CarrotMan:
                     self.carrot_serv.carrotCmdIndex = self.carrot_serv.esp32Index
                     self.carrot_serv.carrotCmd = json_obj.get("cmd")
                     self.carrot_serv.carrotArg = json_obj.get("arg")
-                    if (self.carrot_serv.showDebugLog & 32) > 0:
-                      print(f"carrot: carrotCmdIndex={self.carrot_serv.esp32Index}, carrotCmd={self.carrot_serv.carrotCmd},carrotArg={self.carrot_serv.carrotArg}")
+                    print(f"carrot: carrotCmdIndex={self.carrot_serv.esp32Index}, carrotCmd={self.carrot_serv.carrotCmd},carrotArg={self.carrot_serv.carrotArg}")
                   if "left_blind" in json_obj:
                     self.carrot_serv.left_blind = json_obj.get("left_blind")
                     l_blindspot_alive = False

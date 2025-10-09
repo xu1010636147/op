@@ -457,9 +457,9 @@ class AutoOvertakeController:
     def change_speed(self, direction):
         """改变速度"""
         if direction == "UP":
-            self.send_command("SPEED", "+5")
+            self.send_command("SPEED", direction)
         elif direction == "DOWN":
-            self.send_command("SPEED", "-5")
+            self.send_command("SPEED", direction)
 
     def run_data_loop(self):
         """数据循环"""

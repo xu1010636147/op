@@ -53,7 +53,11 @@ class AutoOvertakeController:
         self.last_steering_angle = 0
         self.lane_change_start_time = 0
         self.lane_change_direction = ""
-        self.steering_threshold = 5.0  # 方向盘角度阈值
+        self.steering_threshold = 2.0  # 方向盘角度阈值改为2度
+        
+        # 盲区延时相关
+        self.blindspot_detected_time = 0
+        self.blindspot_side = ""
 
         # 线程控制
         self.running = True
@@ -97,10 +101,11 @@ class AutoOvertakeController:
             'shouldReturnToLane': True, 'autoLaneCountEnabled': True,
             'HIGHWAY_MIN_SPEED': 75.0, 'NORMAL_ROAD_MIN_SPEED': 40.0,
             'CRUISE_SPEED_RATIO_THRESHOLD': 0.8, 'FOLLOW_DISTANCE_THRESHOLD': 100,
-            'MIN_FOLLOW_TIME': 5000, 'OVERTAKE_COOLDOWN': 15000, 'RETURN_DELAY': 10000,
+            'MIN_FOLLOW_TIME': 5000, 'OVERTAKE_COOLDOWN': 8000, 'RETURN_DELAY': 10000,  # 冷区时间改为8秒
             'MIN_LANE_WIDTH': 2.5, 'SAFE_LANE_WIDTH': 3.0, 'SIDE_LEAD_DISTANCE_MIN': 15.0,
             'SIDE_RELATIVE_SPEED_THRESHOLD': 20, 'CURVATURE_THRESHOLD': 0.02,
-            'STEERING_THRESHOLD': 20.0, 'LEAD_RELATIVE_SPEED_THRESHOLD': -5.0
+            'STEERING_THRESHOLD': 20.0, 'LEAD_RELATIVE_SPEED_THRESHOLD': -5.0,
+            'BLINDSPOT_DELAY': 2000  # 盲区延时2秒
         }
 
     def load_persistent_config(self):
@@ -253,7 +258,7 @@ class AutoOvertakeController:
             return False
 
     def check_overtake_conditions(self):
-        """检查超车条件"""
+        """检查超车条件 - 修改为任意条件满足即可触发"""
         vd = self.vehicle_data
         cs = self.control_state
         cfg = self.config
@@ -271,20 +276,13 @@ class AutoOvertakeController:
             cs['overtakeReason'] = "前方无车辆"
             return False
 
-        # 前车相对速度检查
-        if vd['lead_relative_speed'] > cfg['LEAD_RELATIVE_SPEED_THRESHOLD']:
-            cs['overtakeReason'] = f"前车相对速度{vd['lead_relative_speed']}km/h高于阈值{cfg['LEAD_RELATIVE_SPEED_THRESHOLD']}km/h"
+        # 检查是否在冷却期内
+        if now - cs['lastOvertakeTime'] < cfg['OVERTAKE_COOLDOWN']:
+            remaining = (cfg['OVERTAKE_COOLDOWN'] - (now - cs['lastOvertakeTime'])) / 1000
+            cs['overtakeReason'] = f"超车冷却中，请等待{remaining:.1f}秒"
             return False
 
-        speed_ratio = vd['v_ego_kph'] / vd['v_cruise_kph'] if vd['v_cruise_kph'] > 0 else 1.0
-        if speed_ratio >= cfg['CRUISE_SPEED_RATIO_THRESHOLD']:
-            cs['overtakeReason'] = f"车速已达到巡航速度的{speed_ratio*100:.0f}%"
-            return False
-
-        if vd['lead_distance'] > cfg['FOLLOW_DISTANCE_THRESHOLD']:
-            cs['overtakeReason'] = "前车距离过远"
-            return False
-
+        # 检查速度条件
         if cfg['road_type'] == 'highway' and vd['v_ego_kph'] < cfg['HIGHWAY_MIN_SPEED']:
             cs['overtakeReason'] = f"高速公路车速{vd['v_ego_kph']}km/h低于最低超车速度"
             return False
@@ -293,19 +291,65 @@ class AutoOvertakeController:
             cs['overtakeReason'] = f"普通公路车速{vd['v_ego_kph']}km/h低于最低超车速度"
             return False
 
-        if now - cs['lastOvertakeTime'] < cfg['OVERTAKE_COOLDOWN']:
-            remaining = (cfg['OVERTAKE_COOLDOWN'] - (now - cs['lastOvertakeTime'])) / 1000
-            cs['overtakeReason'] = f"超车冷却中，请等待{remaining:.0f}秒"
-            return False
+        # 检查触发条件（任意一个满足即可）
+        trigger_conditions = []
+        
+        # 前车相对速度条件
+        if vd['lead_relative_speed'] <= cfg['LEAD_RELATIVE_SPEED_THRESHOLD']:
+            trigger_conditions.append(f"前车相对速度{vd['lead_relative_speed']}km/h")
+            
+        # 前车跟车距离条件
+        if vd['lead_distance'] <= cfg['FOLLOW_DISTANCE_THRESHOLD']:
+            trigger_conditions.append(f"前车距离{vd['lead_distance']}m")
+            
+        # 巡航速度百分比条件
+        speed_ratio = vd['v_ego_kph'] / vd['v_cruise_kph'] if vd['v_cruise_kph'] > 0 else 1.0
+        if speed_ratio <= cfg['CRUISE_SPEED_RATIO_THRESHOLD']:
+            trigger_conditions.append(f"巡航速度比例{speed_ratio*100:.0f}%")
+            
+        # 最小跟车时间条件
+        follow_time_met = (now - cs.get('follow_start_time', 0)) >= cfg['MIN_FOLLOW_TIME']
+        if follow_time_met and vd['lead_distance'] > 0:
+            trigger_conditions.append("跟车时间达到阈值")
 
-        return True
+        # 如果有任意条件满足，则触发超车
+        if trigger_conditions:
+            cs['overtakeReason'] = f"触发条件: {', '.join(trigger_conditions)}"
+            return True
+        else:
+            cs['overtakeReason'] = "未满足任何触发条件"
+            return False
 
     def check_lane_safety(self, side):
         """检查车道安全性"""
         vd = self.vehicle_data
         cfg = self.config
+        now = time.time() * 1000
+
+        # 检查盲区延时
+        if (side == "left" and vd['left_blindspot']) or (side == "right" and vd['right_blindspot']):
+            if self.blindspot_detected_time == 0:
+                self.blindspot_detected_time = now
+                self.blindspot_side = side
+                return False, "盲区有车，等待2秒"
+            elif now - self.blindspot_detected_time < cfg['BLINDSPOT_DELAY']:
+                remaining = (cfg['BLINDSPOT_DELAY'] - (now - self.blindspot_detected_time)) / 1000
+                return False, f"盲区有车，等待{remaining:.1f}秒"
+            else:
+                # 盲区延时结束，重置
+                self.blindspot_detected_time = 0
+                self.blindspot_side = ""
 
         if side == "left":
+            # 检查是否已经在最左侧车道（防止变道到对向车道）
+            # 车道序号：1(最右),2,3(最左)
+            if cfg['current_lane_number'] >= cfg['lane_count']:
+                return False, "已在最左侧车道"
+                
+            # 高速公路检查：左侧不能是应急车道（最左侧车道检查）
+            if cfg['road_type'] == 'highway' and cfg['current_lane_number'] == cfg['lane_count']:
+                return False, "左侧为对向车道，禁止变道"
+
             # 检查车道宽度
             if vd['l_lane_width'] < cfg['MIN_LANE_WIDTH']:
                 return False, "车道过窄⚠️禁止变道"
@@ -319,6 +363,15 @@ class AutoOvertakeController:
             return True, "安全"
 
         elif side == "right":
+            # 检查是否已经在最右侧车道
+            # 车道序号：1(最右),2,3(最左)
+            if cfg['current_lane_number'] <= 1:
+                return False, "已在最右侧车道"
+                
+            # 高速公路检查：右侧不能是应急车道
+            if cfg['road_type'] == 'highway' and cfg['current_lane_number'] == 1:
+                return False, "右侧为应急车道，禁止变道"
+
             # 检查车道宽度
             if vd['r_lane_width'] < cfg['MIN_LANE_WIDTH']:
                 return False, "车道过窄⚠️禁止变道"
@@ -334,7 +387,7 @@ class AutoOvertakeController:
         return False, "未知方向"
 
     def check_lane_change_success(self):
-        """检查变道是否成功 - 基于方向盘动作"""
+        """检查变道是否成功 - 基于方向盘动作，2度阈值"""
         if not self.control_state['lane_change_in_progress']:
             return False
 
@@ -347,10 +400,7 @@ class AutoOvertakeController:
         if current_blinker != expected_blinker:
             return False
 
-        # 检查方向盘动作
-        steering_change = abs(current_steering - self.last_steering_angle)
-
-        # 根据方向检查正确的转向动作
+        # 检查方向盘动作 - 2度阈值
         if direction == "LEFT" and current_steering < -self.steering_threshold:
             return True
         elif direction == "RIGHT" and current_steering > self.steering_threshold:
@@ -359,7 +409,7 @@ class AutoOvertakeController:
         return False
 
     def perform_auto_overtake(self):
-        """执行自动超车"""
+        """执行自动超车 - 修正车道序号逻辑"""
         if not self.config['autoOvertakeEnabled'] or self.control_state['isOvertaking']:
             return
 
@@ -369,9 +419,14 @@ class AutoOvertakeController:
         left_safe, left_reason = self.check_lane_safety("left")
         right_safe, right_reason = self.check_lane_safety("right")
 
-        if left_safe and self.config['current_lane_number'] > 1:
+        # 车道序号：1(最右),2,3(最左)
+        # 向左变道：从1->2, 2->3（向车道号大的方向）
+        # 向右变道：从3->2, 2->1（向车道号小的方向）
+        
+        # 优先向左变道（向车道号大的方向），其次向右变道（向车道号小的方向）
+        if left_safe:
             self.execute_overtake("LEFT")
-        elif right_safe and self.config['current_lane_number'] < self.config['lane_count']:
+        elif right_safe:
             self.execute_overtake("RIGHT")
         else:
             reasons = []
@@ -416,7 +471,7 @@ class AutoOvertakeController:
             self.control_state['overtakeReason'] = "未检测到变道动作"
             return
 
-        # 检查变道成功
+        # 检查变道成功 - 使用2度阈值
         if self.check_lane_change_success():
             self.control_state['overtakeSuccessCount'] += 1
             self.control_state['isOvertaking'] = False
@@ -481,15 +536,31 @@ class AutoOvertakeController:
                 time.sleep(0.1)
 
     def update_lane_number(self):
-        """更新车道编号"""
+        """更新车道编号 - 修正车道序号逻辑：最右侧为1号车道"""
         vd = self.vehicle_data
         cfg = self.config
 
-        if vd['r_lane_width'] > 0 and vd['r_edge_dist'] > 0:
-            calculated_lane = round((vd['r_edge_dist'] / vd['r_lane_width']) + 0.5)
+        if vd['r_edge_dist'] > 0 and vd['r_lane_width'] > 0:
+            # 根据道路类型设置不同的车道识别参数
+            # 车道序号：1(最右),2,3(最左)
+            if cfg['road_type'] == 'highway':
+                # 高速公路：距离右边缘1米左右为1号车道（最右侧行车道）
+                # 假设标准车道宽度3.5米，应急车道在1号车道右侧
+                lane_width = 3.5  # 标准车道宽度
+                calculated_lane = int(vd['r_edge_dist'] / lane_width) + 1
+            else:
+                # 普通公路：距离右边缘1米左右为1号车道
+                lane_width = 3.2  # 普通公路标准车道宽度
+                calculated_lane = int(vd['r_edge_dist'] / lane_width) + 1
+
+            # 限制车道序号在有效范围内 (1到lane_count)
             calculated_lane = max(1, min(cfg['lane_count'], calculated_lane))
+            
             if calculated_lane != cfg['current_lane_number']:
                 cfg['current_lane_number'] = calculated_lane
+                lane_names = {1: "最右侧车道", 2: "中间车道", 3: "最左侧车道"}
+                lane_name = lane_names.get(calculated_lane, f"{calculated_lane}号车道")
+                print(f"🛣️ 车道更新: 当前在{calculated_lane}号车道({lane_name}) (距离右边缘{vd['r_edge_dist']}米)")
 
     def update_curve_detection(self):
         """更新弯道检测"""
@@ -679,7 +750,7 @@ class AutoOvertakeController:
                     'slw': cfg.get('SAFE_LANE_WIDTH', 3.0),
                     'sld': cfg.get('SIDE_LEAD_DISTANCE_MIN', 15),
                     'srs': cfg.get('SIDE_RELATIVE_SPEED_THRESHOLD', 20),
-                    'ocd': cfg.get('OVERTAKE_COOLDOWN', 15000),
+                    'ocd': cfg.get('OVERTAKE_COOLDOWN', 8000),
                     'rd': cfg.get('RETURN_DELAY', 10000),
                     'aoe': cfg.get('autoOvertakeEnabled', True),
                     'srtl': cfg.get('shouldReturnToLane', True),

@@ -32,6 +32,12 @@
             color: #ccc; margin-bottom: 4px; font-size: 0.7rem;
         }
 
+        .speed-display {
+            font-size: 1.6rem; font-weight: bold; color: #4CAF50;
+            text-align: center; line-height: 1.2;
+            min-height: 40px; display: flex; align-items: center; justify-content: center;
+        }
+
         .lane-control {
             display: flex; justify-content: center; align-items: center; gap: 4px;
         }
@@ -393,20 +399,16 @@
                     <div style="font-size: 0.6rem; color: #4CAF50; margin-top: 2px;" id="lane-mode-status">自动</div>
                 </div>
 
-                <!-- 本车车道 -->
+                <!-- 本车速度显示 -->
                 <div class="config-item">
-                    <div class="config-title">📍 本车车道</div>
-                    <div class="lane-display" id="current-lane-display">2</div>
+                    <div class="config-title">📊 本车速度</div>
+                    <div class="speed-display" id="current-speed-display">0</div>
                 </div>
 
-                <!-- 喜好车道控制 -->
+                <!-- 巡航速度显示 -->
                 <div class="config-item">
-                    <div class="config-title">⭐ 喜好车道</div>
-                    <div class="lane-control">
-                        <button class="control-btn" onclick="changePreferredLane(-1)">-</button>
-                        <div class="lane-display" id="preferred-lane-display">2</div>
-                        <button class="control-btn" onclick="changePreferredLane(1)">+</button>
-                    </div>
+                    <div class="config-title">🎯 巡航速度</div>
+                    <div class="speed-display" id="cruise-speed-display">0</div>
                 </div>
 
                 <!-- 道路类型 -->
@@ -566,7 +568,7 @@
             </div>
 
             <div class="switch-container">
-                <span>返回喜好车道</span>
+                <span>返回原车道</span>
                 <label class="switch">
                     <input type="checkbox" id="return-lane" checked onchange="toggleReturnLane(this.checked)">
                     <span class="slider"></span>
@@ -609,9 +611,9 @@
                 </div>
 
                 <div class="param-item">
-                    <span class="param-label">跟车距离阈值</span>
-                    <span class="param-value" id="follow-distance-value">100</span>
-                    <input type="range" class="param-slider" id="follow-distance" min="50" max="200" step="10" value="100" oninput="updateParamValue('follow-distance', 'm')">
+                    <span class="param-label">安全时间距离</span>
+                    <span class="param-value" id="safety-time-gap-value">3.0</span>
+                    <input type="range" class="param-slider" id="safety-time-gap" min="1.5" max="5.0" step="0.1" value="3.0" oninput="updateParamValue('safety-time-gap', 's')">
                 </div>
 
                 <div class="param-item">
@@ -622,8 +624,8 @@
 
                 <div class="param-item">
                     <span class="param-label">最小跟车时间</span>
-                    <span class="param-value" id="min-follow-time-value">5</span>
-                    <input type="range" class="param-slider" id="min-follow-time" min="1" max="10" step="1" value="5" oninput="updateParamValue('min-follow-time', 's')">
+                    <span class="param-value" id="min-follow-time-value">2</span>
+                    <input type="range" class="param-slider" id="min-follow-time" min="1" max="10" step="1" value="2" oninput="updateParamValue('min-follow-time', 'min')">
                 </div>
             </div>
 
@@ -656,25 +658,8 @@
                 </div>
             </div>
 
-            <!-- 系统参数 -->
-            <div class="param-group">
-                <div class="param-group-title">⚙️ 系统参数</div>
-
-                <div class="param-item">
-                    <span class="param-label">超车冷却时间</span>
-                    <span class="param-value" id="overtake-cooldown-value">15</span>
-                    <input type="range" class="param-slider" id="overtake-cooldown" min="5" max="30" step="1" value="15" oninput="updateParamValue('overtake-cooldown', 's')">
-                </div>
-
-                <div class="param-item">
-                    <span class="param-label">返回车道延迟</span>
-                    <span class="param-value" id="return-delay-value">10</span>
-                    <input type="range" class="param-slider" id="return-delay" min="5" max="20" step="1" value="10" oninput="updateParamValue('return-delay', 's')">
-                </div>
-            </div>
-
             <button class="save-btn" onclick="saveOvertakeParams()">💾 保存参数设置</button>
-            <button class="save-btn" onclick="defaultOvertakeParams()">💾 恢复默认设置</button>
+            <button class="save-btn" onclick="defaultOvertakeParams()">🔧 恢复默认设置</button>
         </div>
 
         <!-- 连接信息 -->
@@ -685,7 +670,6 @@
 
     <script>
         let currentLaneCount = 3;
-        let currentPreferredLane = 2;
         let currentRoadType = 'highway';
         let autoLaneCountEnabled = true;
         let lastData = {};
@@ -694,9 +678,9 @@
         // 超车参数值
         let overtakeParams = {
             highwayMinSpeed: 75, normalMinSpeed: 40, speedRatio: 80,
-            followDistance: 100, minFollowTime: 5, minLaneWidth: 2.5,
+            safetyTimeGap: 3.0, minFollowTime: 2, minLaneWidth: 2.5,
             safeLaneWidth: 3.0, sideLeadDist: 15, sideRelSpeed: 20,
-            overtakeCooldown: 15, returnDelay: 10, leadRelSpeed: -5
+            leadRelSpeed: -5
         };
 
         // 更新参数显示值
@@ -709,11 +693,11 @@
                 valueElement.textContent = value + '%';
                 overtakeParams.speedRatio = value / 100;
             } else if (paramId === 'min-follow-time') {
-                valueElement.textContent = value + 's';
+                valueElement.textContent = value + 'min';
                 overtakeParams.minFollowTime = value;
-            } else if (paramId === 'overtake-cooldown' || paramId === 'return-delay') {
-                valueElement.textContent = value + 's';
-                overtakeParams[paramId.replace('-', '')] = value;
+            } else if (paramId === 'safety-time-gap') {
+                valueElement.textContent = value.toFixed(1) + 's';
+                overtakeParams.safetyTimeGap = value;
             } else if (paramId === 'lead-rel-speed') {
                 valueElement.textContent = value + (unit ? ' ' + unit : '');
                 overtakeParams.leadRelSpeed = value;
@@ -729,20 +713,17 @@
             highwayMinSpeed: 75,
             normalMinSpeed: 40,
             speedRatio: 80,
-            followDistance: 100,
-            minFollowTime: 5,
+            safetyTimeGap: 3.0,
+            minFollowTime: 2,
             minLaneWidth: 2.5,
             safeLaneWidth: 3.0,
             sideLeadDist: 15,
             sideRelSpeed: 20,
-            overtakeCooldown: 15,
-            returnDelay: 10,
             leadRelSpeed: -5
         };
 
-        // 保存参数函数（共用）
+        // 保存参数函数
         function saveParams(url, params, btn, successMsg, failMsg, originalText) {
-            //const originalText = btn.innerHTML;
             btn.disabled = true;
             btn.innerHTML = '💾 保存中...';
 
@@ -800,15 +781,13 @@
                 hms: overtakeParams.highwayMinSpeed,
                 nms: overtakeParams.normalMinSpeed,
                 sr: overtakeParams.speedRatio / 100,
-                fd: overtakeParams.followDistance,
+                stg: overtakeParams.safetyTimeGap,
                 lrs_threshold: overtakeParams.leadRelSpeed,
-                mft: overtakeParams.minFollowTime * 1000,
+                mft: overtakeParams.minFollowTime * 60 * 1000, // 分钟转毫秒
                 mlw: overtakeParams.minLaneWidth,
                 slw: overtakeParams.safeLaneWidth,
                 sld: overtakeParams.sideLeadDist,
-                srs: overtakeParams.sideRelSpeed,
-                ocd: overtakeParams.overtakeCooldown * 1000,
-                rd: overtakeParams.returnDelay * 1000
+                srs: overtakeParams.sideRelSpeed
                 };
             }
 
@@ -827,10 +806,10 @@
                 document.getElementById('speed-ratio').value = data.sr * 100;
                 document.getElementById('speed-ratio-value').textContent = (data.sr * 100) + '%';
             }
-            if (data.fd !== undefined) {
-                overtakeParams.followDistance = data.fd;
-                document.getElementById('follow-distance').value = data.fd;
-                document.getElementById('follow-distance-value').textContent = data.fd + ' m';
+            if (data.stg !== undefined) {
+                overtakeParams.safetyTimeGap = data.stg;
+                document.getElementById('safety-time-gap').value = data.stg;
+                document.getElementById('safety-time-gap-value').textContent = data.stg.toFixed(1) + ' s';
             }
             if (data.lrs_threshold !== undefined) {
                 overtakeParams.leadRelSpeed = data.lrs_threshold;
@@ -838,9 +817,9 @@
                 document.getElementById('lead-rel-speed-value').textContent = data.lrs_threshold + ' km/h';
             }
             if (data.mft !== undefined) {
-                overtakeParams.minFollowTime = data.mft / 1000;
-                document.getElementById('min-follow-time').value = data.mft / 1000;
-                document.getElementById('min-follow-time-value').textContent = (data.mft / 1000) + ' s';
+                overtakeParams.minFollowTime = data.mft / (60 * 1000); // 毫秒转分钟
+                document.getElementById('min-follow-time').value = data.mft / (60 * 1000);
+                document.getElementById('min-follow-time-value').textContent = (data.mft / (60 * 1000)) + ' min';
             }
             if (data.mlw !== undefined) {
                 overtakeParams.minLaneWidth = data.mlw;
@@ -862,16 +841,6 @@
                 document.getElementById('side-rel-speed').value = data.srs;
                 document.getElementById('side-rel-speed-value').textContent = data.srs + ' km/h';
             }
-            if (data.ocd !== undefined) {
-                overtakeParams.overtakeCooldown = data.ocd / 1000;
-                document.getElementById('overtake-cooldown').value = data.ocd / 1000;
-                document.getElementById('overtake-cooldown-value').textContent = (data.ocd / 1000) + ' s';
-            }
-            if (data.rd !== undefined) {
-                overtakeParams.returnDelay = data.rd / 1000;
-                document.getElementById('return-delay').value = data.rd / 1000;
-                document.getElementById('return-delay-value').textContent = (data.rd / 1000) + ' s';
-            }
         }
 
         function changeLaneCount(delta) {
@@ -879,28 +848,12 @@
                 currentLaneCount = Math.max(1, Math.min(4, currentLaneCount + delta));
                 document.getElementById('total-lanes-display').textContent = currentLaneCount;
 
-                if (currentPreferredLane > currentLaneCount) {
-                    currentPreferredLane = currentLaneCount;
-                    document.getElementById('preferred-lane-display').textContent = currentPreferredLane;
-                }
-
                 fetch('/config', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({lanes: currentLaneCount})
                 });
             }
-        }
-
-        function changePreferredLane(delta) {
-            currentPreferredLane = Math.max(1, Math.min(currentLaneCount, currentPreferredLane + delta));
-            document.getElementById('preferred-lane-display').textContent = currentPreferredLane;
-
-            fetch('/config', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({preferred_lane: currentPreferredLane})
-            });
         }
 
         function toggleRoadType() {
@@ -1029,11 +982,13 @@
                 }
             }
 
-            // 车辆信息
+            // 顶部速度显示 - 只显示数字，不显示单位
             if (data.s !== lastData.s) {
+                document.getElementById('current-speed-display').textContent = (data.s || 0);
                 document.getElementById('current-speed').textContent = (data.s || 0) + ' km/h';
             }
             if (data.c !== lastData.c) {
+                document.getElementById('cruise-speed-display').textContent = (data.c || 0);
                 document.getElementById('cruise-speed').textContent = (data.c || 0) + ' km/h';
             }
             if (data.d !== lastData.d) {
@@ -1073,13 +1028,6 @@
             if (data.lc !== lastData.lc) {
                 currentLaneCount = data.lc || 3;
                 document.getElementById('total-lanes-display').textContent = currentLaneCount;
-            }
-            if (data.pl !== lastData.pl) {
-                currentPreferredLane = data.pl || 2;
-                document.getElementById('preferred-lane-display').textContent = currentPreferredLane;
-            }
-            if (data.cl !== lastData.cl) {
-                document.getElementById('current-lane-display').textContent = data.cl || 2;
             }
 
             // 自动控制开关状态

@@ -13,6 +13,9 @@ import threading
 import socket
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
+from cereal import log
+
+LaneChangeState = log.LaneChangeState
 
 # 添加到OpenPilot路径
 sys.path.append('/data/openpilot')
@@ -32,7 +35,9 @@ class AutoOvertakeController:
         self.vehicle_data = self._init_vehicle_data()
         self.control_state = self._init_control_state()
         self.config = self._init_config()
-        
+        self.lane_change_cnt = 0
+        self.lane_change_finishing = False
+
         # 返回原车道相关状态
         self.return_state = {
             'original_lane': 2,
@@ -230,6 +235,13 @@ class AutoOvertakeController:
                     'l_edge_dist': round(meta.distanceToRoadEdgeLeft, 1),
                     'r_edge_dist': round(meta.distanceToRoadEdgeRight, 1)
                 })
+
+                if self.lane_change_finishing and meta.laneChangeState != LaneChangeState.laneChangeFinishing:
+                  self.lane_change_cnt += 1
+                  self.control_state['overtakeSuccessCount'] += 1
+                  self.lane_change_finishing = False
+                if meta.laneChangeState == LaneChangeState.laneChangeFinishing:
+                  self.lane_change_finishing = True
 
             if self.sm.alive['selfdriveState']:
                 selfdriveState = self.sm['selfdriveState']
@@ -611,7 +623,7 @@ class AutoOvertakeController:
                 cfg['current_lane_number'] = calculated_lane
                 if self.return_state['is_returning'] and calculated_lane == self.return_state['original_lane']:
                     self.control_state['overtakingCompleted'] = True
-                    self.control_state['overtakeSuccessCount'] += 1
+                    #self.control_state['overtakeSuccessCount'] += 1
                     self.control_state['overtakeState'] = "✓ 超车完成并返回原车道"
                     self.control_state['overtakeReason'] = "成功完成超车并返回原车道"
                     print("🎉 超车完成并返回原车道")

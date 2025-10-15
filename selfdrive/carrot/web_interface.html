@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
-    <title>现代汽车自动超车控制器</title>
+    <title>现代汽车自动变道超车控制器</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
         body { background: #1a1a1a; color: white; padding: 6px; font-size: 90%; }
@@ -32,10 +32,22 @@
             color: #ccc; margin-bottom: 4px; font-size: 0.7rem;
         }
 
-        .speed-display {
-            font-size: 1.6rem; font-weight: bold; color: #4CAF50;
-            text-align: center; line-height: 1.2;
-            min-height: 40px; display: flex; align-items: center; justify-content: center;
+        .speed-display-large {
+            font-size: 2.2rem;
+            font-weight: bold; 
+            color: #4CAF50;
+            text-align: center; 
+            line-height: 1;
+            min-height: 60px;
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            background: rgba(76, 175, 80, 0.1);
+            border-radius: 8px;
+            border: 2px solid #4CAF50;
+            margin: 2px 0;
+            padding: 5px;
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
         }
 
         .lane-control {
@@ -60,20 +72,6 @@
         .lane-display {
             font-size: 1.2rem; font-weight: bold; color: #4CAF50;
             min-width: 25px; text-align: center;
-        }
-
-        .mode-btn {
-            padding: 4px 6px; border: 2px solid #555; border-radius: 5px;
-            background: #444; color: white; cursor: pointer; text-align: center;
-            transition: all 0.15s ease; font-size: 0.7rem; font-weight: bold;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            user-select: none; margin: 2px 0;
-        }
-        .mode-btn:hover { border-color: #4CAF50; background: #555; }
-        .mode-btn:active {
-            transform: scale(0.95);
-            background: #a8d5aa !important;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
         }
 
         .road-type-btn {
@@ -373,7 +371,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🚗 现代汽车自动超车控制器</h1>
+            <h1>🚗 现代汽车自动变道超车控制器</h1>
             <div style="color: #888; font-size: 0.6rem; margin-top: 3px;">
                 访问地址: <strong id="local-ip" class="ip-display">-</strong>:8088
             </div>
@@ -399,16 +397,15 @@
                     <div style="font-size: 0.6rem; color: #4CAF50; margin-top: 2px;" id="lane-mode-status">自动</div>
                 </div>
 
-                <!-- 本车速度显示 -->
+                <!-- 本车速度显示 - 超大数字，没有标题 -->
                 <div class="config-item">
-                    <div class="config-title">📊 本车速度</div>
-                    <div class="speed-display" id="current-speed-display">0</div>
+                    <div class="speed-display-large" id="current-speed-display">0</div>
                 </div>
 
-                <!-- 巡航速度显示 -->
+                <!-- 巡航速度显示 - 保持原有样式 -->
                 <div class="config-item">
                     <div class="config-title">🎯 巡航速度</div>
-                    <div class="speed-display" id="cruise-speed-display">0</div>
+                    <div class="speed-display-large" id="cruise-speed-display">0</div>
                 </div>
 
                 <!-- 道路类型 -->
@@ -425,8 +422,12 @@
             <div class="lane-section" id="left-lane-section">
                 <div class="lane-title">左侧车道</div>
                 <div class="lane-data">
-                    <span class="lane-label">盲区:</span>
+                    <span class="lane-label">侧盲区:</span>
                     <span class="lane-value" id="left-blindspot">无车</span>
+                </div>
+                <div class="lane-data">
+                    <span class="lane-label">前盲区:</span>
+                    <span class="lane-value" id="left-front-blind">无车</span>
                 </div>
                 <div class="lane-data">
                     <span class="lane-label">侧车速度:</span>
@@ -489,8 +490,12 @@
             <div class="lane-section" id="right-lane-section">
                 <div class="lane-title">右侧车道</div>
                 <div class="lane-data">
-                    <span class="lane-label">盲区:</span>
+                    <span class="lane-label">侧盲区:</span>
                     <span class="lane-value" id="right-blindspot">无车</span>
+                </div>
+                <div class="lane-data">
+                    <span class="lane-label">前盲区:</span>
+                    <span class="lane-value" id="right-front-blind">无车</span>
                 </div>
                 <div class="lane-data">
                     <span class="lane-label">侧车速度:</span>
@@ -558,9 +563,9 @@
 
         <!-- 自动控制 -->
         <div class="auto-control">
-            <div class="section-title">🤖 自动超车控制</div>
+            <div class="section-title">🤖 自动变道超车控制</div>
             <div class="switch-container">
-                <span>自动超车功能</span>
+                <span>自动变道超车功能</span>
                 <label class="switch">
                     <input type="checkbox" id="auto-overtake" checked onchange="toggleAutoOvertake(this.checked)">
                     <span class="slider"></span>
@@ -623,7 +628,7 @@
                 </div>
 
                 <div class="param-item">
-                    <span class="param-label">最小跟车时间</span>
+                    <span class="param-label">最大跟车时间</span>
                     <span class="param-value" id="min-follow-time-value">2</span>
                     <input type="range" class="param-slider" id="min-follow-time" min="1" max="10" step="1" value="2" oninput="updateParamValue('min-follow-time', 'min')">
                 </div>
@@ -640,21 +645,21 @@
                 </div>
 
                 <div class="param-item">
-                    <span class="param-label">安全车道宽度</span>
-                    <span class="param-value" id="safe-lane-width-value">3.0</span>
-                    <input type="range" class="param-slider" id="safe-lane-width" min="2.5" max="4.5" step="0.1" value="3.0" oninput="updateParamValue('safe-lane-width', 'm')">
-                </div>
-
-                <div class="param-item">
-                    <span class="param-label">侧前车安全距离</span>
+                    <span class="param-label">侧车安全距离</span>
                     <span class="param-value" id="side-lead-dist-value">15</span>
                     <input type="range" class="param-slider" id="side-lead-dist" min="5" max="30" step="1" value="15" oninput="updateParamValue('side-lead-dist', 'm')">
                 </div>
 
                 <div class="param-item">
-                    <span class="param-label">侧车相对速度阈值</span>
+                    <span class="param-label">侧车相对速度差</span>
                     <span class="param-value" id="side-rel-speed-value">20</span>
                     <input type="range" class="param-slider" id="side-rel-speed" min="5" max="50" step="5" value="20" oninput="updateParamValue('side-rel-speed', 'km/h')">
+                </div>
+
+                <div class="param-item">
+                    <span class="param-label">最小有效速度优势</span>
+                    <span class="param-value" id="min-effective-speed-advantage-value">5</span>
+                    <input type="range" class="param-slider" id="min-effective-speed-advantage" min="1" max="20" step="1" value="5" oninput="updateParamValue('min-effective-speed-advantage', 'km/h')">
                 </div>
             </div>
 
@@ -664,7 +669,7 @@
 
         <!-- 连接信息 -->
         <div class="connection-info">
-            系统运行中 | 现代汽车自动超车控制器 | 访问地址: <span id="connection-ip">-</span>:8088
+            系统运行中 | 现代汽车自动变道超车控制器 | 访问地址: <span id="connection-ip">-</span>:8088
         </div>
     </div>
 
@@ -675,12 +680,32 @@
         let lastData = {};
         let updateInterval = 300;
 
-        // 超车参数值
+        // 超车参数值 - 使用默认值
         let overtakeParams = {
-            highwayMinSpeed: 75, normalMinSpeed: 40, speedRatio: 80,
-            safetyTimeGap: 3.0, minFollowTime: 2, minLaneWidth: 2.5,
-            safeLaneWidth: 3.0, sideLeadDist: 15, sideRelSpeed: 20,
-            leadRelSpeed: -5
+            highwayMinSpeed: 75,
+            normalMinSpeed: 40,
+            speedRatio: 80,
+            safetyTimeGap: 3.0,
+            minFollowTime: 2,
+            minLaneWidth: 2.5,
+            sideLeadDist: 15,
+            sideRelSpeed: 20,
+            leadRelSpeed: -5,
+            minEffectiveSpeedAdvantage: 5
+        };
+
+        // 默认超车参数
+        const defaultOvertakeValues = {
+            highwayMinSpeed: 75,
+            normalMinSpeed: 40,
+            speedRatio: 80,
+            safetyTimeGap: 3.0,
+            minFollowTime: 2,
+            minLaneWidth: 2.5,
+            sideLeadDist: 15,
+            sideRelSpeed: 20,
+            leadRelSpeed: -5,
+            minEffectiveSpeedAdvantage: 5
         };
 
         // 更新参数显示值
@@ -708,20 +733,6 @@
             }
         }
 
-        // 默认超车参数
-        const defaultOvertakeValues = {
-            highwayMinSpeed: 75,
-            normalMinSpeed: 40,
-            speedRatio: 80,
-            safetyTimeGap: 3.0,
-            minFollowTime: 2,
-            minLaneWidth: 2.5,
-            safeLaneWidth: 3.0,
-            sideLeadDist: 15,
-            sideRelSpeed: 20,
-            leadRelSpeed: -5
-        };
-
         // 保存参数函数
         function saveParams(url, params, btn, successMsg, failMsg, originalText) {
             btn.disabled = true;
@@ -736,15 +747,15 @@
             .then(data => {
                 btn.innerHTML = `✅ ${successMsg}`;
                 setTimeout(() => {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
                 }, 2000);
             })
             .catch(error => {
                 btn.innerHTML = `❌ ${failMsg}`;
                 setTimeout(() => {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
                 }, 2000);
             });
         }
@@ -775,22 +786,23 @@
 
         // 从服务器加载参数
         function loadOvertakeParams(data = null) {
-            // 如果没有传入 data，则自动从 overtakeParams 构造
+            // 如果没有传入 data，则使用默认值初始化
             if (!data) {
                 data = {
-                hms: overtakeParams.highwayMinSpeed,
-                nms: overtakeParams.normalMinSpeed,
-                sr: overtakeParams.speedRatio / 100,
-                stg: overtakeParams.safetyTimeGap,
-                lrs_threshold: overtakeParams.leadRelSpeed,
-                mft: overtakeParams.minFollowTime * 60 * 1000, // 分钟转毫秒
-                mlw: overtakeParams.minLaneWidth,
-                slw: overtakeParams.safeLaneWidth,
-                sld: overtakeParams.sideLeadDist,
-                srs: overtakeParams.sideRelSpeed
+                    hms: overtakeParams.highwayMinSpeed,
+                    nms: overtakeParams.normalMinSpeed,
+                    sr: overtakeParams.speedRatio,
+                    stg: overtakeParams.safetyTimeGap,
+                    lrs_threshold: overtakeParams.leadRelSpeed,
+                    mft: overtakeParams.minFollowTime * 60 * 1000, // 分钟转毫秒
+                    mlw: overtakeParams.minLaneWidth,
+                    sld: overtakeParams.sideLeadDist,
+                    srs: overtakeParams.sideRelSpeed,
+                    minEffectiveSpeedAdvantage: overtakeParams.minEffectiveSpeedAdvantage
                 };
             }
 
+            // 更新所有参数显示
             if (data.hms !== undefined) {
                 overtakeParams.highwayMinSpeed = data.hms;
                 document.getElementById('highway-min-speed').value = data.hms;
@@ -826,11 +838,6 @@
                 document.getElementById('min-lane-width').value = data.mlw;
                 document.getElementById('min-lane-width-value').textContent = data.mlw + ' m';
             }
-            if (data.slw !== undefined) {
-                overtakeParams.safeLaneWidth = data.slw;
-                document.getElementById('safe-lane-width').value = data.slw;
-                document.getElementById('safe-lane-width-value').textContent = data.slw + ' m';
-            }
             if (data.sld !== undefined) {
                 overtakeParams.sideLeadDist = data.sld;
                 document.getElementById('side-lead-dist').value = data.sld;
@@ -840,6 +847,11 @@
                 overtakeParams.sideRelSpeed = data.srs;
                 document.getElementById('side-rel-speed').value = data.srs;
                 document.getElementById('side-rel-speed-value').textContent = data.srs + ' km/h';
+            }
+            if (data.minEffectiveSpeedAdvantage !== undefined) {
+                overtakeParams.minEffectiveSpeedAdvantage = data.minEffectiveSpeedAdvantage;
+                document.getElementById('min-effective-speed-advantage').value = data.minEffectiveSpeedAdvantage;
+                document.getElementById('min-effective-speed-advantage-value').textContent = data.minEffectiveSpeedAdvantage + ' km/h';
             }
         }
 
@@ -967,9 +979,7 @@
         // 智能数据更新
         function updateDisplay(data) {
             // 加载超车参数
-            if (data.hms !== lastData.hms || data.nms !== lastData.nms || data.sr !== lastData.sr) {
-                loadOvertakeParams(data);
-            }
+            loadOvertakeParams(data);
 
             // IP地址显示
             if (data.ip !== lastData.ip) {
@@ -1022,6 +1032,16 @@
             if (data.rb !== lastData.rb) {
                 document.getElementById('right-blindspot').textContent = data.rb ? '有车' : '无车';
                 document.getElementById('right-blindspot').className = data.rb ? 'lane-value danger-text' : 'lane-value safe-text';
+            }
+
+            // 前盲区状态
+            if (data.lfb !== lastData.lfb) {
+                document.getElementById('left-front-blind').textContent = data.lfb ? '有车' : '无车';
+                document.getElementById('left-front-blind').className = data.lfb ? 'lane-value danger-text' : 'lane-value safe-text';
+            }
+            if (data.rfb !== lastData.rfb) {
+                document.getElementById('right-front-blind').textContent = data.rfb ? '有车' : '无车';
+                document.getElementById('right-front-blind').className = data.rfb ? 'lane-value danger-text' : 'lane-value safe-text';
             }
 
             // 配置信息
@@ -1080,39 +1100,41 @@
             // 左侧车道前车信息
             if (data.lls !== lastData.lls) {
                 const leftSpeed = data.lls || 0;
-                document.getElementById('left-lead-speed').textContent = leftSpeed > 0 ? (leftSpeed + ' km/h') : '无车';
-                document.getElementById('left-lead-speed').className = leftSpeed > 0 ? 'lane-value' : 'lane-value safe-text';
+                const speedElement = document.getElementById('left-lead-speed');
+                speedElement.textContent = leftSpeed > 0 ? (leftSpeed + ' km/h') : '无车';
+                speedElement.className = data.left_speed_safe ? 'lane-value safe-text' : 'lane-value danger-text';
             }
             if (data.lld !== lastData.lld) {
                 const leftDistance = data.lld || 0;
-                document.getElementById('left-lead-distance').textContent = leftDistance > 0 ? (leftDistance + ' m') : '无车';
-                document.getElementById('left-lead-distance').className = leftDistance > 0 ? 'lane-value' : 'lane-value safe-text';
+                const distanceElement = document.getElementById('left-lead-distance');
+                distanceElement.textContent = leftDistance > 0 ? (leftDistance + ' m') : '无车';
+                distanceElement.className = data.left_distance_safe ? 'lane-value safe-text' : 'lane-value danger-text';
             }
             if (data.llrs !== lastData.llrs) {
                 const relSpeed = data.llrs || 0;
                 const speedElement = document.getElementById('left-relative-speed');
                 speedElement.textContent = relSpeed !== 0 ? ((relSpeed > 0 ? '+' : '') + relSpeed + ' km/h') : '无车';
-                speedElement.className = relSpeed > 0 ? 'lane-value positive-speed' :
-                                      relSpeed < 0 ? 'lane-value negative-speed' : 'lane-value safe-text';
+                speedElement.className = data.left_speed_safe ? 'lane-value positive-speed' : 'lane-value danger-text';
             }
 
             // 右侧车道前车信息
             if (data.rls !== lastData.rls) {
                 const rightSpeed = data.rls || 0;
-                document.getElementById('right-lead-speed').textContent = rightSpeed > 0 ? (rightSpeed + ' km/h') : '无车';
-                document.getElementById('right-lead-speed').className = rightSpeed > 0 ? 'lane-value' : 'lane-value safe-text';
+                const speedElement = document.getElementById('right-lead-speed');
+                speedElement.textContent = rightSpeed > 0 ? (rightSpeed + ' km/h') : '无车';
+                speedElement.className = data.right_speed_safe ? 'lane-value safe-text' : 'lane-value danger-text';
             }
             if (data.rld !== lastData.rld) {
                 const rightDistance = data.rld || 0;
-                document.getElementById('right-lead-distance').textContent = rightDistance > 0 ? (rightDistance + ' m') : '无车';
-                document.getElementById('right-lead-distance').className = rightDistance > 0 ? 'lane-value' : 'lane-value safe-text';
+                const distanceElement = document.getElementById('right-lead-distance');
+                distanceElement.textContent = rightDistance > 0 ? (rightDistance + ' m') : '无车';
+                distanceElement.className = data.right_distance_safe ? 'lane-value safe-text' : 'lane-value danger-text';
             }
             if (data.rlrs !== lastData.rlrs) {
                 const relSpeed = data.rlrs || 0;
                 const speedElement = document.getElementById('right-relative-speed');
                 speedElement.textContent = relSpeed !== 0 ? ((relSpeed > 0 ? '+' : '') + relSpeed + ' km/h') : '无车';
-                speedElement.className = relSpeed > 0 ? 'lane-value positive-speed' :
-                                      relSpeed < 0 ? 'lane-value negative-speed' : 'lane-value safe-text';
+                speedElement.className = data.right_speed_safe ? 'lane-value positive-speed' : 'lane-value danger-text';
             }
 
             // 车道宽度
@@ -1131,7 +1153,7 @@
                 document.getElementById('right-edge-dist').textContent = (data.red || 0).toFixed(1) + ' m';
             }
 
-            // 车道安全警告 - 包括车道宽度警告
+            // 车道安全警告
             let leftWarning = '安全';
             let rightWarning = '安全';
             let leftSectionClass = 'lane-section';
@@ -1140,9 +1162,12 @@
             if (data.left_lane_narrow) {
                 leftWarning = '车道过窄⚠️禁止变道';
                 leftSectionClass = 'lane-section narrow';
-            } else if (data.lb) {
+            } else if (data.lb || data.lfb) {
                 leftWarning = '盲区有车⚠️变道危险';
                 leftSectionClass = 'lane-section danger';
+            } else if (!data.left_speed_safe || !data.left_distance_safe) {
+                leftWarning = '侧车条件不满足';
+                leftSectionClass = 'lane-section unsafe';
             } else {
                 leftSectionClass = 'lane-section safe';
             }
@@ -1150,9 +1175,12 @@
             if (data.right_lane_narrow) {
                 rightWarning = '车道过窄⚠️禁止变道';
                 rightSectionClass = 'lane-section narrow';
-            } else if (data.rb) {
+            } else if (data.rb || data.rfb) {
                 rightWarning = '盲区有车⚠️变道危险';
                 rightSectionClass = 'lane-section danger';
+            } else if (!data.right_speed_safe || !data.right_distance_safe) {
+                rightWarning = '侧车条件不满足';
+                rightSectionClass = 'lane-section unsafe';
             } else {
                 rightSectionClass = 'lane-section safe';
             }
@@ -1160,8 +1188,8 @@
             document.getElementById('left-warning').textContent = leftWarning;
             document.getElementById('right-warning').textContent = rightWarning;
 
-            document.getElementById('left-warning').className = data.left_lane_narrow || data.lb ? 'lane-value narrow-text' : 'lane-value safe-text';
-            document.getElementById('right-warning').className = data.right_lane_narrow || data.rb ? 'lane-value narrow-text' : 'lane-value safe-text';
+            document.getElementById('left-warning').className = data.left_lane_narrow || data.lb || data.lfb || !data.left_speed_safe || !data.left_distance_safe ? 'lane-value narrow-text' : 'lane-value safe-text';
+            document.getElementById('right-warning').className = data.right_lane_narrow || data.rb || data.rfb || !data.right_speed_safe || !data.right_distance_safe ? 'lane-value narrow-text' : 'lane-value safe-text';
 
             document.getElementById('left-lane-section').className = leftSectionClass;
             document.getElementById('right-lane-section').className = rightSectionClass;
@@ -1223,6 +1251,9 @@
 
         // 初始化
         document.addEventListener('DOMContentLoaded', function() {
+            // 初始化参数显示
+            loadOvertakeParams();
+            
             // 立即获取一次状态
             fetchStatus();
             // 然后启动定期更新

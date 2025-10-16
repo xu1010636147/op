@@ -302,6 +302,64 @@
         .status-value { color: #4CAF50; font-weight: bold; }
         .status-warning { color: #ff9800; }
         .status-danger { color: #f44336; }
+
+        /* 滑块式三档调节器样式 */
+        .lane-mode-slider-container {
+            margin-top: 6px;
+        }
+        
+        .lane-mode-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #555;
+            outline: none;
+            position: relative;
+        }
+        
+        .lane-mode-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4CAF50;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            border: 2px solid white;
+        }
+        
+        .lane-mode-slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4CAF50;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .lane-mode-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 4px;
+            font-size: 0.6rem;
+            color: #888;
+        }
+        
+        .lane-mode-labels span.active {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        
+        /* 当前车道显示样式 */
+        .current-lane-display {
+            font-size: 0.8rem;
+            color: #2196F3;
+            font-weight: bold;
+            margin-top: 4px;
+        }
     </style>
 </head>
 <body>
@@ -342,7 +400,18 @@
                         <div class="lane-display" id="total-lanes-display">3</div>
                         <button class="control-btn" id="lane-plus-btn" onclick="changeLaneCount(1)">+</button>
                     </div>
-                    <div style="font-size: 0.6rem; color: #4CAF50; margin-top: 2px;" id="lane-mode-status">自动</div>
+                    
+                    <!-- 滑块式三档调节器 -->
+                    <div class="lane-mode-slider-container">
+                        <input type="range" min="0" max="2" value="1" class="lane-mode-slider" id="lane-mode-slider" oninput="updateLaneModeSlider()">
+                        <div class="lane-mode-labels">
+                            <span id="label-manual">手动</span>
+                            <span id="label-auto" class="active">自动</span>
+                            <span id="label-op">OP获取</span>
+                        </div>
+                    </div>
+                    
+                    <div class="current-lane-display" id="current-lane-display">当前车道: -</div>
                 </div>
 
                 <!-- 道路类型 -->
@@ -350,27 +419,6 @@
                     <div class="config-title">🛣️ 道路类型</div>
                     <div class="road-type-btn active" id="road-type-btn" onclick="toggleRoadType()">高速公路</div>
                 </div>
-            </div>
-        </div>
-
-        <!-- 状态详细信息 -->
-        <div class="status-details" id="status-details">
-            <div class="section-title">📊 系统状态详情</div>
-            <div class="status-row">
-                <span class="status-label">跟车时间距离:</span>
-                <span class="status-value" id="status-time-gap">- 秒</span>
-            </div>
-            <div class="status-row">
-                <span class="status-label">速度比例:</span>
-                <span class="status-value" id="status-speed-ratio">- %</span>
-            </div>
-            <div class="status-row">
-                <span class="status-label">冷却时间:</span>
-                <span class="status-value" id="status-cooldown">- 秒</span>
-            </div>
-            <div class="status-row">
-                <span class="status-label">连续失败:</span>
-                <span class="status-value" id="status-failures">0 次</span>
             </div>
         </div>
 
@@ -494,16 +542,10 @@
             <div class="overtake-reason" id="overtake-reason">分析道路情况中...</div>
         </div>
 
-        <!-- 触发条件显示 -->
-        <div class="status-details" id="trigger-conditions-display" style="display: none;">
-            <div class="section-title">🚦 触发条件</div>
-            <div id="trigger-conditions-list"></div>
-        </div>
-
-        <!-- 未超车原因显示 -->
-        <div class="status-details" id="no-overtake-display" style="display: none;">
-            <div class="section-title">🚫 未超车原因</div>
-            <div id="no-overtake-reasons-list"></div>
+        <!-- 合并的触发条件和未超车原因显示 -->
+        <div class="status-details" id="conditions-display" style="display: none;">
+            <div class="section-title">📊 超车条件分析</div>
+            <div id="conditions-list"></div>
         </div>
 
         <!-- 速度控制 -->
@@ -550,14 +592,6 @@
                 <span>返回原车道</span>
                 <label class="switch">
                     <input type="checkbox" id="return-lane" checked onchange="toggleReturnLane(this.checked)">
-                    <span class="slider"></span>
-                </label>
-            </div>
-
-            <div class="switch-container">
-                <span>自动获取车道总数</span>
-                <label class="switch">
-                    <input type="checkbox" id="auto-lane-count" checked onchange="toggleAutoLaneCount(this.checked)">
                     <span class="slider"></span>
                 </label>
             </div>
@@ -855,15 +889,68 @@
             }
         }
 
+        // 车道模式滑块更新
+        function updateLaneModeSlider() {
+            const slider = document.getElementById('lane-mode-slider');
+            const value = parseInt(slider.value);
+            
+            // 更新标签激活状态
+            document.getElementById('label-manual').classList.remove('active');
+            document.getElementById('label-auto').classList.remove('active');
+            document.getElementById('label-op').classList.remove('active');
+            
+            let mode = 'auto';
+            if (value === 0) {
+                mode = 'manual';
+                document.getElementById('label-manual').classList.add('active');
+            } else if (value === 1) {
+                mode = 'auto';
+                document.getElementById('label-auto').classList.add('active');
+            } else if (value === 2) {
+                mode = 'op';
+                document.getElementById('label-op').classList.add('active');
+            }
+            
+            // 根据模式启用/禁用手动调节按钮
+            const minusBtn = document.getElementById('lane-minus-btn');
+            const plusBtn = document.getElementById('lane-plus-btn');
+            
+            if (mode === 'manual') {
+                minusBtn.disabled = false;
+                plusBtn.disabled = false;
+                minusBtn.style.opacity = '1';
+                plusBtn.style.opacity = '1';
+            } else {
+                minusBtn.disabled = true;
+                plusBtn.disabled = true;
+                minusBtn.style.opacity = '0.5';
+                plusBtn.style.opacity = '0.5';
+            }
+            
+            // 发送配置更新
+            fetch('/config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({lane_count_mode: mode})
+            });
+        }
+
         function changeLaneCount(delta) {
-            if (!autoLaneCountEnabled) {
-                currentLaneCount = Math.max(1, Math.min(4, currentLaneCount + delta));
+            const slider = document.getElementById('lane-mode-slider');
+            const mode = parseInt(slider.value) === 0 ? 'manual' : 
+                         parseInt(slider.value) === 1 ? 'auto' : 'op';
+            
+            if (mode === 'manual') {
+                currentLaneCount = Math.max(1, Math.min(5, currentLaneCount + delta));
                 document.getElementById('total-lanes-display').textContent = currentLaneCount;
 
                 fetch('/config', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({lanes: currentLaneCount})
+                    body: JSON.stringify({
+                        lanes: currentLaneCount,
+                        manual_lane_count: currentLaneCount
+                    })
                 });
             }
         }
@@ -883,36 +970,6 @@
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({road_type: currentRoadType})
-            });
-        }
-
-        function toggleAutoLaneCount(enabled) {
-            autoLaneCountEnabled = enabled;
-
-            const minusBtn = document.getElementById('lane-minus-btn');
-            const plusBtn = document.getElementById('lane-plus-btn');
-            const statusElement = document.getElementById('lane-mode-status');
-
-            if (enabled) {
-                minusBtn.disabled = true;
-                plusBtn.disabled = true;
-                minusBtn.style.opacity = '0.5';
-                plusBtn.style.opacity = '0.5';
-                statusElement.textContent = '自动';
-                statusElement.style.color = '#4CAF50';
-            } else {
-                minusBtn.disabled = false;
-                plusBtn.disabled = false;
-                minusBtn.style.opacity = '1';
-                plusBtn.style.opacity = '1';
-                statusElement.textContent = '手动';
-                statusElement.style.color = '#2196F3';
-            }
-
-            fetch('/config', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({auto_lane_count: enabled})
             });
         }
 
@@ -1004,58 +1061,6 @@
                 document.getElementById('cruise-speed').textContent = (data.c || 0) + ' km/h';
             }
 
-            // 系统状态详情
-            if (data.time_gap !== lastData.time_gap) {
-                document.getElementById('status-time-gap').textContent = (data.time_gap || 0).toFixed(1) + ' 秒';
-                document.getElementById('time-gap').textContent = (data.time_gap || 0).toFixed(1) + ' 秒';
-                
-                // 设置颜色
-                const timeGapElement = document.getElementById('time-gap');
-                if (data.time_gap > 0 && data.time_gap <= (data.ftg || 3.0)) {
-                    timeGapElement.className = 'lane-value danger-text';
-                    document.getElementById('status-time-gap').className = 'status-value status-danger';
-                } else {
-                    timeGapElement.className = 'lane-value safe-text';
-                    document.getElementById('status-time-gap').className = 'status-value';
-                }
-            }
-
-            if (data.speed_ratio !== lastData.speed_ratio) {
-                const speedRatioPercent = (data.speed_ratio || 1) * 100;
-                document.getElementById('status-speed-ratio').textContent = speedRatioPercent.toFixed(0) + '%';
-                document.getElementById('speed-ratio-display').textContent = speedRatioPercent.toFixed(0) + '%';
-                
-                // 设置颜色
-                const speedRatioElement = document.getElementById('speed-ratio-display');
-                if (speedRatioPercent < (data.sr_threshold || 80) * 100) {
-                    speedRatioElement.className = 'lane-value danger-text';
-                    document.getElementById('status-speed-ratio').className = 'status-value status-danger';
-                } else {
-                    speedRatioElement.className = 'lane-value safe-text';
-                    document.getElementById('status-speed-ratio').className = 'status-value';
-                }
-            }
-
-            if (data.remaining_cooldown !== lastData.remaining_cooldown) {
-                document.getElementById('status-cooldown').textContent = (data.remaining_cooldown || 0).toFixed(1) + ' 秒';
-                if (data.remaining_cooldown > 0) {
-                    document.getElementById('status-cooldown').className = 'status-value status-warning';
-                } else {
-                    document.getElementById('status-cooldown').className = 'status-value';
-                }
-            }
-
-            if (data.consecutive_failures !== lastData.consecutive_failures) {
-                document.getElementById('status-failures').textContent = (data.consecutive_failures || 0) + ' 次';
-                if (data.consecutive_failures > 3) {
-                    document.getElementById('status-failures').className = 'status-value status-danger';
-                } else if (data.consecutive_failures > 0) {
-                    document.getElementById('status-failures').className = 'status-value status-warning';
-                } else {
-                    document.getElementById('status-failures').className = 'status-value';
-                }
-            }
-
             // 当前车道前车信息
             if (data.ls !== lastData.ls) {
                 const leadSpeed = data.ls || 0;
@@ -1099,6 +1104,24 @@
                 document.getElementById('total-lanes-display').textContent = currentLaneCount;
             }
 
+            // 车道模式显示
+            if (data.lane_count_mode !== lastData.lane_count_mode) {
+                const slider = document.getElementById('lane-mode-slider');
+                if (data.lane_count_mode === 'manual') {
+                    slider.value = 0;
+                } else if (data.lane_count_mode === 'auto') {
+                    slider.value = 1;
+                } else if (data.lane_count_mode === 'op') {
+                    slider.value = 2;
+                }
+                updateLaneModeSlider();
+            }
+
+            // 当前车道显示
+            if (data.cl !== lastData.cl) {
+                document.getElementById('current-lane-display').textContent = `当前车道: ${data.cl || '-'}`;
+            }
+
             // 自动控制开关状态
             if (data.aoe !== lastData.aoe) {
                 document.getElementById('auto-overtake').checked = data.aoe !== undefined ? data.aoe : true;
@@ -1117,32 +1140,6 @@
                 } else {
                     btn.textContent = '普通道路';
                     btn.className = 'road-type-btn';
-                }
-            }
-
-            // 车道总数模式
-            if (data.alc !== lastData.alc) {
-                autoLaneCountEnabled = data.alc !== undefined ? data.alc : true;
-                document.getElementById('auto-lane-count').checked = autoLaneCountEnabled;
-
-                const minusBtn = document.getElementById('lane-minus-btn');
-                const plusBtn = document.getElementById('lane-plus-btn');
-                const statusElement = document.getElementById('lane-mode-status');
-
-                if (autoLaneCountEnabled) {
-                    minusBtn.disabled = true;
-                    plusBtn.disabled = true;
-                    minusBtn.style.opacity = '0.5';
-                    plusBtn.style.opacity = '0.5';
-                    statusElement.textContent = '自动';
-                    statusElement.style.color = '#4CAF50';
-                } else {
-                    minusBtn.disabled = false;
-                    plusBtn.disabled = false;
-                    minusBtn.style.opacity = '1';
-                    plusBtn.style.opacity = '1';
-                    statusElement.textContent = '手动';
-                    statusElement.style.color = '#2196F3';
                 }
             }
 
@@ -1317,63 +1314,93 @@
                 document.getElementById('overtake-count').textContent = data.oc || 0;
             }
 
-            // 触发条件和未超车原因显示
+            // 合并的触发条件和未超车原因显示
             updateConditionDisplay(data);
 
             lastData = { ...data };
         }
 
-        // 更新触发条件和未超车原因显示
+        // 更新合并的触发条件和未超车原因显示
         function updateConditionDisplay(data) {
-            const triggerDisplay = document.getElementById('trigger-conditions-display');
-            const noOvertakeDisplay = document.getElementById('no-overtake-display');
-            const triggerList = document.getElementById('trigger-conditions-list');
-            const reasonsList = document.getElementById('no-overtake-reasons-list');
+            const conditionsDisplay = document.getElementById('conditions-display');
+            const conditionsList = document.getElementById('conditions-list');
 
-            // 更新触发条件
+            // 合并触发条件和未超车原因
+            const allConditions = [];
+            
+            // 添加触发条件
             if (data.trigger_conditions && data.trigger_conditions.length > 0) {
-                triggerDisplay.style.display = 'block';
-                triggerList.innerHTML = '';
-                data.trigger_conditions.forEach(condition => {
-                    const item = document.createElement('div');
-                    item.className = 'status-row';
-                    item.innerHTML = `<span class="status-label">🚦</span><span class="status-value">${condition}</span>`;
-                    triggerList.appendChild(item);
+                allConditions.push({
+                    type: 'trigger',
+                    title: '🚦 触发条件',
+                    items: data.trigger_conditions
                 });
-            } else {
-                triggerDisplay.style.display = 'none';
             }
-
-            // 更新未超车原因
+            
+            // 添加未超车原因
             if (data.no_overtake_reasons && data.no_overtake_reasons.length > 0) {
-                noOvertakeDisplay.style.display = 'block';
-                reasonsList.innerHTML = '';
-                data.no_overtake_reasons.forEach(reason => {
-                    const item = document.createElement('div');
-                    item.className = 'status-row';
+                allConditions.push({
+                    type: 'reason',
+                    title: '🚫 未超车原因',
+                    items: data.no_overtake_reasons
+                });
+            }
+            
+            // 更新显示
+            if (allConditions.length > 0) {
+                conditionsDisplay.style.display = 'block';
+                conditionsList.innerHTML = '';
+                
+                allConditions.forEach(section => {
+                    // 添加标题
+                    const title = document.createElement('div');
+                    title.className = 'status-row';
+                    title.style.borderBottom = '1px solid #444';
+                    title.style.marginBottom = '4px';
+                    title.style.paddingBottom = '4px';
+                    title.innerHTML = `<span class="status-label">${section.title}</span>`;
+                    conditionsList.appendChild(title);
                     
-                    // 根据原因类型设置不同的图标和颜色
-                    let icon = '❓';
-                    let colorClass = 'status-value';
+                    // 添加项目
+                    section.items.forEach(item => {
+                        const row = document.createElement('div');
+                        row.className = 'status-row';
+                        
+                        // 根据类型设置不同的图标和颜色
+                        let icon = '❓';
+                        let colorClass = 'status-value';
+                        
+                        if (section.type === 'trigger') {
+                            icon = '🚦';
+                            colorClass = 'status-value';
+                        } else if (section.type === 'reason') {
+                            if (item.includes('OP自动控制') || item.includes('未激活') || item.includes('不在道路上')) {
+                                icon = '⏸️';
+                                colorClass = 'status-value status-warning';
+                            } else if (item.includes('无车') || item.includes('未满足')) {
+                                icon = 'ℹ️';
+                            } else if (item.includes('冷却') || item.includes('失败')) {
+                                icon = '⏳';
+                                colorClass = 'status-value status-warning';
+                            } else if (item.includes('无效') || item.includes('不安全') || item.includes('过')) {
+                                icon = '⚠️';
+                                colorClass = 'status-value status-danger';
+                            } else {
+                                icon = '❓';
+                            }
+                        }
+                        
+                        row.innerHTML = `<span class="status-label">${icon}</span><span class="${colorClass}">${item}</span>`;
+                        conditionsList.appendChild(row);
+                    });
                     
-                    if (reason.includes('OP自动控制') || reason.includes('未激活') || reason.includes('不在道路上')) {
-                        icon = '⏸️';
-                        colorClass = 'status-value status-warning';
-                    } else if (reason.includes('无车') || reason.includes('未满足')) {
-                        icon = 'ℹ️';
-                    } else if (reason.includes('冷却') || reason.includes('失败')) {
-                        icon = '⏳';
-                        colorClass = 'status-value status-warning';
-                    } else if (reason.includes('无效') || reason.includes('不安全') || reason.includes('过')) {
-                        icon = '⚠️';
-                        colorClass = 'status-value status-danger';
-                    }
-                    
-                    item.innerHTML = `<span class="status-label">${icon}</span><span class="${colorClass}">${reason}</span>`;
-                    reasonsList.appendChild(item);
+                    // 添加间隔
+                    const spacer = document.createElement('div');
+                    spacer.style.height = '8px';
+                    conditionsList.appendChild(spacer);
                 });
             } else {
-                noOvertakeDisplay.style.display = 'none';
+                conditionsDisplay.style.display = 'none';
             }
         }
 

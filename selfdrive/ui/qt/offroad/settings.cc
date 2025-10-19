@@ -405,12 +405,44 @@ void execAndReboot(const std::string& cmd) {
 
 void DevicePanel::calibration() {
   if (!uiState()->engaged()) {
-    if (ConfirmationDialog::confirm(tr("Are you sure you want to reset calibration?"), tr("ReCalibration"), this)) {
-      if (!uiState()->engaged()) {
-        std::thread worker(execAndReboot, "cd /data/params/d_tmp;  rm -f CalibrationParams");
-        worker.detach();
-      }
+    QStringList calibOptions;
+    calibOptions << tr("ClearAllParams")
+                 << tr("CalibrationParams")
+                 << tr("LiveDelay")
+                 << tr("LiveTorqueParameters")
+                 << tr("LiveParameters")
+                 << tr("LiveParametersV2");
+
+    QString selectedParam = MultiOptionDialog::getSelection(
+      tr("Select calibration parameter to reset"),
+      calibOptions,
+      "",
+      this
+    );
+
+    if (selectedParam.isEmpty()) return;
+
+    QString confirmMsg = tr("Are you sure you want to reset %1?").arg(selectedParam);
+    if (!ConfirmationDialog::confirm(confirmMsg, tr("ReCalibration"), this)) return;
+
+    if (uiState()->engaged()) {
+      ConfirmationDialog::alert(tr("Reboot & Disengage to Calibration"), this);
+      return;
     }
+
+    std::thread worker([selectedParam]() {
+      std::string base = "/data/params/d_tmp";
+      std::string cmd;
+
+      if (selectedParam == "ClearAllParams") {
+        cmd = "cd " + base + " && rm -f CalibrationParams LiveParameters LiveParametersV2 LiveTorqueParameters LiveDelay";
+      } else {
+        cmd = "cd " + base + " && rm -f " + selectedParam.toStdString();
+      }
+
+      execAndReboot(cmd);
+    });
+    worker.detach();
   } else {
     ConfirmationDialog::alert(tr("Reboot & Disengage to Calibration"), this);
   }

@@ -474,7 +474,7 @@ class DesireHelper:
       atc_blinker_state = self.carrot_blinker_state
       # 2025.10.19
       below_lane_change_speed = False
-      fork_left_right = True
+      atc_left_right = True
     elif carrotMan.carrotCmdIndex != self.carrot_cmd_index_last and carrotMan.carrotCmd == "LANECHANGE": #来自app的变道命令
       self.carrot_cmd_index_last = carrotMan.carrotCmdIndex
       self.carrot_lane_change_count = int(LANE_CHANGE_TIME_MAX*2 / DT_MDL)
@@ -961,7 +961,7 @@ class DesireHelper:
               else:
                 if lane_change_interval < 0.5 or self.lane_change_disable_count == 0 or not atc_left_right: #变道不延时或者延时已结束或者为非act_left_right，则立即变道
                   self.lane_change_state = LaneChangeState.laneChangeStarting
-                  self.trigger_name = "auto"
+                  trigger_name = "auto"
                 elif not self.lane_change_disable: #没有设置过延时
                   self.lane_change_disable_count = lane_change_interval
                   self.lane_change_disable = True

@@ -1302,13 +1302,13 @@ class CarrotServ:
           nRoadLimitSpeed = min(nRoadLimitSpeed + add_val, 60)
       else:
         nRoadLimitSpeed = 30
-      #self.nRoadLimitSpeed = nRoadLimitSpeed
-      if self.nRoadLimitSpeed != nRoadLimitSpeed:
-        self.nRoadLimitSpeed_counter += 1
-        if self.nRoadLimitSpeed_counter > 5:
-          self.nRoadLimitSpeed = nRoadLimitSpeed
-      else:
-        self.nRoadLimitSpeed_counter = 0
+      self.nRoadLimitSpeed = nRoadLimitSpeed
+      #if self.nRoadLimitSpeed != nRoadLimitSpeed:
+      #  self.nRoadLimitSpeed_counter += 1
+      #  if self.nRoadLimitSpeed_counter > 5:
+      #    self.nRoadLimitSpeed = nRoadLimitSpeed
+      #else:
+      #  self.nRoadLimitSpeed_counter = 0
 
       ### SDI
       self.nSdiType = int(json.get("nSdiType", -1))

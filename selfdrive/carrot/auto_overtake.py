@@ -6,11 +6,11 @@
 
 修复内容：
 1. 手动变道完成后自动恢复自动超车功能
-2. 返回原车道完成后自动恢复自动超车功能
-3. 返回原车道条件更严谨，确保已超越前车再返回
+2.在最左车道不变道超车问题修复
+3.返回原车道开关无效修复
 
 作者: Yuzucheng
-版本: 3.2
+版本: 3.3
 日期: 2025
 """
 
@@ -1545,10 +1545,17 @@ class AutoOvertakeController:
             self.control_state['overtakeReason'] = f"超车条件分析: {', '.join(no_overtake_reasons)}"
 
     def perform_auto_overtake(self):
-        """执行自动超车"""
+        """执行自动超车 - 返回原车道的修复"""
         if not self.config['autoOvertakeEnabled'] or self.control_state['isOvertaking']:
             return
-
+    
+        # 🎯修复：在这里添加全局返回开关检查
+        if not self.config['shouldReturnToLane']:
+            # 如果关闭了返回功能，确保净变道次数被重置
+            if self.control_state['net_lane_changes'] != 0:
+                self.reset_net_lane_changes()
+            return  # 直接返回，不执行任何返回逻辑
+    
         if self.vehicle_data['system_auto_control'] >= 1:
             if self.vehicle_data['system_auto_control'] == 2:
               self.control_state['overtakeState'] = "隧道中"

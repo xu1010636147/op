@@ -221,7 +221,7 @@ def get_default_params():
     ("AutoDoForkNavDist", "15"),
     ("AutoUpRoadLimit40KMH", "0"),
     ("AutoUpHighwayRoadLimit40KMH", "0"),
-    ("RoadType", "-1"),
+    ("RoadType", "-2"),
     ("AutoCurveSpeedFactorH", "80"),
     ("AutoCurveSpeedAggressivenessH", "120"),
     ("NewLaneWidthDiff", "8"),

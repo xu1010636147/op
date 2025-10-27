@@ -908,9 +908,16 @@
         <div class="auto-control">
             <div class="section-title">🤖 自动超车控制</div>
             <div class="switch-container">
-                <span>自动超车功能</span>
+                <span>高速自动超车功能</span>
                 <label class="switch">
                     <input type="checkbox" id="auto-overtake" checked onchange="toggleAutoOvertake(this.checked)">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="switch-container">
+                <span>公路自动超车功能</span>
+                <label class="switch">
+                    <input type="checkbox" id="auto-overtakel" checked onchange="toggleAutoOvertakeL(this.checked)">
                     <span class="slider"></span>
                 </label>
             </div>
@@ -1346,7 +1353,13 @@
                 body: JSON.stringify({auto: enabled})
             });
         }
-
+        function toggleAutoOvertakeL(enabled) {
+            fetch('/overtake', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({autol: enabled})
+            });
+        }
         /**
          * 🔄 切换返回原车道
          */
@@ -1606,6 +1619,9 @@
             if (data.aoe !== lastData.aoe) {
                 document.getElementById('auto-overtake').checked = data.aoe !== undefined ? data.aoe : true;
             }
+            if (data.aoel !== lastData.aoel) {
+                document.getElementById('auto-overtakel').checked = data.aoel !== undefined ? data.aoel : true;
+            }			
             if (data.srtl !== lastData.srtl) {
                 document.getElementById('return-lane').checked = data.srtl !== undefined ? data.srtl : true;
             }

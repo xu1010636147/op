@@ -220,6 +220,7 @@ class AutoOvertakeController:
 
             # 🚀 超车功能开关
             'autoOvertakeEnabled': False,     # 自动超车是否启用
+            'autoOvertakeEnabledL': False,    # 公路自动超车是否启用
             'shouldReturnToLane': True,       # 是否应返回原车道
 
             # ⚡ 超车触发条件参数
@@ -1546,16 +1547,18 @@ class AutoOvertakeController:
 
     def perform_auto_overtake(self):
         """执行自动超车 - 返回原车道的修复"""
-        if not self.config['autoOvertakeEnabled'] or self.control_state['isOvertaking']:
+        if ((not self.config['autoOvertakeEnabled'] and self.config['road_type'] == 'highway') or
+            (not self.config['autoOvertakeEnabledL'] and self.config['road_type'] != 'highway') or
+            self.control_state['isOvertaking']):
             return
-    
+
         # 🎯修复：在这里添加全局返回开关检查
         if not self.config['shouldReturnToLane']:
             # 如果关闭了返回功能，确保净变道次数被重置
             if self.control_state['net_lane_changes'] != 0:
                 self.reset_net_lane_changes()
             return  # 直接返回，不执行任何返回逻辑
-    
+
         if self.vehicle_data['system_auto_control'] >= 1:
             if self.vehicle_data['system_auto_control'] == 2:
               self.control_state['overtakeState'] = "隧道中"
@@ -1932,7 +1935,8 @@ class AutoOvertakeController:
 
                 self.check_return_timeout()
 
-                if self.config['autoOvertakeEnabled']:
+                if ((self.config['autoOvertakeEnabled'] and self.config['road_type'] == 'highway') or
+                    (self.config['autoOvertakeEnabledL'] and self.config['road_type'] != 'highway')):
                     self.perform_auto_overtake()
                     self.check_overtake_completion()
 
@@ -2072,6 +2076,7 @@ class AutoOvertakeController:
 
             # 🔧 功能开关
             'aoe': cfg.get('autoOvertakeEnabled', True),
+            'aoel': cfg.get('autoOvertakeEnabledL', True),
             'srtl': cfg.get('shouldReturnToLane', True),
 
             # ⚠️ 警告状态
@@ -2191,6 +2196,10 @@ class AutoOvertakeController:
                     controller.config['autoOvertakeEnabled'] = bool(data['auto'])
                     controller.save_persistent_config()
                     self.send_json_response({'status': 'success', 'autoOvertake': controller.config['autoOvertakeEnabled']})
+                elif 'autol' in data:
+                    controller.config['autoOvertakeEnabledL'] = bool(data['autol'])
+                    controller.save_persistent_config()
+                    self.send_json_response({'status': 'success', 'autoOvertakeL': controller.config['autoOvertakeEnabledL']})
                 elif 'return' in data:
                     controller.config['shouldReturnToLane'] = bool(data['return'])
                     controller.save_persistent_config()

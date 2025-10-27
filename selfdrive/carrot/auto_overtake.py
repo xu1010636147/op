@@ -539,21 +539,31 @@ class AutoOvertakeController:
                 carrotMan = self.sm['carrotMan']
                 is_op_controlling = ("none" not in carrotMan.atcType and
                                    "prepare" not in carrotMan.atcType and
-                                   "standby" not in carrotMan.atcType)
+                                   "standby" not in carrotMan.atcType and
+                                   "隧道" not in carrotMan.szPosRoadName)
 
                 if is_op_controlling:
-                    self.vehicle_data['system_auto_control'] = 1
+                    if "隧道" in carrotMan.szPosRoadName:
+                        self.vehicle_data['system_auto_control'] = 2
+                    else:
+                        self.vehicle_data['system_auto_control'] = 1
                     self.vehicle_data['last_op_control_time'] = current_time
                     if old_op_control == 0:
-                        debug_print("🔄 OP控制开始，重置自动超车状态")
+                        if "隧道" in carrotMan.szPosRoadName:
+                            debug_print("🔄 隧道禁止超车，重置自动超车状态")
+                        else:
+                            debug_print("🔄 OP控制开始，重置自动超车状态")
                         self.control_state['op_control_cooldown'] = 0
                         self.control_state['last_op_control_end_time'] = 0
                 else:
                     self.vehicle_data['system_auto_control'] = 0
-                    if old_op_control == 1:
+                    if old_op_control >= 1:
                         self.control_state['last_op_control_end_time'] = current_time
                         self.control_state['op_control_cooldown'] = 3000
-                        debug_print(f"🔄 OP控制结束，开始{self.control_state['op_control_cooldown']}ms冷却")
+                        if old_op_control == 2:
+                            debug_print(f"🔄 隧道结束，开始{self.control_state['op_control_cooldown']}ms冷却")
+                        else:
+                            debug_print(f"🔄 OP控制结束，开始{self.control_state['op_control_cooldown']}ms冷却")
 
                 carrot_left_blind = carrotMan.leftBlind
                 carrot_right_blind = carrotMan.rightBlind
@@ -1496,7 +1506,14 @@ class AutoOvertakeController:
             if self.config['road_type'] == 'highway':
                 min_advantage = 3
 
-            if target_advantage >= min_advantage:
+            # 🎯 修复：在最左侧车道时，跳过优势计算直接超车
+            current_lane = self.config['current_lane_number']
+            if current_lane == 1 and best_direction == "RIGHT":
+                # 在最左侧车道需要右变道时，只要右侧车道安全有效就直接超车
+                debug_print("🎯 最左侧车道：右侧车道安全有效，直接执行超车")
+                self.execute_overtake(best_direction)
+                self.control_state['overtakeReason'] = detailed_reason
+            elif target_advantage >= min_advantage:
                 self.execute_overtake(best_direction)
                 self.control_state['overtakeReason'] = detailed_reason
                 debug_print(f"🎯 智能车道选择: {best_direction}变道 | 综合评分: {best_score:.1f}%")
@@ -1532,9 +1549,13 @@ class AutoOvertakeController:
         if not self.config['autoOvertakeEnabled'] or self.control_state['isOvertaking']:
             return
 
-        if self.vehicle_data['system_auto_control'] == 1:
-            self.control_state['overtakeState'] = "OP控制中"
-            self.control_state['overtakeReason'] = "OP自动控制中，暂停超车"
+        if self.vehicle_data['system_auto_control'] >= 1:
+            if self.vehicle_data['system_auto_control'] == 2:
+              self.control_state['overtakeState'] = "隧道中"
+              self.control_state['overtakeReason'] = "隧道中，暂停超车"
+            else:
+                self.control_state['overtakeState'] = "OP控制中"
+                self.control_state['overtakeReason'] = "OP自动控制中，暂停超车"
             return
 
         if self.check_op_control_cooldown():
@@ -2313,3 +2334,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

@@ -286,6 +286,30 @@
         <source>PAIR</source>
         <translation>配对</translation>
     </message>
+    <message>
+        <source>ReCalibration</source>
+        <translation>重置校准</translation>
+    </message>
+    <message>
+        <source>AllCalibParams</source>
+        <translation>所有校准参数</translation>
+    </message>
+    <message>
+        <source>CalibrationParams</source>
+        <translation>相机校准参数</translation>
+    </message>
+    <message>
+        <source>AllLiveParams</source>
+        <translation>实时学习参数</translation>
+    </message>
+    <message>
+        <source>Select calibration parameter to reset</source>
+        <translation>请选择你要重置的校准参数</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to reset %1?</source>
+        <translation>你确定要重置 %1 吗？</translation>
+    </message>
 </context>
 <context>
     <name>DriverViewWindow</name>

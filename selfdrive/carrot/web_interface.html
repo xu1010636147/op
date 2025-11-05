@@ -113,6 +113,33 @@
             text-align: center;
         }
 
+        /* 🆕 高速超车开关按钮样式 */
+        .highway-overtake-btn {
+            padding: 6px 8px; 
+            border: 2px solid #555; 
+            border-radius: 5px;
+            background: #444; 
+            color: white; 
+            cursor: pointer; 
+            text-align: center;
+            transition: all 0.15s ease; 
+            font-size: 0.7rem; 
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3); 
+            user-select: none;
+            margin-top: 5px;
+        }
+        .highway-overtake-btn:hover { border-color: #4CAF50; background: #555; }
+        .highway-overtake-btn:active {
+            transform: scale(0.95); 
+            background: #a8d5aa !important;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        .highway-overtake-btn.active {
+            border-color: #4CAF50; 
+            background: #4CAF50;
+        }
+
         .road-type-btn {
             padding: 4px 6px; 
             border: 2px solid #555; 
@@ -682,10 +709,12 @@
         <!-- 📊 配置面板 -->
         <div class="config-panel">
             <div class="config-grid">
-                <!-- 🎯 超车成功次数 -->
+                <!-- 🎯 超车成功次数 + 高速超车开关 -->
                 <div class="config-item">
                     <div class="config-title">🎯 超车成功次数</div>
                     <div class="overtake-count" id="overtake-count">0</div>
+                    <!-- 🆕 高速超车开关按钮 -->
+                    <div class="highway-overtake-btn" id="highway-overtake-btn" onclick="toggleHighwayOvertake()">高速超车开</div>
                 </div>
 
                 <!-- ⭐ 巡航速度显示 -->
@@ -907,13 +936,9 @@
         <!-- 🤖 自动控制 -->
         <div class="auto-control">
             <div class="section-title">🤖 自动超车控制</div>
-            <div class="switch-container">
-                <span>高速自动超车功能</span>
-                <label class="switch">
-                    <input type="checkbox" id="auto-overtake" checked onchange="toggleAutoOvertake(this.checked)">
-                    <span class="slider"></span>
-                </label>
-            </div>
+            
+            <!-- 🆕 移除高速自动超车开关，因为它已经移到超车成功次数方格中 -->
+            
             <div class="switch-container">
                 <span>公路自动超车功能</span>
                 <label class="switch">
@@ -1028,13 +1053,13 @@
             highwayMinSpeed: 75,
             normalMinSpeed: 40,
             speedRatio: 80,
-            followTimeGap: 3.0,
-            maxFollowTime: 2,  // 🎯 修复：使用分钟值
-            minLaneWidth: 2.5,
-            safeLaneWidth: 3.0,
-            sideLeadDist: 15,
+            followTimeGap: 2.0,
+            maxFollowTime: 10,  // 🎯 修复：使用分钟值
+            minLaneWidth: 2.3,
+            safeLaneWidth: 2.8,
+            sideLeadDist: 25,
             sideRelSpeed: 20,
-            leadRelSpeed: -5
+            leadRelSpeed: -15
         };
 
         // 🔄 默认超车参数
@@ -1042,14 +1067,36 @@
             highwayMinSpeed: 75,
             normalMinSpeed: 40,
             speedRatio: 80,
-            followTimeGap: 3.0,
-            maxFollowTime: 2,  // 🎯 修复：使用分钟值
-            minLaneWidth: 2.5,
-            safeLaneWidth: 3.0,
-            sideLeadDist: 15,
-            sideRelSpeed: 20,
-            leadRelSpeed: -5
+            followTimeGap: 2.0,
+            maxFollowTime: 10,  // 🎯 修复：使用分钟值
+            minLaneWidth: 2.3,
+            safeLaneWidth: 2.8,
+            sideLeadDist: 25,
+            sideRelSpeed: 25,
+            leadRelSpeed: -15
         };
+
+        /**
+         * 🆕 切换高速超车功能
+         */
+        function toggleHighwayOvertake() {
+            const btn = document.getElementById('highway-overtake-btn');
+            const isEnabled = !btn.classList.contains('active');
+            
+            if (isEnabled) {
+                btn.textContent = '高速超车开';
+                btn.className = 'highway-overtake-btn active';
+            } else {
+                btn.textContent = '高速超车关';
+                btn.className = 'highway-overtake-btn';
+            }
+            
+            fetch('/overtake', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({auto: isEnabled})
+            });
+        }
 
         /**
          * 📊 更新参数显示值
@@ -1144,13 +1191,13 @@
                 highwayMinSpeed: 75,
                 normalMinSpeed: 40,
                 speedRatio: 80,
-                followTimeGap: 3.0,
-                maxFollowTime: 2,
-                minLaneWidth: 2.5,
-                safeLaneWidth: 3.0,
-                sideLeadDist: 15,
-                sideRelSpeed: 20,
-                leadRelSpeed: -5
+                followTimeGap: 2.0,
+                maxFollowTime: 10,
+                minLaneWidth: 2.3,
+                safeLaneWidth: 2.8,
+                sideLeadDist: 25,
+                sideRelSpeed: 25,
+                leadRelSpeed: -15
             };
 
             loadOvertakeParams();
@@ -1346,13 +1393,6 @@
         /**
          * 🤖 切换自动超车
          */
-        function toggleAutoOvertake(enabled) {
-            fetch('/overtake', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({auto: enabled})
-            });
-        }
         function toggleAutoOvertakeL(enabled) {
             fetch('/overtake', {
                 method: 'POST',
@@ -1360,6 +1400,7 @@
                 body: JSON.stringify({autol: enabled})
             });
         }
+
         /**
          * 🔄 切换返回原车道
          */
@@ -1451,7 +1492,7 @@
                 statusElement.className = 'original-lane-status original-lane-clear';
                 statusElement.style.display = 'block';
             } else {
-                statusElement.textContent = '🔄 正在超越原车道前车';
+                //statusElement.textContent = '🔄 正在超越原车道前车';
                 statusElement.className = 'original-lane-status original-lane-blocked';
                 statusElement.style.display = 'block';
             }
@@ -1522,6 +1563,18 @@
          * 📊 智能数据更新
          */
         function updateDisplay(data) {
+            // 🆕 更新高速超车开关状态
+            if (data.aoe !== lastData.aoe) {
+                const btn = document.getElementById('highway-overtake-btn');
+                if (data.aoe) {
+                    btn.textContent = '高速超车开';
+                    btn.className = 'highway-overtake-btn active';
+                } else {
+                    btn.textContent = '高速超车关';
+                    btn.className = 'highway-overtake-btn';
+                }
+            }
+
             if (data.hms !== lastData.hms || data.nms !== lastData.nms || data.sr !== lastData.sr) {
                 loadOvertakeParams(data);
             }
@@ -1616,12 +1669,9 @@
                 document.getElementById('current-lane-display').textContent = `当前车道: ${data.cl || '-'}`;
             }
 
-            if (data.aoe !== lastData.aoe) {
-                document.getElementById('auto-overtake').checked = data.aoe !== undefined ? data.aoe : true;
-            }
             if (data.aoel !== lastData.aoel) {
                 document.getElementById('auto-overtakel').checked = data.aoel !== undefined ? data.aoel : true;
-            }			
+            }
             if (data.srtl !== lastData.srtl) {
                 document.getElementById('return-lane').checked = data.srtl !== undefined ? data.srtl : true;
             }

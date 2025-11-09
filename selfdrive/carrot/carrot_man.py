@@ -261,8 +261,21 @@ class CarrotMan:
     self.is_metric = self.params.get_bool("IsMetric")
 
   def get_broadcast_address(self):
+    # 修改为支持PC的多接口检测
     if PC:
-      iface = b'br0'
+        interfaces = ['wlan0', 'eth0', 'enp0s3', 'br0']  # 常见PC接口
+        for iface in interfaces:
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                    ip = fcntl.ioctl(
+                        s.fileno(),
+                        0x8919,  # SIOCGIFBRDADDR
+                        struct.pack('256s', iface.encode('utf-8')[:15])
+                    )[20:24]
+                    return socket.inet_ntoa(ip)
+            except Exception:
+                continue
+        return "255.255.255.255"  # 回退地址
     else:
       iface = b'wlan0'
     try:
@@ -430,7 +443,8 @@ class CarrotMan:
                     self.carrot_serv.carrotCmdIndex = self.carrot_serv.esp32Index
                     self.carrot_serv.carrotCmd = json_obj.get("cmd")
                     self.carrot_serv.carrotArg = json_obj.get("arg")
-                    print(f"carrot: carrotCmdIndex={self.carrot_serv.esp32Index}, carrotCmd={self.carrot_serv.carrotCmd},carrotArg={self.carrot_serv.carrotArg}")
+                    if (self.carrot_serv.showDebugLog & 32) > 0:
+                      print(f"carrot: carrotCmdIndex={self.carrot_serv.esp32Index}, carrotCmd={self.carrot_serv.carrotCmd},carrotArg={self.carrot_serv.carrotArg}")
                   if "left_blind" in json_obj:
                     self.carrot_serv.left_blind = json_obj.get("left_blind")
                     l_blindspot_alive = True

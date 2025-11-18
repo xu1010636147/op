@@ -209,7 +209,6 @@ class CarrotMan:
     self.esp32_broadcast_ip = self.get_broadcast_address()
     self.esp32_broadcast_port = 4210
     self.esp32_port = 4211
-    self.esp32_connection = None
     self.esp32_ip_address = "0.0.0.0"
     self.esp32_remote_addr = None
 
@@ -404,6 +403,10 @@ class CarrotMan:
     l_blindspot_time = time.time()
     r_blindspot_alive = False
     r_blindspot_time = time.time()
+    lidar_lblind_alive = False
+    lidar_lblind_time = time.time()
+    lidar_rblind_alive = False
+    lidar_rblind_time = time.time()
     while True:
       try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
@@ -453,6 +456,14 @@ class CarrotMan:
                     self.carrot_serv.right_blind = json_obj.get("right_blind")
                     r_blindspot_alive = True
                     r_blindspot_time = time.time()
+                  if "lidar_lblind" in json_obj:
+                    self.carrot_serv.lidar_lblind = json_obj.get("lidar_lblind")
+                    lidar_lblind_alive = True
+                    lidar_lblind_time = time.time()
+                  if "lidar_rblind" in json_obj:
+                    self.carrot_serv.lidar_rblind = json_obj.get("lidar_rblind")
+                    lidar_rblind_alive = True
+                    lidar_rblind_time = time.time()
 
                   if (self.carrot_serv.showDebugLog & 32) > 0:
                     print(f"receive: {json_obj}")
@@ -482,6 +493,12 @@ class CarrotMan:
               if r_blindspot_alive and (now - r_blindspot_time) > 10:
                 self.carrot_serv.right_blind = False
                 r_blindspot_alive = False
+              if lidar_lblind_alive and (now - lidar_lblind_time) > 10:
+                self.carrot_serv.lidar_lblind = False
+                lidar_lblind_alive = False
+              if lidar_rblind_alive and (now - lidar_rblind_time) > 10:
+                self.carrot_serv.lidar_rblind = False
+                lidar_rblind_alive = False
 
               if self.esp32_clients:
                 self.carrot_serv.ext_state = len(self.esp32_clients)
@@ -581,7 +598,7 @@ class CarrotMan:
                 except Exception as e:
                   if (self.carrot_serv.showDebugLog & 32) > 0:
                     print(f"sendto {ip} failed: {e}")
-            if frame % 20 == 0 and broadcast_cnt < 60:
+            if frame % 20 == 0:# and broadcast_cnt < 60:
               # 修改: 无客户端 → 广播
               self.esp32_broadcast_ip = self.get_broadcast_address()
               if self.esp32_broadcast_ip is not None:
@@ -591,9 +608,6 @@ class CarrotMan:
                   print(f"esp32 broadcasting: {self.esp32_broadcast_ip}:{self.esp32_broadcast_port},{msg}")
 
           except Exception as e:
-            if self.esp32_connection:
-              self.esp32_connection.close()
-            self.esp32_connection = None
             if (self.carrot_serv.showDebugLog & 32) > 0:
               print(f"##### esp32_broadcast_error...: {e}")
             traceback.print_exc()
@@ -768,17 +782,17 @@ class CarrotMan:
         v_ego_kph = int(carState.vEgoCluster * 3.6 + 0.5)
         v_cruise_kph = carState.vCruise
         #new
-        if hasattr(carState, 'vEgo') and carState.vEgo:
+        if hasattr(carState, 'vEgo'):
           msg["current_speed"] = int(carState.vEgo * 3.6)
-        if hasattr(carState, 'aEgo') and carState.aEgo:
+        if hasattr(carState, 'aEgo'):
           msg["aego"] = round(carState.aEgo,1)
-        if hasattr(carState, 'steeringAngleDeg') and carState.steeringAngleDeg:
+        if hasattr(carState, 'steeringAngleDeg'):
           msg["steer_angle"] = round(carState.steeringAngleDeg,1)
-        if hasattr(carState, 'gasPressed') and carState.gasPressed:
+        if hasattr(carState, 'gasPressed'):
           msg["gas_press"] = carState.gasPressed
-        if hasattr(carState, 'brakePressed') and carState.brakePressed:
+        if hasattr(carState, 'brakePressed'):
           msg["break_press"] = carState.brakePressed
-        if hasattr(carState, 'cruiseState') and carState.cruiseState:
+        if hasattr(carState, 'cruiseState'):
           msg["engaged"] = carState.cruiseState.enabled
         # 盲区检测
         if hasattr(carState, 'leftBlindspot'):
@@ -791,31 +805,31 @@ class CarrotMan:
         # 当前车道前车
         if hasattr(radar_state, 'leadOne') and radar_state.leadOne and hasattr(radar_state.leadOne,'status') and radar_state.leadOne.status:
           if hasattr(radar_state.leadOne, 'dRel'):
-            msg["lead_distance"] = int(radar_state.leadOne.dRel)
+            msg["drel"] = int(radar_state.leadOne.dRel)
           if hasattr(radar_state.leadOne, 'vLead'):
-            msg["lead_speed"] = int(radar_state.leadOne.vLead * 3.6)
+            msg["vlead"] = int(radar_state.leadOne.vLead * 3.6)
           if hasattr(radar_state.leadOne, 'vRel'):
-            msg["lead_relative_speed"] = int(radar_state.leadOne.vRel * 3.6)
+            msg["vrel"] = int(radar_state.leadOne.vRel * 3.6)
           if hasattr(radar_state.leadOne, 'aRel'):
             msg["lead_accel"] = radar_state.leadOne.aRel
         # 左侧前车
         if hasattr(radar_state, 'leadLeft') and radar_state.leadLeft and hasattr(radar_state.leadLeft,'status') and radar_state.leadLeft.status:
-          msg["left_lead_detected"] = True
+          msg["l_lead"] = True
           if hasattr(radar_state.leadLeft, 'dRel'):
-            msg["left_lead_distance"] = int(radar_state.leadLeft.dRel)
+            msg["l_drel"] = int(radar_state.leadLeft.dRel)
           if hasattr(radar_state.leadLeft, 'vLead'):
-            msg["left_lead_speed"] = int(radar_state.leadLeft.vLead * 3.6)
+            msg["l_vlead"] = int(radar_state.leadLeft.vLead * 3.6)
           if hasattr(radar_state.leadLeft, 'vRel'):
-            msg["left_lead_relative_speed"] = int(radar_state.leadLeft.vRel * 3.6)
+            msg["l_vrel"] = int(radar_state.leadLeft.vRel * 3.6)
         # 右侧前车
         if hasattr(radar_state, 'leadRight') and radar_state.leadRight and hasattr(radar_state.leadRight,'status') and radar_state.leadRight.status:
-          msg["right_lead_detected"] = True
+          msg["r_lead"] = True
           if hasattr(radar_state.leadRight, 'dRel'):
-            msg["right_lead_distance"] = int(radar_state.leadRight.dRel)
+            msg["r_drel"] = int(radar_state.leadRight.dRel)
           if hasattr(radar_state.leadRight, 'vLead'):
-            msg["right_lead_speed"] = int(radar_state.leadRight.vLead * 3.6)
+            msg["r_vlead"] = int(radar_state.leadRight.vLead * 3.6)
           if hasattr(radar_state.leadRight, 'vRel'):
-            msg["right_lead_relative_speed"] = int(radar_state.leadRight.vRel * 3.6)
+            msg["r_vrel"] = int(radar_state.leadRight.vRel * 3.6)
 
       msg["desire_speed"] = int(self.carrot_serv.desired_speed) # 期望速度
       msg["cruise_speed"] = v_cruise_kph # 巡航速度
@@ -824,6 +838,9 @@ class CarrotMan:
       msg['lat_a'] = round(self.lat_a,1)
       msg['max_curve'] = round(self.max_curve,1)
       msg['atc_type'] = self.carrot_serv.atcType
+      msg['roadcate'] = self.xroadcate
+      msg['lidar_lblind'] = self.carrot_serv.lidar_lblind
+      msg['lidar_rblind'] = self.carrot_serv.lidar_rblind
 
     if 0 == blinker_test:
       if self.sm.alive['modelV2']:
@@ -835,6 +852,8 @@ class CarrotMan:
           msg['r_lane_width'] = round(self.sm['modelV2'].meta.laneWidthRight,1)
           msg['l_edge_dist'] = round(self.sm['modelV2'].meta.distanceToRoadEdgeLeft,1)
           msg['r_edge_dist'] = round(self.sm['modelV2'].meta.distanceToRoadEdgeRight,1)
+          lane_change_state = self.sm['modelV2'].meta.laneChangeState
+          msg["atc_state"] = lane_change_state.raw
       if self.sm.alive['selfdriveState']:
         selfdrive = self.sm['selfdriveState']
         msg['active'] = "on" if selfdrive.active else "off"

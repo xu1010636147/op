@@ -477,6 +477,9 @@ class DesireHelper:
       below_lane_change_speed = False
       if self.carrot_overtake_cmd:
         atc_left_right = True
+      #在变道期间不再接受下一条变道命令，防止结束当前变道后再一次变道
+      if carrotMan.carrotCmdIndex != self.carrot_cmd_index_last and (carrotMan.carrotCmd == "LANECHANGE" or carrotMan.carrotCmd == "OVERTAKE"):
+        self.carrot_cmd_index_last = carrotMan.carrotCmdIndex
     elif carrotMan.carrotCmdIndex != self.carrot_cmd_index_last and (carrotMan.carrotCmd == "LANECHANGE" or carrotMan.carrotCmd == "OVERTAKE"): #来自app的变道命令
       self.carrot_cmd_index_last = carrotMan.carrotCmdIndex
       self.carrot_lane_change_count = int(LANE_CHANGE_TIME_MAX*2 / DT_MDL)

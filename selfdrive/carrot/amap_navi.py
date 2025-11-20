@@ -141,45 +141,47 @@ class AmapNaviServ:
                     self.shared_data.remote_arg = json_obj.get("arg")
                     print(f"Command: index={self.shared_data.cmd_index}, cmd={self.shared_data.remote_cmd},arg={self.shared_data.remote_arg}")
 
-                  #摄像头盲区信号
-                  if "cam_blind" in json_obj:
-                    if "left_blind" in json_obj:
-                      self.shared_data.left_blind = json_obj.get("left_blind")
-                      l_blindspot_alive = True
-                      l_blindspot_time = time.time()
-                    if "right_blind" in json_obj:
-                      self.shared_data.right_blind = json_obj.get("right_blind")
-                      r_blindspot_alive = True
-                      r_blindspot_time = time.time()
+                  if "resp" in json_obj:
+                    resp = json_obj.get("resp")
+                    #摄像头盲区信号
+                    if resp == "cam_blind":
+                      if "left_blind" in json_obj:
+                        self.shared_data.left_blind = json_obj.get("left_blind")
+                        l_blindspot_alive = True
+                        l_blindspot_time = time.time()
+                      if "right_blind" in json_obj:
+                        self.shared_data.right_blind = json_obj.get("right_blind")
+                        r_blindspot_alive = True
+                        r_blindspot_time = time.time()
 
-                  #雷达盲区信号和距离
-                  if "blindspot" in json_obj:
-                    #盲区
-                    if "lidar_lblind" in json_obj:
-                      self.shared_data.lidar_lblind = json_obj.get("lidar_lblind")
-                      lidar_lblind_alive = True
-                      lidar_lblind_time = time.time()
-                    if "lidar_rblind" in json_obj:
-                      self.shared_data.lidar_rblind = json_obj.get("lidar_rblind")
-                      lidar_rblind_alive = True
-                      lidar_rblind_time = time.time()
-                    #距离
-                    if "lf_drel" in json_obj:
-                      self.shared_data.lf_drel = int(json_obj.get("lf_drel"))
-                    else:
-                      self.shared_data.lf_drel = None
-                    if "lb_drel" in json_obj:
-                      self.shared_data.lb_drel = int(json_obj.get("lb_drel"))
-                    else:
-                      self.shared_data.lb_drel = None
-                    if "rf_drel" in json_obj:
-                      self.shared_data.rf_drel = int(json_obj.get("rf_drel"))
-                    else:
-                      self.shared_data.rf_drel = None
-                    if "rb_drel" in json_obj:
-                      self.shared_data.rb_drel = int(json_obj.get("rb_drel"))
-                    else:
-                      self.shared_data.rb_drel = None
+                    #雷达盲区信号和距离
+                    if resp == "blindspot":
+                      #盲区
+                      if "lidar_lblind" in json_obj:
+                        self.shared_data.lidar_lblind = json_obj.get("lidar_lblind")
+                        lidar_lblind_alive = True
+                        lidar_lblind_time = time.time()
+                      if "lidar_rblind" in json_obj:
+                        self.shared_data.lidar_rblind = json_obj.get("lidar_rblind")
+                        lidar_rblind_alive = True
+                        lidar_rblind_time = time.time()
+                      #距离
+                      if "lf_drel" in json_obj:
+                        self.shared_data.lf_drel = int(json_obj.get("lf_drel"))
+                      else:
+                        self.shared_data.lf_drel = None
+                      if "lb_drel" in json_obj:
+                        self.shared_data.lb_drel = int(json_obj.get("lb_drel"))
+                      else:
+                        self.shared_data.lb_drel = None
+                      if "rf_drel" in json_obj:
+                        self.shared_data.rf_drel = int(json_obj.get("rf_drel"))
+                      else:
+                        self.shared_data.rf_drel = None
+                      if "rb_drel" in json_obj:
+                        self.shared_data.rb_drel = int(json_obj.get("rb_drel"))
+                      else:
+                        self.shared_data.rb_drel = None
 
                   if (self.shared_data.showDebugLog & 32) > 0:
                     print(f"receive: {json_obj}")

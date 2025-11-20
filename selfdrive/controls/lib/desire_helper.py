@@ -397,8 +397,8 @@ class DesireHelper:
     blinker_val = self.blinker_val
 
     self.xroadcate = carrotMan.roadCate
-    if self.roadType >= 0: #大于0表示用户指定道路类型
-      self.xroadcate = self.roadType
+    #if self.roadType >= 0: #大于0表示用户指定道路类型
+    #  self.xroadcate = self.roadType
 
     # new
     if 0 <= self.xroadcate <= 1: #高速

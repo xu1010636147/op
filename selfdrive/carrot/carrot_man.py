@@ -25,6 +25,8 @@ from openpilot.selfdrive.carrot.carrot_serv import CarrotServ
 
 from openpilot.common.realtime import DT_MDL
 
+from openpilot.selfdrive.carrot.amap_navi import AmapNaviServ #new
+
 try:
   from shapely.geometry import LineString
   SHAPELY_AVAILABLE = True
@@ -32,11 +34,6 @@ except ImportError:
   SHAPELY_AVAILABLE = False
 
 NetworkType = log.DeviceState.NetworkType
-
-BLINKER_NONE = 0
-BLINKER_LEFT = 1
-BLINKER_RIGHT = 2
-BLINKER_BOTH = 3
 
 ################ CarrotNavi
 ## 국가법령정보센터: 도로설계기준
@@ -189,6 +186,8 @@ def calculate_curvature(p1, p2, p3):
 
 class CarrotMan:
   def __init__(self):
+    self.amap_navi = AmapNaviServ()
+    self.shared_cmd_index_last = -1
     print("************************************************CarrotMan init************************************************")
     self.params = Params()
     self.params_memory = Params("/dev/shm/params")
@@ -206,12 +205,6 @@ class CarrotMan:
     self.ip_address = "0.0.0.0"
     self.remote_addr = None
 
-    self.esp32_broadcast_ip = self.get_broadcast_address()
-    self.esp32_broadcast_port = 4210
-    self.esp32_port = 4211
-    self.esp32_ip_address = "0.0.0.0"
-    self.esp32_remote_addr = None
-
     #new
     self.autoCurveSpeedFactor = 1.0
     self.autoCurveSpeedAggressiveness = 1.0
@@ -219,9 +212,6 @@ class CarrotMan:
     self.autoCurveSpeedAggressivenessH = 1.2
     self.param_frame = 0
     self.v_cruise_kph = 255
-    self.xroadcate = 8
-    self.ext_blinker = BLINKER_NONE
-    self.esp32_clients = {}  # 保存多个客户端
     self.lat_a = 0
     self.max_curve = 0
     #new
@@ -245,11 +235,6 @@ class CarrotMan:
     self.is_running = True
     threading.Thread(target=self.broadcast_version_info).start()
 
-    self.esp32_is_running = True
-    threading.Thread(target=self.resp_32_broadcast_info).start()
-
-    threading.Thread(target=self.esp32_comm_thread).start()
-
     self.navi_points = []
     self.navi_points_start_index = 0
     self.navi_points_active = False
@@ -258,6 +243,29 @@ class CarrotMan:
     self.active_carrot_last = False
 
     self.is_metric = self.params.get_bool("IsMetric")
+
+  #new
+  def get_data_amap_navi(self):
+    #获取共享数据
+    self.carrot_serv.ext_blinker = self.amap_navi.shared_data.ext_blinker
+    self.carrot_serv.ext_state = self.amap_navi.shared_data.ext_state
+    self.carrot_serv.left_blind = self.amap_navi.shared_data.left_blind
+    self.carrot_serv.right_blind = self.amap_navi.shared_data.right_blind
+    self.carrot_serv.lidar_lblind = self.amap_navi.shared_data.lidar_lblind
+    self.carrot_serv.lidar_rblind = self.amap_navi.shared_data.lidar_rblind
+
+    #获取共享数据中的控制命令
+    if self.shared_cmd_index_last != self.amap_navi.shared_data.cmd_index:
+      self.shared_cmd_index_last = self.amap_navi.shared_data.cmd_index
+      self.carrot_serv.carrotCmdIndex = self.amap_navi.shared_data.cmd_index
+      self.carrot_serv.carrotCmd = self.amap_navi.shared_data.remote_cmd
+      self.carrot_serv.carrotArg = self.amap_navi.shared_data.remote_arg
+
+  def update_amap_navi(self):
+    #更新共享数据
+    self.amap_navi.shared_data.roadcate = self.carrot_serv.roadcate
+    self.amap_navi.shared_data.lat_a = self.lat_a
+    self.amap_navi.shared_data.max_curve = self.max_curve
 
   def get_broadcast_address(self):
     # 修改为支持PC的多接口检测
@@ -308,37 +316,8 @@ class CarrotMan:
     carrotIndex_last = self.carrot_serv.carrotIndex
     while self.is_running:
       try:
-        if self.sm.alive['carState']:
-          self.v_cruise_kph = self.sm['carState'].vCruise
-        if self.carrot_serv.roadType >= 0:
-          self.xroadcate = self.carrot_serv.roadType
-          self.carrot_serv.xroadcate = self.xroadcate
-        elif self.carrot_serv.roadType == -1: #-1表示根据巡航设定速度判断道路类型
-          if self.v_cruise_kph < 85 or self.v_cruise_kph > 200:
-            self.xroadcate = 8
-          elif self.v_cruise_kph < 100:
-            self.xroadcate = 0
-          else:
-            self.xroadcate = 1
-          self.carrot_serv.xroadcate = self.xroadcate
-        else: #-2
-          #xroadcate = 1 if self.carrot_serv.roadcate == 10 else 8
-          #if xroadcate == 1:
-          #  if self.v_cruise_kph < 100:
-          #    xroadcate = 0
-          if self.carrot_serv.roadcate == 0:
-            xroadcate = 1
-          elif self.carrot_serv.roadcate == 6:
-            xroadcate = 0
-          elif self.carrot_serv.roadcate == 1:
-            xroadcate = 8
-          else:
-            xroadcate = self.carrot_serv.roadcate
-
-          self.xroadcate = xroadcate
-          self.carrot_serv.xroadcate = self.xroadcate
-
         self.sm.update(0)
+        self.get_data_amap_navi() #new
         if self.sm.updated['navRouteNavd']:
           self.send_routes(self.sm['navRouteNavd'].coordinates, True)
         remote_addr = self.remote_addr
@@ -393,230 +372,6 @@ class CarrotMan:
       except Exception as e:
         if (self.carrot_serv.showDebugLog & 32) > 0:
           print(f"broadcast_version_info error...: {e}")
-        traceback.print_exc()
-        time.sleep(1)
-
-  def esp32_comm_thread(self):
-    blinker_alive = False
-    blinker_time = time.time()
-    l_blindspot_alive = False
-    l_blindspot_time = time.time()
-    r_blindspot_alive = False
-    r_blindspot_time = time.time()
-    lidar_lblind_alive = False
-    lidar_lblind_time = time.time()
-    lidar_rblind_alive = False
-    lidar_rblind_time = time.time()
-    while True:
-      try:
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-          sock.settimeout(10)  # 超时10秒
-          sock.bind(('0.0.0.0', self.esp32_port))
-          print("#########esp32_comm_thread: UDP thread started...")
-
-          while True:
-            try:
-              try:
-                data, remote_addr = sock.recvfrom(4096)
-
-                if not data:
-                  raise ConnectionError("No data received")
-
-                ip, port = remote_addr
-                # 修改: 保存多个客户端地址及最后活跃时间
-                if not hasattr(self, "esp32_clients"):
-                  self.esp32_clients = {}  # {ip: last_seen_time}
-                self.esp32_clients[ip] = time.time()
-
-                try:
-                  json_obj = json.loads(data.decode())
-                  if "blinker" in json_obj:
-                    ext_blinker = json_obj.get("blinker")
-                    if ext_blinker in ["left", "stockleft"]:
-                      self.ext_blinker = BLINKER_LEFT
-                    elif ext_blinker in ["right", "stockright"]:
-                      self.ext_blinker = BLINKER_RIGHT
-                    else:
-                      self.ext_blinker = BLINKER_NONE
-                    blinker_alive = True
-                    blinker_time = time.time()
-                  if "index" in json_obj:
-                    self.carrot_serv.esp32Index = int(json_obj.get("index"))
-                  if "cmd" in json_obj:
-                    self.carrot_serv.carrotCmdIndex = self.carrot_serv.esp32Index
-                    self.carrot_serv.carrotCmd = json_obj.get("cmd")
-                    self.carrot_serv.carrotArg = json_obj.get("arg")
-                    if (self.carrot_serv.showDebugLog & 32) > 0:
-                      print(f"carrot: carrotCmdIndex={self.carrot_serv.esp32Index}, carrotCmd={self.carrot_serv.carrotCmd},carrotArg={self.carrot_serv.carrotArg}")
-                  if "left_blind" in json_obj:
-                    self.carrot_serv.left_blind = json_obj.get("left_blind")
-                    l_blindspot_alive = True
-                    l_blindspot_time = time.time()
-                  if "right_blind" in json_obj:
-                    self.carrot_serv.right_blind = json_obj.get("right_blind")
-                    r_blindspot_alive = True
-                    r_blindspot_time = time.time()
-                  if "lidar_lblind" in json_obj:
-                    self.carrot_serv.lidar_lblind = json_obj.get("lidar_lblind")
-                    lidar_lblind_alive = True
-                    lidar_lblind_time = time.time()
-                  if "lidar_rblind" in json_obj:
-                    self.carrot_serv.lidar_rblind = json_obj.get("lidar_rblind")
-                    lidar_rblind_alive = True
-                    lidar_rblind_time = time.time()
-
-                  if (self.carrot_serv.showDebugLog & 32) > 0:
-                    print(f"receive: {json_obj}")
-                except Exception as e:
-                  self.ext_blinker = BLINKER_NONE
-                  if (self.carrot_serv.showDebugLog & 32) > 0:
-                    print(f"esp32_comm_thread: json error...: {e}")
-                    print(data)
-              except TimeoutError:
-                if (self.carrot_serv.showDebugLog & 32) > 0:
-                  print("Waiting for data (timeout)...")
-              except Exception as e:
-                if (self.carrot_serv.showDebugLog & 32) > 0:
-                  print(f"esp32_comm_thread: error...: {e}")
-                break
-
-              # 修改: 清理超过 10 秒未活跃的客户端
-              now = time.time()
-              self.esp32_clients = {ip: ts for ip, ts in self.esp32_clients.items() if now - ts < 10}
-              #超过10秒后重启转向灯和盲区状态
-              if blinker_alive and (now - blinker_time) > 10:
-                self.ext_blinker = BLINKER_NONE
-                blinker_alive = False
-              if l_blindspot_alive and (now - l_blindspot_time) > 10:
-                self.carrot_serv.left_blind = False
-                l_blindspot_alive = False
-              if r_blindspot_alive and (now - r_blindspot_time) > 10:
-                self.carrot_serv.right_blind = False
-                r_blindspot_alive = False
-              if lidar_lblind_alive and (now - lidar_lblind_time) > 10:
-                self.carrot_serv.lidar_lblind = False
-                lidar_lblind_alive = False
-              if lidar_rblind_alive and (now - lidar_rblind_time) > 10:
-                self.carrot_serv.lidar_rblind = False
-                lidar_rblind_alive = False
-
-              if self.esp32_clients:
-                self.carrot_serv.ext_state = len(self.esp32_clients)
-              else:
-                self.carrot_serv.ext_state = 0
-                self.ext_blinker = BLINKER_NONE
-
-              self.carrot_serv.ext_blinker = self.ext_blinker
-
-            except Exception as e:
-              if (self.carrot_serv.showDebugLog & 32) > 0:
-                print(f"esp32_comm_thread: recv error...: {e}")
-              break
-
-          time.sleep(1)
-      except Exception as e:
-        if (self.carrot_serv.showDebugLog & 32) > 0:
-          print(f"Network error, retrying...: {e}")
-        time.sleep(2)
-
-  def resp_32_broadcast_info(self):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-    frame = 0
-    blinker_frame = 0
-    blinker_state = 0
-    blinker_state_str = "none"
-    active_str = "off"
-    blinker_test = 0
-    showDebugLog = 0
-    rk = Ratekeeper(10, print_delay_threshold=None)
-    extBlinkerCtrlTest = self.params.get_int("ExtBlinkerCtrlTest")
-    blinker_test_cnt = 0
-    broadcast_cnt = 0
-
-    while self.esp32_is_running:
-      if frame % 40 == 0:
-        showDebugLog = self.params.get_int("ShowDebugLog")
-      try:
-        # 修改: 获取当前活跃客户端
-        active_clients = list(getattr(self, "esp32_clients", {}).keys())
-
-        if active_clients and ((showDebugLog & 1024) > 0 or extBlinkerCtrlTest):
-          if 0 == (blinker_frame % 10):
-            blinker_test = 1
-            if (blinker_test_cnt >= 3) and ((showDebugLog & 1024) == 0):
-              extBlinkerCtrlTest = 0
-              blinker_state = 0
-              blinker_test = 0
-              blinker_state_str = "none"
-              active_str = "off"
-            else:
-              blinker_state += 1
-            if blinker_state == 1:
-              blinker_state_str = "left"
-              active_str = "on"
-            elif blinker_state == 2:
-              blinker_state_str = "right"
-              active_str = "on"
-            elif blinker_state == 3:
-              blinker_state = 0
-              blinker_state_str = "none"
-              active_str = "off"
-              blinker_test_cnt += 1
-          blinker_frame += 1
-        else:
-          blinker_test = 0
-          blinker_state_str = "none"
-          active_str = "off"
-
-        if (frame >= 600) and ((showDebugLog & 1024) == 0):
-          extBlinkerCtrlTest = 0
-          blinker_test = 0
-          blinker_state_str = "none"
-          active_str = "off"
-
-        if frame % 20 == 0 or active_clients:
-          try:
-            if not PC:
-              ip_address = socket.gethostbyname(socket.gethostname())
-            else:
-              ip_address = self.get_local_ip()
-            if ip_address != self.esp32_ip_address:
-              self.esp32_ip_address = ip_address
-              self.esp32_clients = {}  # 修改: 本地 IP 变化时清空客户端
-
-            msg = self.make_esp32_send_message(blinker_test, blinker_state_str, active_str)
-            dat = msg.encode('utf-8')
-
-            if active_clients:
-              # 修改: 向所有客户端发送
-              for ip in active_clients:
-                try:
-                  sock.sendto(dat, (ip, self.esp32_broadcast_port))
-                  if (self.carrot_serv.showDebugLog & 32) > 0:
-                    print(f"sendto {ip}: {dat}")
-                except Exception as e:
-                  if (self.carrot_serv.showDebugLog & 32) > 0:
-                    print(f"sendto {ip} failed: {e}")
-            if frame % 20 == 0:# and broadcast_cnt < 60:
-              # 修改: 无客户端 → 广播
-              self.esp32_broadcast_ip = self.get_broadcast_address()
-              if self.esp32_broadcast_ip is not None:
-                sock.sendto(dat, (self.esp32_broadcast_ip, self.esp32_broadcast_port))
-                broadcast_cnt += 1
-                if (self.carrot_serv.showDebugLog & 32) > 0:
-                  print(f"esp32 broadcasting: {self.esp32_broadcast_ip}:{self.esp32_broadcast_port},{msg}")
-
-          except Exception as e:
-            if (self.carrot_serv.showDebugLog & 32) > 0:
-              print(f"##### esp32_broadcast_error...: {e}")
-            traceback.print_exc()
-
-        rk.keep_time()
-        frame += 1
-      except Exception as e:
-        if (self.carrot_serv.showDebugLog & 32) > 0:
-          print(f"esp32_broadcast_info error...: {e}")
         traceback.print_exc()
         time.sleep(1)
 
@@ -767,107 +522,6 @@ class CarrotMan:
     msg['trafficState'] = self.trafficState
     return json.dumps(msg)
 
-  def make_esp32_send_message(self, blinker_test, blinker_state_str, active_str):
-    msg = {}
-    msg['ip'] = self.esp32_ip_address
-    msg['port'] = self.esp32_port
-    isOnroad = self.params.get_bool("IsOnroad")
-    msg['IsOnroad'] = isOnroad
-    v_ego_kph = 0
-    v_cruise_kph = 0
-    if isOnroad:
-      #车辆状态
-      if self.sm.alive['carState']:# and self.sm.updated['carState']:
-        carState = self.sm['carState']
-        v_ego_kph = int(carState.vEgoCluster * 3.6 + 0.5)
-        v_cruise_kph = carState.vCruise
-        #new
-        if hasattr(carState, 'vEgo'):
-          msg["current_speed"] = int(carState.vEgo * 3.6)
-        if hasattr(carState, 'aEgo'):
-          msg["aego"] = round(carState.aEgo,1)
-        if hasattr(carState, 'steeringAngleDeg'):
-          msg["steer_angle"] = round(carState.steeringAngleDeg,1)
-        if hasattr(carState, 'gasPressed'):
-          msg["gas_press"] = carState.gasPressed
-        if hasattr(carState, 'brakePressed'):
-          msg["break_press"] = carState.brakePressed
-        if hasattr(carState, 'cruiseState'):
-          msg["engaged"] = carState.cruiseState.enabled
-        # 盲区检测
-        if hasattr(carState, 'leftBlindspot'):
-          msg["left_blindspot"] = int(carState.leftBlindspot)
-        if hasattr(carState, 'rightBlindspot'):
-          msg["right_blindspot"] = int(carState.rightBlindspot)
-      # 前车信息
-      if self.sm.alive['radarState']:# and self.sm.updated['radarState']:
-        radar_state = self.sm['radarState']
-        # 当前车道前车
-        if hasattr(radar_state, 'leadOne') and radar_state.leadOne and hasattr(radar_state.leadOne,'status') and radar_state.leadOne.status:
-          if hasattr(radar_state.leadOne, 'dRel'):
-            msg["drel"] = int(radar_state.leadOne.dRel)
-          if hasattr(radar_state.leadOne, 'vLead'):
-            msg["vlead"] = int(radar_state.leadOne.vLead * 3.6)
-          if hasattr(radar_state.leadOne, 'vRel'):
-            msg["vrel"] = int(radar_state.leadOne.vRel * 3.6)
-          if hasattr(radar_state.leadOne, 'aRel'):
-            msg["lead_accel"] = radar_state.leadOne.aRel
-        # 左侧前车
-        if hasattr(radar_state, 'leadLeft') and radar_state.leadLeft and hasattr(radar_state.leadLeft,'status') and radar_state.leadLeft.status:
-          msg["l_lead"] = True
-          if hasattr(radar_state.leadLeft, 'dRel'):
-            msg["l_drel"] = int(radar_state.leadLeft.dRel)
-          if hasattr(radar_state.leadLeft, 'vLead'):
-            msg["l_vlead"] = int(radar_state.leadLeft.vLead * 3.6)
-          if hasattr(radar_state.leadLeft, 'vRel'):
-            msg["l_vrel"] = int(radar_state.leadLeft.vRel * 3.6)
-        # 右侧前车
-        if hasattr(radar_state, 'leadRight') and radar_state.leadRight and hasattr(radar_state.leadRight,'status') and radar_state.leadRight.status:
-          msg["r_lead"] = True
-          if hasattr(radar_state.leadRight, 'dRel'):
-            msg["r_drel"] = int(radar_state.leadRight.dRel)
-          if hasattr(radar_state.leadRight, 'vLead'):
-            msg["r_vlead"] = int(radar_state.leadRight.vLead * 3.6)
-          if hasattr(radar_state.leadRight, 'vRel'):
-            msg["r_vrel"] = int(radar_state.leadRight.vRel * 3.6)
-
-      msg["desire_speed"] = int(self.carrot_serv.desired_speed) # 期望速度
-      msg["cruise_speed"] = v_cruise_kph # 巡航速度
-      msg['v_cruise_kph'] = v_cruise_kph # 巡航速度
-      msg['v_ego_kph'] = v_ego_kph #当前速度
-      msg['lat_a'] = round(self.lat_a,1)
-      msg['max_curve'] = round(self.max_curve,1)
-      msg['atc_type'] = self.carrot_serv.atcType
-      msg['roadcate'] = self.xroadcate
-      msg['lidar_lblind'] = self.carrot_serv.lidar_lblind
-      msg['lidar_rblind'] = self.carrot_serv.lidar_rblind
-
-    if 0 == blinker_test:
-      if self.sm.alive['modelV2']:
-        msg['blinker'] = self.sm['modelV2'].meta.blinker
-        if isOnroad:
-          msg['l_front_blind'] = self.sm['modelV2'].meta.leftFrontBlind
-          msg['r_front_blind'] = self.sm['modelV2'].meta.rightFrontBlind
-          msg['l_lane_width'] = round(self.sm['modelV2'].meta.laneWidthLeft,1)
-          msg['r_lane_width'] = round(self.sm['modelV2'].meta.laneWidthRight,1)
-          msg['l_edge_dist'] = round(self.sm['modelV2'].meta.distanceToRoadEdgeLeft,1)
-          msg['r_edge_dist'] = round(self.sm['modelV2'].meta.distanceToRoadEdgeRight,1)
-          lane_change_state = self.sm['modelV2'].meta.laneChangeState
-          msg["atc_state"] = lane_change_state.raw
-      if self.sm.alive['selfdriveState']:
-        selfdrive = self.sm['selfdriveState']
-        msg['active'] = "on" if selfdrive.active else "off"
-    else:
-      msg['blinker'] = blinker_state_str
-      msg['active'] = active_str
-
-    return json.dumps(msg)
-
-  def make_esp32_test_message(self, blinker):
-    msg = {}
-    msg['blinker'] = blinker
-    return json.dumps(msg)
-
   def receive_fixed_length_data(self, sock, length):
     buffer = b""
     while len(buffer) < length:
@@ -903,6 +557,7 @@ class CarrotMan:
                 try:
                   json_obj = json.loads(data.decode())
                   self.carrot_serv.update(json_obj)
+                  self.update_amap_navi() #new
                 except Exception as e:
                   print(f"carrot_man_thread: json error...: {e}")
                   print(data)
@@ -1303,7 +958,7 @@ class CarrotMan:
     v_ego = max(CS.vEgo, 0.1)
     # Set the curve sensitivity
     #new
-    if self.xroadcate > 1: #普通道路
+    if self.carrot_serv.roadcate > 1: #普通道路
       orientation_rate = np.array(modelData.orientationRate.z) * self.autoCurveSpeedFactor
     else: #高速公路
       orientation_rate = np.array(modelData.orientationRate.z) * self.autoCurveSpeedFactorH
@@ -1323,7 +978,7 @@ class CarrotMan:
 
     # Set the target lateral acceleration
     #new
-    if self.xroadcate > 1: #普通道路
+    if self.carrot_serv.roadcate > 1: #普通道路
       adjusted_target_lat_a = TARGET_LAT_A * self.autoCurveSpeedAggressiveness
     else: #高速公路
       adjusted_target_lat_a = TARGET_LAT_A * self.autoCurveSpeedAggressivenessH

@@ -610,8 +610,7 @@ class CarrotServ:
       #  else:
       #    self.xSpdDist = 0
       #new
-    #elif (self.nSdiPlusType == 22 or self.nSdiType == 22) and self.roadcate > 1 and self.autoNaviSpeedCtrlMode >= 2: # 22-speed bump, roadcate:0,1: highway
-    elif (self.nSdiPlusType == 22 or self.nSdiType == 22) and self.xroadcate > 1 and self.autoNaviSpeedCtrlMode >= 2:  # 22-speed bump, roadcate:0,1: highway
+    elif (self.nSdiPlusType == 22 or self.nSdiType == 22) and self.roadcate > 1 and self.autoNaviSpeedCtrlMode >= 2: # 22-speed bump, roadcate:0,1: highway
       self.xSpdLimit = self.autoNaviSpeedBumpSpeed
       self.xSpdDist = self.nSdiPlusDist if self.nSdiPlusType == 22 else self.nSdiDist
       self.xSpdType = 22
@@ -1359,7 +1358,7 @@ class CarrotServ:
       if (self.showDebugLog & 1) > 0:
         print(
           f"***sdi=T{self.nSdiType},S {self.nSdiSpeedLimit},PS {self.nSdiPlusType}," +
-          f"spd=T {self.xSpdType},S {self.xSpdLimit},D {self.xSpdDist:.1f},RC {self.roadcate},xRC {self.xroadcate}, " +
+          f"spd=T {self.xSpdType},S {self.xSpdLimit},D {self.xSpdDist:.1f},RC {self.roadcate}, " +
           f"tbt=T {self.nTBTTurnType},D {self.nTBTDist}, " +
           f"xtbt=xT {self.xTurnInfo},xD {self.xDistToTurn:.1f}, " +
           f"next=T {self.nTBTTurnTypeNext},D {self.nTBTDistNext}"

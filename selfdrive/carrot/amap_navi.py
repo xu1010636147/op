@@ -26,6 +26,10 @@ class SharedData:
     self.lb_drel = None #雷达左后车距离
     self.rf_drel = None #雷达右前车距离
     self.rb_drel = None #雷达右后车距离
+    self.lidar_l = False
+    self.lidar_r = False
+    self.camera_l = False
+    self.camera_r = False
 
     #客户端控制命令
     self.cmd_index = -1
@@ -116,12 +120,7 @@ class AmapNaviServ:
                 try:
                   json_obj = json.loads(data.decode())
 
-                  old_info = self.clients.get(ip, {})
-                  self.clients[ip] = {
-                    "last_seen": time.time(),
-                    "device": json_obj.get("device", old_info.get("device", "")),
-                  }
-
+                  #转向灯模块
                   if "blinker" in json_obj:
                     self.shared_data.ext_blinker = json_obj.get("blinker")
                     if self.shared_data.ext_blinker in ["left", "stockleft"]:
@@ -141,6 +140,7 @@ class AmapNaviServ:
                     self.shared_data.remote_arg = json_obj.get("arg")
                     print(f"Command: index={self.shared_data.cmd_index}, cmd={self.shared_data.remote_cmd},arg={self.shared_data.remote_arg}")
 
+                  #响应类型
                   if "resp" in json_obj:
                     resp = json_obj.get("resp")
                     #摄像头盲区信号
@@ -182,6 +182,14 @@ class AmapNaviServ:
                         self.shared_data.rb_drel = int(json_obj.get("rb_drel"))
                       else:
                         self.shared_data.rb_drel = None
+
+                  #更新客户端信息
+                  old_info = self.clients.get(ip, {})
+                  self.clients[ip] = {
+                    "last_seen": time.time(),
+                    "device": json_obj.get("device", old_info.get("device", "")),
+                    "detect_side":int(json_obj.get("detect_side", old_info.get("detect_side", 0))),
+                  }
 
                   if (self.shared_data.showDebugLog & 32) > 0:
                     print(f"receive: {json_obj}")
@@ -271,12 +279,17 @@ class AmapNaviServ:
             broadcast_msg = self.make_broadcast_message()
             broadcast_dat = broadcast_msg.encode('utf-8')
 
+            lidar_l = False
+            lidar_r = False
+            camera_l = False
+            camera_r = False
             if active_clients:
               # 向所有客户端发送
               if self.clients:
                 for ip, info in self.clients.items():
                   try:
                     device_type = info.get("device", None)
+                    detect_side = info.get("detect_side", None)
                     # 根据 device_type 做判断
                     if device_type == "overtake" or device_type == "navi": #超车或导航
                       if navi_msg is None:
@@ -287,6 +300,17 @@ class AmapNaviServ:
                         if (self.shared_data.showDebugLog & 32) > 0:
                           print(f"sendto {ip} (overtake): {navi_dat}")
                     elif device_type == "lidar" or device_type == "camera": #雷达模块
+                      if device_type == "lidar":
+                        if (detect_side & 1) > 0:
+                          lidar_l = True
+                        if (detect_side & 2) > 0:
+                          lidar_r = True
+                      if device_type == "camera":
+                        if (detect_side & 1) > 0:
+                          camera_l = True
+                        if (detect_side & 2) > 0:
+                          camera_r = True
+
                       if lidar_msg is None:
                         lidar_msg = self.make_lidar_message()
                         lidar_dat = lidar_msg.encode('utf-8')
@@ -301,6 +325,11 @@ class AmapNaviServ:
                   except Exception as e:
                     if (self.shared_data.showDebugLog & 32) > 0:
                       print(f"sendto {ip} failed: {e}")
+
+            self.shared_data.lidar_l = lidar_l
+            self.shared_data.lidar_r = lidar_r
+            self.shared_data.camera_l = camera_l
+            self.shared_data.camera_r = camera_r
 
             #每2秒广播一次自己的ip和端口
             if frame % 20 == 0:
@@ -418,6 +447,12 @@ class AmapNaviServ:
         msg['rf_drel'] = self.shared_data.rf_drel
       if self.shared_data.rb_drel is not None:
         msg['rb_drel'] = self.shared_data.rb_drel
+
+      #雷达或摄像头是否存在标志
+      msg['lidar_l'] = self.shared_data.lidar_l
+      msg['lidar_r'] = self.shared_data.lidar_r
+      msg['camera_l'] = self.shared_data.camera_l
+      msg['camera_r'] = self.shared_data.camera_r
 
       #来自共享数据
       if self.shared_data.roadcate is not None:

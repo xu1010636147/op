@@ -410,7 +410,7 @@ class DesireHelper:
     carrot_lane_change_count = self.carrot_lane_change_count
     self.carrot_lane_change_count = max(0, self.carrot_lane_change_count - 1)
     if carrot_lane_change_count != self.carrot_lane_change_count and carrot_lane_change_count == 0:
-      print(f"---[{time.strftime("%H:%M:%S")}]carrot_lane_change_count=0")
+      print(f"---[{time.strftime('%H:%M:%S')}]carrot_lane_change_count=0")
     self.driver_lane_change_delay = max(0, self.driver_lane_change_delay - DT_MDL)
     self.lane_change_delay = max(0, self.lane_change_delay - DT_MDL)
     self.lane_change_audio_delay = max(0, self.lane_change_audio_delay - DT_MDL)
@@ -447,7 +447,7 @@ class DesireHelper:
       driver_desire_enabled = False
 
     if driver_blinker_changed:
-      print(f"---[{time.strftime("%H:%M:%S")}]driver blinker change: {driver_blinker_state}")
+      print(f"---[{time.strftime('%H:%M:%S')}]driver blinker change: {driver_blinker_state}")
 
     #盲区检查状态处理
     ignore_bsd = True if self.laneChangeBsd < 0 else False #laneChangeBsd设置为-1表示忽略BSD盲区检测
@@ -484,7 +484,7 @@ class DesireHelper:
       self.carrot_cmd_index_last = carrotMan.carrotCmdIndex
       self.carrot_lane_change_count = int(LANE_CHANGE_TIME_MAX*2 / DT_MDL)
       self.carrot_blinker_state = BLINKER_LEFT if carrotMan.carrotArg == "LEFT" else BLINKER_RIGHT
-      print(f"---[{time.strftime("%H:%M:%S")}]Desire lanechange: {carrotMan.carrotArg},counter={self.carrot_lane_change_count},blinker={self.carrot_blinker_state},"
+      print(f"---[{time.strftime('%H:%M:%S')}]Desire lanechange: {carrotMan.carrotArg},counter={self.carrot_lane_change_count},blinker={self.carrot_blinker_state},"
             f"state={self.lane_change_state},prev_desire_enabled={self.prev_desire_enabled},"
             f"driver_blinker_changed={driver_blinker_changed},driver_desire_enabled={driver_desire_enabled}")
       atc_blinker_state = self.carrot_blinker_state #new
@@ -531,17 +531,17 @@ class DesireHelper:
     if driver_blinker_state != BLINKER_NONE and atc_blinker_state != BLINKER_NONE and driver_blinker_state != atc_blinker_state:
       atc_blinker_state = BLINKER_NONE
       if self.atc_active != 2:
-        print(f"---[{time.strftime("%H:%M:%S")}]driver_blinker({driver_blinker_state})!=atc_blinker({atc_blinker_state}),set atc_active=2")
+        print(f"---[{time.strftime('%H:%M:%S')}]driver_blinker({driver_blinker_state})!=atc_blinker({atc_blinker_state}),set atc_active=2")
       self.atc_active = 2
     elif driver_blinker_state != BLINKER_NONE and driver_blinker_state == atc_blinker_state and driver_blinker_changed: #如果用户打了与自动转身一样的灯，可恢复自动转向
       if self.atc_active == 2:
         self.atc_active = 0
-        print(f"---[{time.strftime("%H:%M:%S")}]driver_blinker({driver_blinker_state})==atc_blinker({atc_blinker_state}),reset atc_active 2->0")
+        print(f"---[{time.strftime('%H:%M:%S')}]driver_blinker({driver_blinker_state})==atc_blinker({atc_blinker_state}),reset atc_active 2->0")
     atc_desire_enabled = atc_blinker_state in [BLINKER_LEFT, BLINKER_RIGHT] #自动转弯控制需求
 
     if driver_blinker_state == BLINKER_NONE: #驾驶员未打灯或者打了之后关闭了转向灯时，则清除反方向盘标志
       if self.blinker_ignore and atc_left_right:# and atc_type in ["atc left", "atc right"]: #如果在是atc_left/right期间用户反向干预了方向盘，则设置标志self.blinker_ignore_last
-        print(f"---[{time.strftime("%H:%M:%S")}]atc_left_right, blinker_ignore=true, set blinker_ignore_last=true")
+        print(f"---[{time.strftime('%H:%M:%S')}]atc_left_right, blinker_ignore=true, set blinker_ignore_last=true")
         self.blinker_ignore_last = True
       self.blinker_ignore = False
     if self.blinker_ignore: #如果用户反方向打了方向盘，而且用户打了灯，则会持续清除转向灯的状态，禁止变道
@@ -560,9 +560,9 @@ class DesireHelper:
       self.lane_cnt_time = self.lane_count_stab_cnt
       self.lane_count_last = -1
       if self.blinker_ignore_last:
-        print(f"---[{time.strftime("%H:%M:%S")}]clear blinker_ignore_last")
+        print(f"---[{time.strftime('%H:%M:%S')}]clear blinker_ignore_last")
       self.blinker_ignore_last = False
-      print(f"---[{time.strftime("%H:%M:%S")}]atc_type change, curr:{atc_type}, prev:{self.atc_type}")
+      print(f"---[{time.strftime('%H:%M:%S')}]atc_type change, curr:{atc_type}, prev:{self.atc_type}")
 
     self.atc_type = atc_type
     self.atc_blinker_state = atc_blinker_state
@@ -795,16 +795,16 @@ class DesireHelper:
       if self.lane_change_state != LaneChangeState.off:
         if atc_desire_enabled and (fork_left_right or atc_left_right):
           self.lane_change_audio(True, 4, 0)  # 播报领航已退出
-          print(f"---[{time.strftime("%H:%M:%S")}]Desire canceled, play audio, atc_desire_enabled={atc_desire_enabled},fork_left_right={fork_left_right},atc_left_right={atc_left_right}")
+          print(f"---[{time.strftime('%H:%M:%S')}]Desire canceled, play audio, atc_desire_enabled={atc_desire_enabled},fork_left_right={fork_left_right},atc_left_right={atc_left_right}")
         else:
-          print(f"---[{time.strftime("%H:%M:%S")}]Desire canceled")
+          print(f"---[{time.strftime('%H:%M:%S')}]Desire canceled")
       self.lane_change_state = LaneChangeState.off
       self.lane_change_direction = LaneChangeDirection.none
       self.turn_direction = TurnDirection.none
     elif ( (self.blinkerMode == 0 or not driver_desire_enabled or turn_left_right) and
            desire_enabled and ((below_lane_change_speed and not carstate.standstill and self.enable_turn_desires) or self.turn_desire_state)): #激活转弯控制模式（并不走变道流程）
       if self.lane_change_state != LaneChangeState.off:
-        print(f"---[{time.strftime("%H:%M:%S")}]Desire Turning")
+        print(f"---[{time.strftime('%H:%M:%S')}]Desire Turning")
         #if atc_desire_enabled and (fork_left_right or atc_left_right):
         #  self.lane_change_audio(True, 4, 0)  # 播报领航已退出
       self.lane_change_state = LaneChangeState.off
@@ -817,7 +817,7 @@ class DesireHelper:
       desire_enabled = False
     elif self.desire_disable_count > 0: # Turn后一段时间内无法变更车道,此变量在check_desire_state函数里计算，如果车辆在转弯，则一直把desire_disable_count设置为2秒的计数值
       if self.lane_change_state != LaneChangeState.off:
-        print(f"---[{time.strftime("%H:%M:%S")}]Desire after turning")
+        print(f"---[{time.strftime('%H:%M:%S')}]Desire after turning")
         #if atc_desire_enabled and (fork_left_right or atc_left_right):
         #  self.lane_change_audio(True, 4, 0)  # 播报领航已退出
       self.lane_change_state = LaneChangeState.off
@@ -861,9 +861,9 @@ class DesireHelper:
         else:
           self.atc_resume = 0
 
-        print(f"---[{time.strftime("%H:%M:%S")}]init: auto_enable={self.auto_lane_change_enable},atc_resume={self.atc_resume},"
+        print(f"---[{time.strftime('%H:%M:%S')}]init: auto_enable={self.auto_lane_change_enable},atc_resume={self.atc_resume},"
               f"exist cnt={lane_exist_counter},lane_change_available={lane_change_available}")
-        print(f"---[{time.strftime("%H:%M:%S")}]init: desire_enabled={desire_enabled},prev_desire_enabled={self.prev_desire_enabled},"
+        print(f"---[{time.strftime('%H:%M:%S')}]init: desire_enabled={desire_enabled},prev_desire_enabled={self.prev_desire_enabled},"
               f"driver_blinker_changed={driver_blinker_changed},driver_desire_enabled={driver_desire_enabled},"
               f"atc_desire_enabled={atc_desire_enabled}")
         #new
@@ -895,7 +895,7 @@ class DesireHelper:
         trigger_type = 0
         trigger_name = "none"
         if not desire_enabled or below_lane_change_speed:
-          print(f"---[{time.strftime("%H:%M:%S")}]Pre:desire_enabled={desire_enabled} or below_lane_change_speed={below_lane_change_speed}")
+          print(f"---[{time.strftime('%H:%M:%S')}]Pre:desire_enabled={desire_enabled} or below_lane_change_speed={below_lane_change_speed}")
           self.lane_change_state = LaneChangeState.off
           self.lane_change_direction = LaneChangeDirection.none
           trigger_type = -1
@@ -908,7 +908,7 @@ class DesireHelper:
             self.blinker_val = BLINKER_NONE
           if self.lane_change_state_prev != self.lane_change_state:
             self.lane_change_state_prev = self.lane_change_state
-            print(f"---[{time.strftime("%H:%M:%S")}]Pre:ext_blinker state:{self.blinker_val},driver_desire_enabled={driver_desire_enabled},"
+            print(f"---[{time.strftime('%H:%M:%S')}]Pre:ext_blinker state:{self.blinker_val},driver_desire_enabled={driver_desire_enabled},"
                   f"stockBlinkerCtrl={self.stockBlinkerCtrl},turn_cnt={self.atc_turn_cnt},carrot_blinker_state={self.carrot_blinker_state}")
           #此处根据条件决定是否进入开始变道或转弯的流程，lane_change_available为真时表示旁边车道或者路沿的宽度稳定大于2.5米
           if lane_change_available and self.lane_change_delay == 0: #允许变道并且没有延时时间要求
@@ -1016,7 +1016,7 @@ class DesireHelper:
           self.trigger_name = trigger_name
           if not driver_desire_enabled:
             self.blinker_val = atc_blinker_state
-          print(f"---[{time.strftime("%H:%M:%S")}]Pre:lane_change_state:{LaneChangeState.preLaneChange}->{LaneChangeState.laneChangeStarting},ext_blinker state:{self.blinker_val}")
+          print(f"---[{time.strftime('%H:%M:%S')}]Pre:lane_change_state:{LaneChangeState.preLaneChange}->{LaneChangeState.laneChangeStarting},ext_blinker state:{self.blinker_val}")
           self.lane_change_state_prev = LaneChangeState.preLaneChange
 
         if (self.showDebugLog & 4) > 0 or self.lane_change_state_last != self.lane_change_state:
@@ -1047,7 +1047,7 @@ class DesireHelper:
         self.lane_change_ll_prob = min(self.lane_change_ll_prob + DT_MDL, 1.0)
 
         if self.lane_change_ll_prob > 0.99:
-          print(f"---[{time.strftime("%H:%M:%S")}]Finishing: old state={self.lane_change_state},atc_resume={self.atc_resume},turn cnt={self.atc_turn_cnt},"
+          print(f"---[{time.strftime('%H:%M:%S')}]Finishing: old state={self.lane_change_state},atc_resume={self.atc_resume},turn cnt={self.atc_turn_cnt},"
                 f"atc_blinker={atc_blinker_state},driver_blinker={driver_blinker_state},blinker_val={self.blinker_val},fork_now={fork_now}")
 
           self.lane_change_direction = LaneChangeDirection.none
@@ -1083,7 +1083,7 @@ class DesireHelper:
           if self.carrot_lane_change_count > 0 or self.carrot_blinker_state != BLINKER_NONE:
             if self.carrot_blinker_state != BLINKER_NONE and self.stockBlinkerCtrl == 1:
               self.driver_lane_change_delay = int(2.0 / DT_MDL)
-            print(f"---[{time.strftime("%H:%M:%S")}]Finishing: reset carrot_lane_change_count {self.carrot_lane_change_count}->0,"
+            print(f"---[{time.strftime('%H:%M:%S')}]Finishing: reset carrot_lane_change_count {self.carrot_lane_change_count}->0,"
                   f"carrot_blinker_state {self.carrot_blinker_state}->0")
             self.carrot_lane_change_count = 0
             self.carrot_blinker_state = BLINKER_NONE
@@ -1092,11 +1092,11 @@ class DesireHelper:
           if self.blinker_ignore_last:
             if atc_left_right and atc_blinker_state != BLINKER_NONE: #有自动左右变道和自动打灯状态
               if driver_blinker_state == atc_blinker_state:  # 用户的打灯方向与自动变道方向一致
-                print(f"---[{time.strftime("%H:%M:%S")}]blinker_ignore resume,old state:prev_desire_enabled={self.prev_desire_enabled},turn_cnt={self.atc_turn_cnt}")
+                print(f"---[{time.strftime('%H:%M:%S')}]blinker_ignore resume,old state:prev_desire_enabled={self.prev_desire_enabled},turn_cnt={self.atc_turn_cnt}")
                 self.prev_desire_enabled = False
                 self.atc_turn_cnt = self.continuousLaneChangeCnt
                 self.blinker_ignore_last = False
-                print(f"---[{time.strftime("%H:%M:%S")}]blinker_ignore resume,new state:prev_desire_enabled={self.prev_desire_enabled},turn_cnt={self.atc_turn_cnt}")
+                print(f"---[{time.strftime('%H:%M:%S')}]blinker_ignore resume,new state:prev_desire_enabled={self.prev_desire_enabled},turn_cnt={self.atc_turn_cnt}")
 
           if self.atc_turn_cnt < 0:
             self.lane_change_audio(True, 9, 0) #变道已结束

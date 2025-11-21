@@ -52,6 +52,19 @@ class SharedData:
     self.lat_a = None
     self.max_curve = None
 
+    # =============共享数据（carState）=============
+    self.carState = False
+    self.v_ego_kph = None
+    self.v_cruise_kph = None
+    self.vEgo = None
+    self.aEgo = None
+    self.steer_angle = None
+    self.gas_press = None
+    self.break_press = None
+    self.engaged = None
+    self.left_blindspot = None
+    self.right_blindspot = None
+
     self.showDebugLog = 0
 
 def f1(x):
@@ -61,7 +74,8 @@ class AmapNaviServ:
   def __init__(self):
     self.shared_data = SharedData() #new
     self.params = Params()
-    self.sm = messaging.SubMaster(['carState', 'modelV2', 'selfdriveState', 'radarState', 'carrotMan'])
+    #self.sm = messaging.SubMaster(['carState', 'modelV2', 'selfdriveState', 'radarState', 'carrotMan'])
+    self.sm = messaging.SubMaster(['modelV2', 'selfdriveState', 'radarState', 'carrotMan'])
 
     self.broadcast_ip = self.navi_get_broadcast_address() #广播地址
     self.broadcast_port = 4210 #广播端口
@@ -89,6 +103,32 @@ class AmapNaviServ:
       return result
     except (TypeError, AttributeError):
       return []
+
+  def update_navi_carstate(self, sm):
+    if sm.alive['carState']:  # and self.sm.updated['carState']:
+      self.shared_data.carState = True
+      carState = sm['carState']
+      if hasattr(carState, 'vEgoCluster'):
+        self.shared_data.v_ego_kph = int(carState.vEgoCluster * 3.6 + 0.5)
+      if hasattr(carState, 'vCruise'):
+        self.shared_data.v_cruise_kph = carState.vCruise
+      if hasattr(carState, 'vEgo'):
+        self.shared_data.vEgo = int(carState.vEgo * 3.6)
+      if hasattr(carState, 'aEgo'):
+        self.shared_data.aEgo = round(carState.aEgo, 1)
+      if hasattr(carState, 'steeringAngleDeg'):
+        self.shared_data.steer_angle = round(carState.steeringAngleDeg, 1)
+      if hasattr(carState, 'gasPressed'):
+        self.shared_data.gas_press = carState.gasPressed
+      if hasattr(carState, 'brakePressed'):
+        self.shared_data.break_press = carState.brakePressed
+      if hasattr(carState, 'cruiseState'):
+        self.shared_data.engaged = carState.cruiseState.enabled
+      # 盲区检测
+      if hasattr(carState, 'leftBlindspot'):
+        self.shared_data.left_blindspot = int(carState.leftBlindspot)
+      if hasattr(carState, 'rightBlindspot'):
+        self.shared_data.right_blindspot = int(carState.rightBlindspot)
 
   def navi_comm_thread(self):
     blinker_alive = False
@@ -269,7 +309,7 @@ class AmapNaviServ:
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     frame = 0
-    rk = Ratekeeper(20, print_delay_threshold=None)
+    rk = Ratekeeper(10, print_delay_threshold=None)
     broadcast_cnt = 0
 
     while True:
@@ -383,32 +423,29 @@ class AmapNaviServ:
 
     if isOnroad:
       #车辆状态
-      if self.sm.alive['carState']:# and self.sm.updated['carState']:
-        #print("carState alive")
-        carState = self.sm['carState']
-        v_ego_kph = int(carState.vEgoCluster * 3.6 + 0.5)
-        v_cruise_kph = carState.vCruise
-        #msg["cruise_speed"] = v_cruise_kph  # 巡航速度
-        msg['v_cruise_kph'] = v_cruise_kph  # 巡航速度
-        msg['v_ego_kph'] = v_ego_kph  # 当前速度
-        #new
-        if hasattr(carState, 'vEgo'):
-          msg["vego"] = int(carState.vEgo * 3.6)
-        if hasattr(carState, 'aEgo'):
-          msg["aego"] = round(carState.aEgo,1)
-        if hasattr(carState, 'steeringAngleDeg'):
-          msg["steer_angle"] = round(carState.steeringAngleDeg,1)
-        if hasattr(carState, 'gasPressed'):
-          msg["gas_press"] = carState.gasPressed
-        if hasattr(carState, 'brakePressed'):
-          msg["break_press"] = carState.brakePressed
-        if hasattr(carState, 'cruiseState'):
-          msg["engaged"] = carState.cruiseState.enabled
+      if self.shared_data.carState:
+        if self.shared_data.v_cruise_kph is not None:
+          #msg["cruise_speed"] = self.shared_data.v_cruise_kph  # 巡航速度
+          msg['v_cruise_kph'] = self.shared_data.v_cruise_kph  # 巡航速度
+        if self.shared_data.v_ego_kph is not None:
+          msg['v_ego_kph'] = self.shared_data.v_ego_kph  # 当前速度
+        if self.shared_data.vEgo is not None:
+          msg["vego"] = self.shared_data.vEgo
+        if self.shared_data.aEgo is not None:
+          msg["aego"] = self.shared_data.aEgo
+        if self.shared_data.steer_angle is not None:
+          msg["steer_angle"] = self.shared_data.steer_angle
+        if self.shared_data.gas_press is not None:
+          msg["gas_press"] = self.shared_data.gas_press
+        if self.shared_data.break_press is not None:
+          msg["break_press"] = self.shared_data.break_press
+        if self.shared_data.engaged is not None:
+          msg["engaged"] = self.shared_data.engaged
         # 盲区检测
-        if hasattr(carState, 'leftBlindspot'):
-          msg["left_blindspot"] = int(carState.leftBlindspot)
-        if hasattr(carState, 'rightBlindspot'):
-          msg["right_blindspot"] = int(carState.rightBlindspot)
+        if self.shared_data.left_blindspot is not None:
+          msg["left_blindspot"] = self.shared_data.left_blindspot
+        if self.shared_data.right_blindspot is not None:
+          msg["right_blindspot"] = self.shared_data.right_blindspot
 
       # 雷达数据
       if self.sm.alive['radarState']:# and self.sm.updated['radarState']:
@@ -548,12 +585,11 @@ class AmapNaviServ:
     msg['IsOnroad'] = isOnroad
 
     if isOnroad:
-      if self.sm.alive['carState']:
-        carState = self.sm['carState']
-        v_ego_kph = int(carState.vEgoCluster * 3.6 + 0.5)
-        v_cruise_kph = carState.vCruise
-        msg['v_cruise_kph'] = v_cruise_kph  # 巡航速度
-        msg['v_ego_kph'] = v_ego_kph  # 当前速度
+      if self.shared_data.carState:
+        if self.shared_data.v_cruise_kph is not None:
+          msg['v_cruise_kph'] = self.shared_data.v_cruise_kph  # 巡航速度
+        if self.shared_data.v_ego_kph is not None:
+          msg['v_ego_kph'] = self.shared_data.v_ego_kph  # 当前速度
 
       if self.sm.alive['selfdriveState']:
         selfdrive = self.sm['selfdriveState']

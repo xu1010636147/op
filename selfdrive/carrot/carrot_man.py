@@ -318,6 +318,7 @@ class CarrotMan:
       try:
         self.sm.update(0)
         self.get_data_amap_navi() #new
+        self.amap_navi.update_navi_carstate(self.sm)  # new
         if self.sm.updated['navRouteNavd']:
           self.send_routes(self.sm['navRouteNavd'].coordinates, True)
         remote_addr = self.remote_addr

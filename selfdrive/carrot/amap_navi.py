@@ -26,6 +26,10 @@ class SharedData:
     self.lb_drel = None #雷达左后车距离
     self.rf_drel = None #雷达右前车距离
     self.rb_drel = None #雷达右后车距离
+    self.lf_xrel = None #雷达左前车距离
+    self.lb_xrel = None #雷达左后车距离
+    self.rf_xrel = None #雷达右前车距离
+    self.rb_xrel = None #雷达右后车距离
     self.lidar_l = False
     self.lidar_r = False
     self.camera_l = False
@@ -182,6 +186,23 @@ class AmapNaviServ:
                         self.shared_data.rb_drel = int(json_obj.get("rb_drel"))
                       else:
                         self.shared_data.rb_drel = None
+
+                      if "lf_xrel" in json_obj:
+                        self.shared_data.lf_xrel = int(json_obj.get("lf_xrel"))
+                      else:
+                        self.shared_data.lf_xrel = None
+                      if "lb_xrel" in json_obj:
+                        self.shared_data.lb_xrel = int(json_obj.get("lb_xrel"))
+                      else:
+                        self.shared_data.lb_xrel = None
+                      if "rf_xrel" in json_obj:
+                        self.shared_data.rf_xrel = int(json_obj.get("rf_xrel"))
+                      else:
+                        self.shared_data.rf_xrel = None
+                      if "rb_xrel" in json_obj:
+                        self.shared_data.rb_xrel = int(json_obj.get("rb_xrel"))
+                      else:
+                        self.shared_data.rb_xrel = None
 
                   #更新客户端信息
                   old_info = self.clients.get(ip, {})
@@ -447,6 +468,15 @@ class AmapNaviServ:
         msg['rf_drel'] = self.shared_data.rf_drel
       if self.shared_data.rb_drel is not None:
         msg['rb_drel'] = self.shared_data.rb_drel
+
+      if self.shared_data.lf_xrel is not None:
+        msg['lf_xrel'] = self.shared_data.lf_xrel
+      if self.shared_data.lb_xrel is not None:
+        msg['lb_xrel'] = self.shared_data.lb_xrel
+      if self.shared_data.rf_xrel is not None:
+        msg['rf_xrel'] = self.shared_data.rf_xrel
+      if self.shared_data.rb_xrel is not None:
+        msg['rb_xrel'] = self.shared_data.rb_xrel
 
       #雷达或摄像头是否存在标志
       msg['lidar_l'] = self.shared_data.lidar_l

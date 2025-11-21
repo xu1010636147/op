@@ -502,7 +502,11 @@ class AmapNaviServ:
     #来自selfdriveState消息
     if self.sm.alive['selfdriveState']:
       selfdrive = self.sm['selfdriveState']
-      msg['active'] = "on" if selfdrive.active else "off"
+      msg['active'] = True if selfdrive.active else False
+
+      # 若 engaged 不存在或为 False，且 active 为 True，则设置 engaged = True
+      if selfdrive.active and not msg.get('engaged', False):
+        msg['engaged'] = True
 
     return json.dumps(msg)
 

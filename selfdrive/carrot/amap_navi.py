@@ -557,7 +557,7 @@ class AmapNaviServ:
 
       if self.sm.alive['selfdriveState']:
         selfdrive = self.sm['selfdriveState']
-        msg['active'] = "on" if selfdrive.active else "off"
+        msg['active'] = True if selfdrive.active else False
 
       if self.sm.alive['carrotMan']:
         carrotMan = self.sm['carrotMan']
@@ -580,7 +580,7 @@ class AmapNaviServ:
     #来自selfdriveState消息
     if self.sm.alive['selfdriveState']:
       selfdrive = self.sm['selfdriveState']
-      msg['active'] = "on" if selfdrive.active else "off"
+      msg['active'] = True if selfdrive.active else False
 
     return json.dumps(msg)
 

@@ -184,7 +184,6 @@ class CarrotServ:
     self.navType, self.navModifier = "invalid", ""
     self.navTypeNext, self.navModifierNext = "invalid", ""
 
-    self.esp32Index = -1 #new
     self.carrotIndex = 0
     self.carrotCmdIndex = 0
     self.carrotCmd = ""
@@ -247,7 +246,6 @@ class CarrotServ:
     self.autoUpHighwayRoadLimit = 0
     self.autoUpHighwayRoadLimit40KMH = 15
     self.roadType = -1
-    self.xroadcate = 8
     self.autoForkDecalRateH = 80
     self.autoForkSpeedMinH = 60
     self.autoKeepForkSpeedH = 5
@@ -703,7 +701,7 @@ class CarrotServ:
     turn_dist_for_speed = self.autoTurnControlTurnEnd * turn_speed / 3.6 # 5
     fork_dist_for_speed = self.autoTurnControlTurnEnd * fork_speed / 3.6 # 5
     stop_dist_for_speed = 5
-    if self.xroadcate > 1:
+    if self.roadcate > 1:
       fork_dist_offset = self.autoForkDistOffset
       start_fork_dist = np.interp(self.nRoadLimitSpeed, [30, 50, 100], [160, 200, 350]) + fork_dist_offset
       do_fork_dist = fork_dist_for_speed + self.autoDoForkBlinkerDist
@@ -1129,7 +1127,7 @@ class CarrotServ:
     msg.carrotMan.xDistToTurnMax = int(self.xDistToTurnMax)
     msg.carrotMan.xDistToTurnMaxCnt = int(self.xDistToTurnMaxCnt)
     msg.carrotMan.xLeftTurnSec = int(left_turn_sec)
-    msg.carrotMan.roadCate = int(self.xroadcate)
+    msg.carrotMan.roadCate = int(self.roadcate)
     msg.carrotMan.extBlinker = int(self.ext_blinker)
     msg.carrotMan.extState = int(self.ext_state)
     msg.carrotMan.leftBlind = int(self.left_blind or self.lidar_lblind)
@@ -1290,8 +1288,8 @@ class CarrotServ:
           nRoadLimitSpeed = 120
 
         # 高速公路低限速值处理，低速是自动增加偏移值
-        if nRoadLimitSpeed < 60 and ((self.xroadcate <= 1 and self.autoUpHighwayRoadLimit) or (self.xroadcate > 1 and self.autoUpRoadLimit)):  # 高速公路 (0,1: highway)
-          if self.xroadcate <= 1:
+        if nRoadLimitSpeed < 60 and ((self.roadcate <= 1 and self.autoUpHighwayRoadLimit) or (self.roadcate > 1 and self.autoUpRoadLimit)):  # 高速公路 (0,1: highway)
+          if self.roadcate <= 1:
             max_add_val = self.autoUpHighwayRoadLimit40KMH
           else:
             max_add_val = self.autoUpRoadLimit40KMH

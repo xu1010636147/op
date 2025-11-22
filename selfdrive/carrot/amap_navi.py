@@ -14,6 +14,8 @@ BLINKER_LEFT = 1
 BLINKER_RIGHT = 2
 BLINKER_BOTH = 3
 
+lock = threading.Lock()
+
 class SharedData:
   def __init__(self):
     #=============共享数据（来自amap_navi）=============
@@ -22,14 +24,14 @@ class SharedData:
     self.right_blind = False
     self.lidar_lblind = False #雷达盲区信号
     self.lidar_rblind = False
-    self.lf_drel = None #雷达左前车距离
-    self.lb_drel = None #雷达左后车距离
-    self.rf_drel = None #雷达右前车距离
-    self.rb_drel = None #雷达右后车距离
-    self.lf_xrel = None #雷达左前车距离
-    self.lb_xrel = None #雷达左后车距离
-    self.rf_xrel = None #雷达右前车距离
-    self.rb_xrel = None #雷达右后车距离
+    self.lf_drel = {} #雷达左前车距离
+    self.lb_drel = {} #雷达左后车距离
+    self.rf_drel = {} #雷达右前车距离
+    self.rb_drel = {} #雷达右后车距离
+    self.lf_xrel = {} #雷达左前车距离
+    self.lb_xrel = {} #雷达左后车距离
+    self.rf_xrel = {} #雷达右前车距离
+    self.rb_xrel = {} #雷达右后车距离
     self.lidar_l = False
     self.lidar_r = False
     self.camera_l = False
@@ -83,6 +85,12 @@ class AmapNaviServ:
     self.local_ip_address = "0.0.0.0" #本地ip地址
 
     self.clients = {}  # 保存多个客户端
+    self.clients_copy = {}
+    self.active_clients = {}
+
+    now = time.time()
+    self.blinker_alive = False
+    self.blinker_time = now
 
     threading.Thread(target=self.navi_broadcast_info).start()
     threading.Thread(target=self.navi_comm_thread).start()
@@ -131,16 +139,6 @@ class AmapNaviServ:
         self.shared_data.right_blindspot = int(carState.rightBlindspot)
 
   def navi_comm_thread(self):
-    blinker_alive = False
-    blinker_time = time.time()
-    l_blindspot_alive = False
-    l_blindspot_time = time.time()
-    r_blindspot_alive = False
-    r_blindspot_time = time.time()
-    lidar_lblind_alive = False
-    lidar_lblind_time = time.time()
-    lidar_rblind_alive = False
-    lidar_rblind_time = time.time()
     while True:
       try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
@@ -161,6 +159,34 @@ class AmapNaviServ:
                 if not hasattr(self, "clients"):
                   self.clients = {}  # {ip: last_seen_time}
 
+                now = time.time()
+
+                left_blind = None
+                right_blind = None
+                lidar_lblind = None
+                lidar_rblind = None
+
+                lf_drel = None
+                lb_drel = None
+                rf_drel = None
+                rb_drel = None
+                lf_xrel = None
+                lb_xrel = None
+                rf_xrel = None
+                rb_xrel = None
+
+                lf_drel_alive = False
+                lb_drel_alive = False
+                rf_drel_alive = False
+                rb_drel_alive = False
+                lf_xrel_alive = False
+                lb_xrel_alive = False
+                rf_xrel_alive = False
+                rb_xrel_alive = False
+
+                camera_data = False
+                lidar_data = False
+
                 try:
                   json_obj = json.loads(data.decode())
 
@@ -173,8 +199,8 @@ class AmapNaviServ:
                       self.shared_data.ext_blinker = BLINKER_RIGHT
                     else:
                       self.shared_data.ext_blinker = BLINKER_NONE
-                    blinker_alive = True
-                    blinker_time = time.time()
+                    self.blinker_alive = True
+                    self.blinker_time = time.time()
 
                   #客户端命令
                   if "index" in json_obj:
@@ -189,68 +215,148 @@ class AmapNaviServ:
                     resp = json_obj.get("resp")
                     #摄像头盲区信号
                     if resp == "cam_blind":
+                      camera_data = True
                       if "left_blind" in json_obj:
-                        self.shared_data.left_blind = json_obj.get("left_blind")
-                        l_blindspot_alive = True
-                        l_blindspot_time = time.time()
+                        left_blind = json_obj.get("left_blind")
+                        #l_blindspot_alive = True
                       if "right_blind" in json_obj:
-                        self.shared_data.right_blind = json_obj.get("right_blind")
-                        r_blindspot_alive = True
-                        r_blindspot_time = time.time()
+                        right_blind = json_obj.get("right_blind")
+                        #r_blindspot_alive = True
 
                     #雷达盲区信号和距离
                     if resp == "blindspot":
+                      lidar_data = True
                       #盲区
                       if "lidar_lblind" in json_obj:
-                        self.shared_data.lidar_lblind = json_obj.get("lidar_lblind")
-                        lidar_lblind_alive = True
-                        lidar_lblind_time = time.time()
+                        lidar_lblind = json_obj.get("lidar_lblind")
+                        #lidar_lblind_alive = True
                       if "lidar_rblind" in json_obj:
-                        self.shared_data.lidar_rblind = json_obj.get("lidar_rblind")
-                        lidar_rblind_alive = True
-                        lidar_rblind_time = time.time()
+                        lidar_rblind = json_obj.get("lidar_rblind")
+                        #lidar_rblind_alive = True
                       #距离
                       if "lf_drel" in json_obj:
-                        self.shared_data.lf_drel = int(json_obj.get("lf_drel"))
-                      else:
-                        self.shared_data.lf_drel = None
+                        lf_drel = int(json_obj.get("lf_drel"))
+                        lf_drel_alive = True
                       if "lb_drel" in json_obj:
-                        self.shared_data.lb_drel = int(json_obj.get("lb_drel"))
-                      else:
-                        self.shared_data.lb_drel = None
+                        lb_drel = int(json_obj.get("lb_drel"))
+                        lb_drel_alive = True
                       if "rf_drel" in json_obj:
-                        self.shared_data.rf_drel = int(json_obj.get("rf_drel"))
-                      else:
-                        self.shared_data.rf_drel = None
+                        rf_drel = int(json_obj.get("rf_drel"))
+                        rf_drel_alive = True
                       if "rb_drel" in json_obj:
-                        self.shared_data.rb_drel = int(json_obj.get("rb_drel"))
-                      else:
-                        self.shared_data.rb_drel = None
+                        rb_drel = int(json_obj.get("rb_drel"))
+                        rb_drel_alive = True
 
                       if "lf_xrel" in json_obj:
-                        self.shared_data.lf_xrel = int(json_obj.get("lf_xrel"))
-                      else:
-                        self.shared_data.lf_xrel = None
+                        lf_xrel = int(json_obj.get("lf_xrel"))
+                        lf_xrel_alive = True
                       if "lb_xrel" in json_obj:
-                        self.shared_data.lb_xrel = int(json_obj.get("lb_xrel"))
-                      else:
-                        self.shared_data.lb_xrel = None
+                        lb_xrel = int(json_obj.get("lb_xrel"))
+                        lb_xrel_alive = True
                       if "rf_xrel" in json_obj:
-                        self.shared_data.rf_xrel = int(json_obj.get("rf_xrel"))
-                      else:
-                        self.shared_data.rf_xrel = None
+                        rf_xrel = int(json_obj.get("rf_xrel"))
+                        rf_xrel_alive = True
                       if "rb_xrel" in json_obj:
-                        self.shared_data.rb_xrel = int(json_obj.get("rb_xrel"))
-                      else:
-                        self.shared_data.rb_xrel = None
+                        rb_xrel = int(json_obj.get("rb_xrel"))
+                        rb_xrel_alive = True
 
                   #更新客户端信息
                   old_info = self.clients.get(ip, {})
-                  self.clients[ip] = {
-                    "last_seen": time.time(),
-                    "device": json_obj.get("device", old_info.get("device", "")),
-                    "detect_side":int(json_obj.get("detect_side", old_info.get("detect_side", 0))),
-                  }
+
+                  #检测盲区状态是否超时
+                  l_blindspot_time = old_info.get("l_blindspot_time", now)
+                  r_blindspot_time = old_info.get("r_blindspot_time", now)
+                  lidar_lblind_time = old_info.get("lidar_lblind_time", now)
+                  lidar_rblind_time = old_info.get("lidar_rblind_time", now)
+
+                  if (now - l_blindspot_time) > 10 and left_blind is not None:
+                    left_blind = False
+                  if (now - r_blindspot_time) > 10 and right_blind is not None:
+                    right_blind = False
+                  if (now - lidar_lblind_time) > 10 and lidar_lblind is not None:
+                    lidar_lblind = False
+                  if (now - lidar_rblind_time) > 10 and lidar_rblind is not None:
+                    lidar_rblind = False
+
+                  #上次的距离数据时间
+                  lf_drel_time = old_info.get("lf_drel_time", now)
+                  lb_drel_time = old_info.get("lb_drel_time", now)
+                  rf_drel_time = old_info.get("rf_drel_time", now)
+                  rb_drel_time = old_info.get("rb_drel_time", now)
+                  lf_xrel_time = old_info.get("lf_xrel_time", now)
+                  lb_xrel_time = old_info.get("lb_xrel_time", now)
+                  rf_xrel_time = old_info.get("rf_xrel_time", now)
+                  rb_xrel_time = old_info.get("rb_xrel_time", now)
+                  #若本次通讯无数据，加载上次的数据
+                  if not lidar_data:
+                    if lf_drel is None:
+                      lf_drel = old_info.get("lf_drel", None)
+                    if lb_drel is None:
+                      lb_drel = old_info.get("lb_drel", None)
+                    if rf_drel is None:
+                      rf_drel = old_info.get("rf_drel", None)
+                    if rb_drel is None:
+                      rb_drel = old_info.get("rb_drel", None)
+                    if lf_xrel is None:
+                      lf_xrel = old_info.get("lf_xrel", None)
+                    if lb_xrel is None:
+                      lb_xrel = old_info.get("lb_xrel", None)
+                    if rf_xrel is None:
+                      rf_xrel = old_info.get("rf_xrel", None)
+                    if rb_xrel is None:
+                      rb_xrel = old_info.get("rb_xrel", None)
+                  #检测距离数据是否超时
+                  if (now - lf_drel_time) > 10 and lf_drel is not None:
+                    lf_drel = None
+                  if (now - lb_drel_time) > 10 and lb_drel is not None:
+                    lb_drel = None
+                  if (now - rf_drel_time) > 10 and rf_drel is not None:
+                    rf_drel = None
+                  if (now - rb_drel_time) > 10 and rb_drel is not None:
+                    rb_drel = None
+                  if (now - lf_xrel_time) > 10 and lf_xrel is not None:
+                    lf_xrel = None
+                  if (now - lb_xrel_time) > 10 and lb_xrel is not None:
+                    lb_xrel = None
+                  if (now - rf_xrel_time) > 10 and rf_xrel is not None:
+                    rf_xrel = None
+                  if (now - rb_xrel_time) > 10 and rb_xrel is not None:
+                    rb_xrel = None
+
+                  with lock:
+                    self.clients[ip] = {
+                      "last_seen": time.time(),
+                      "device": json_obj.get("device", old_info.get("device", "")),
+                      "detect_side":json_obj.get("detect_side", old_info.get("detect_side", 0)),
+                      #盲区状态更新
+                      "lidar_lblind": lidar_lblind if lidar_lblind is not None else old_info.get("lidar_lblind", False),
+                      "lidar_rblind": lidar_rblind if lidar_rblind is not None else old_info.get("lidar_rblind", False),
+                      "left_blind": left_blind if left_blind is not None else old_info.get("left_blind", False),
+                      "right_blind": right_blind if right_blind is not None else old_info.get("right_blind", False),
+                      #f雷达盲区更新时间
+                      "lidar_lblind_time": now if lidar_lblind is not None else old_info.get("lidar_lblind_time", now),
+                      "lidar_rblind_time": now if lidar_rblind is not None else old_info.get("lidar_rblind_time", now),
+                      "l_blindspot_time": now if left_blind is not None else old_info.get("l_blindspot_time", now),
+                      "r_blindspot_time": now if right_blind is not None else old_info.get("r_blindspot_time", now),
+                      #雷达距离
+                      "lf_drel": lf_drel,
+                      "lb_drel": lb_drel,
+                      "rf_drel": rf_drel,
+                      "rb_drel": rb_drel,
+                      "lf_xrel": lf_xrel,
+                      "lb_xrel": lb_xrel,
+                      "rf_xrel": rf_xrel,
+                      "rb_xrel": rb_xrel,
+                      # 雷达距离更新时间
+                      "lf_drel_time": now if lf_drel_alive else old_info.get("lf_drel_time", now),
+                      "lb_drel_time": now if lb_drel_alive else old_info.get("lb_drel_time", now),
+                      "rf_drel_time": now if rf_drel_alive else old_info.get("rf_drel_time", now),
+                      "rb_drel_time": now if rb_drel_alive else old_info.get("rb_drel_time", now),
+                      "lf_xrel_time": now if lf_xrel_alive else old_info.get("lf_xrel_time", now),
+                      "lb_xrel_time": now if lb_xrel_alive else old_info.get("lb_xrel_time", now),
+                      "rf_xrel_time": now if rf_xrel_alive else old_info.get("rf_xrel_time", now),
+                      "rb_xrel_time": now if rb_xrel_alive else old_info.get("rb_xrel_time", now),
+                    }
 
                   if (self.shared_data.showDebugLog & 32) > 0:
                     print(f"receive: {json_obj}")
@@ -268,31 +374,20 @@ class AmapNaviServ:
                 break
 
               # 修改: 清理超过 10 秒未活跃的客户端
-              now = time.time()
-              self.clients = {ip: info for ip, info in self.clients.items() if now - info["last_seen"] < 10}
+              with lock:
+                self.clients = {ip: info for ip, info in self.clients.items() if now - info["last_seen"] < 10}
 
               #超过10秒后重启转向灯和盲区状态
-              if blinker_alive and (now - blinker_time) > 10:
+              if self.blinker_alive and (now - self.blinker_time) > 10:
                 self.shared_data.ext_blinker = BLINKER_NONE
-                blinker_alive = False
-              if l_blindspot_alive and (now - l_blindspot_time) > 10:
-                self.shared_data.left_blind = False
-                l_blindspot_alive = False
-              if r_blindspot_alive and (now - r_blindspot_time) > 10:
-                self.shared_data.right_blind = False
-                r_blindspot_alive = False
-              if lidar_lblind_alive and (now - lidar_lblind_time) > 10:
-                self.shared_data.lidar_lblind = False
-                lidar_lblind_alive = False
-              if lidar_rblind_alive and (now - lidar_rblind_time) > 10:
-                self.shared_data.lidar_rblind = False
-                lidar_rblind_alive = False
+                self.blinker_alive = False
 
-              if self.clients:
-                self.shared_data.ext_state = len(self.clients)
-              else:
-                self.shared_data.ext_state = 0
-                self.shared_data.ext_blinker = BLINKER_NONE
+              with lock:
+                if self.clients:
+                  self.shared_data.ext_state = len(self.clients)
+                else:
+                  self.shared_data.ext_state = 0
+                  self.shared_data.ext_blinker = BLINKER_NONE
 
               self.shared_data.ext_blinker = self.shared_data.ext_blinker
 
@@ -316,9 +411,12 @@ class AmapNaviServ:
       try:
         self.sm.update(0)
         # 修改: 获取当前活跃客户端
-        active_clients = list(getattr(self, "clients", {}).keys())
+        #active_clients = list(getattr(self, "clients", {}).keys())
+        with lock:
+          self.clients_copy = getattr(self, "clients", {}).copy()
+          self.active_clients = list(self.clients_copy.keys())
 
-        if frame % 20 == 0 or active_clients:
+        if frame % 20 == 0 or self.active_clients:
           try:
             if not PC:
               ip_address = socket.gethostbyname(socket.gethostname())
@@ -326,7 +424,19 @@ class AmapNaviServ:
               ip_address = self.navi_get_local_ip()
             if ip_address != self.local_ip_address:
               self.local_ip_address = ip_address
-              self.clients = {}  # 修改: 本地 IP 变化时清空客户端
+              self.clients_copy = {}
+              with lock:
+                self.clients = {}  # 修改: 本地 IP 变化时清空客户端
+
+            lidar_l = False
+            lidar_r = False
+            camera_l = False
+            camera_r = False
+            lidar_lblind = False
+            lidar_rblind = False
+            left_blind = False
+            right_blind = False
+            now = time.time()
 
             #消息
             navi_msg = None
@@ -340,17 +450,60 @@ class AmapNaviServ:
             broadcast_msg = self.make_broadcast_message()
             broadcast_dat = broadcast_msg.encode('utf-8')
 
-            lidar_l = False
-            lidar_r = False
-            camera_l = False
-            camera_r = False
-            if active_clients:
-              # 向所有客户端发送
-              if self.clients:
-                for ip, info in self.clients.items():
+            if self.active_clients:
+              if self.clients_copy:
+                #遍历前清空旧数据
+                for field in [ "lb_drel", "rf_drel", "rb_drel","lf_xrel", "lb_xrel", "rf_xrel", "rb_xrel",]:
+                  getattr(self.shared_data, field).clear()
+
+                # 遍历所有客户端的盲区状态和更新时间
+                left_lidar_id = 0
+                right_lidar_id = 0
+                for ip, info in self.clients_copy.items():
                   try:
                     device_type = info.get("device", None)
                     detect_side = info.get("detect_side", None)
+                    if device_type == "lidar" or device_type == "camera":  # 雷达模块
+                      #获取盲区状态
+                      if info.get("lidar_lblind", False):
+                        lidar_lblind = True
+                      if info.get("lidar_rblind", False):
+                        lidar_rblind = True
+                      if info.get("left_blind", False):
+                        left_blind = True
+                      if info.get("right_blind", False):
+                        right_blind = True
+                      #获取雷达距离数据
+                      if (detect_side & 0x01) > 0:
+                        self.shared_data.lf_drel[left_lidar_id] = info.get("lf_drel", None)
+                        self.shared_data.lb_drel[left_lidar_id] = info.get("lb_drel", None)
+                        self.shared_data.lf_xrel[left_lidar_id] = info.get("lf_xrel", None)
+                        self.shared_data.lb_xrel[left_lidar_id] = info.get("lb_xrel", None)
+                        left_lidar_id += 1
+
+                      if (detect_side & 0x02) > 0:
+                        self.shared_data.rf_drel[right_lidar_id] = info.get("rf_drel", None)
+                        self.shared_data.rb_drel[right_lidar_id] = info.get("rb_drel", None)
+                        self.shared_data.rf_xrel[right_lidar_id] = info.get("rf_xrel", None)
+                        self.shared_data.rb_xrel[right_lidar_id] = info.get("rb_xrel", None)
+                        right_lidar_id += 1
+
+                  except Exception as e:
+                    if (self.shared_data.showDebugLog & 32) > 0:
+                      print(f"sendto {ip} failed: {e}")
+
+                #更新盲区状态
+                self.shared_data.lidar_lblind = lidar_lblind
+                self.shared_data.lidar_rblind = lidar_rblind
+                self.shared_data.left_blind = left_blind
+                self.shared_data.right_blind = right_blind
+
+                # 向所有客户端发送数据
+                for ip, info in self.clients_copy.items():
+                  try:
+                    device_type = info.get("device", None)
+                    detect_side = info.get("detect_side", None)
+
                     # 根据 device_type 做判断
                     if device_type == "overtake" or device_type == "navi": #超车或导航
                       if navi_msg is None:
@@ -497,23 +650,18 @@ class AmapNaviServ:
       msg['lidar_rblind'] = self.right_blindspot()
 
       #雷达距离数据
-      if self.shared_data.lf_drel is not None:
-        msg['lf_drel'] = self.shared_data.lf_drel
-      if self.shared_data.lb_drel is not None:
-        msg['lb_drel'] = self.shared_data.lb_drel
-      if self.shared_data.rf_drel is not None:
-        msg['rf_drel'] = self.shared_data.rf_drel
-      if self.shared_data.rb_drel is not None:
-        msg['rb_drel'] = self.shared_data.rb_drel
-
-      if self.shared_data.lf_xrel is not None:
-        msg['lf_xrel'] = self.shared_data.lf_xrel
-      if self.shared_data.lb_xrel is not None:
-        msg['lb_xrel'] = self.shared_data.lb_xrel
-      if self.shared_data.rf_xrel is not None:
-        msg['rf_xrel'] = self.shared_data.rf_xrel
-      if self.shared_data.rb_xrel is not None:
-        msg['rb_xrel'] = self.shared_data.rb_xrel
+      fields = ["lf_drel", "lb_drel", "rf_drel", "rb_drel", "lf_xrel", "lb_xrel", "rf_xrel", "rb_xrel"]
+      # 找出所有 field 的所有 lidar_id
+      all_lidar_ids = set()
+      for f in fields:
+        all_lidar_ids.update(getattr(self.shared_data, f).keys())
+      # 按索引顺序遍历
+      for idx in sorted(all_lidar_ids):
+        for field in fields:
+          d = getattr(self.shared_data, field)
+          if idx in d and d[idx] is not None:
+            key = field if idx == 0 else f"{field}{idx}"
+            msg[key] = d[idx]
 
       #雷达或摄像头是否存在标志
       msg['lidar_l'] = self.shared_data.lidar_l

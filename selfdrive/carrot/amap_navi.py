@@ -374,6 +374,7 @@ class AmapNaviServ:
                 break
 
               # 修改: 清理超过 10 秒未活跃的客户端
+              now = time.time()
               with lock:
                 self.clients = {ip: info for ip, info in self.clients.items() if now - info["last_seen"] < 10}
 

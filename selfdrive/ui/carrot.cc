@@ -1403,8 +1403,8 @@ public:
 
         SubMaster& sm = *(s->sm);
         auto car_state = sm["carState"].getCarState();
-        bool left_blindspot = car_state.getLeftBlindspot();
-        bool right_blindspot = car_state.getRightBlindspot();
+        int left_blindspot = car_state.getLeftBlindspot();
+        int right_blindspot = car_state.getRightBlindspot();
 
         //auto lead_left = sm["radarState"].getRadarState().getLeadLeft();
         //auto lead_right = sm["radarState"].getRadarState().getLeadRight();
@@ -1429,8 +1429,8 @@ public:
         rightFrontBlind = true;
         carrotLeftBlind = true;
         carrotRightBlind = true;
-        left_blindspot = true;
-        right_blindspot = true;
+        left_blindspot = 1;
+        right_blindspot = 1;
 #endif
         if (left_blindspot) {
             ui_draw_bsd(s, lane_barrier_vertices[0], &color, false);
@@ -1570,7 +1570,7 @@ public:
         icon_show = false;
         if (left_blindspot) {
             int cx = center_x - horizontal_offset;
-            int cy = top_y + + circle_radius;  // 保持在最上方
+            int cy = top_y + circle_radius;  // 保持在最上方
             nvgBeginPath(s->vg);
             nvgCircle(s->vg, cx, cy, circle_radius);
             nvgFillColor(s->vg, nvgRGBA(255, 215, 0, 150));
@@ -2750,7 +2750,7 @@ public:
             }
             if (show_datetime == 1 || show_datetime == 3) {
                 //strftime(str, sizeof(str), "%m-%d-%a", local);
-                const char* weekdays_ko[] = { "일", "월", "화", "수", "목", "금", "토" };
+                const char* weekdays_ko[] = { "日", "一", "二", "三", "四", "五", "六" };
                 strftime(str, sizeof(str), "%m-%d", local); // 날짜만 가져옴
                 int weekday_index = local->tm_wday; // tm_wday: 0=일, 1=월, ..., 6=토
                 snprintf(str + strlen(str), sizeof(str) - strlen(str), "(%s)", weekdays_ko[weekday_index]);

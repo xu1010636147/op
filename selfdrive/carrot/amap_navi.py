@@ -16,6 +16,65 @@ BLINKER_BOTH = 3
 
 lock = threading.Lock()
 
+
+class RadarSpeedEstimator:
+  """
+  升级版鲁棒跳变过滤器（单位：mm 输入 / ms 时间戳，输出 m/s）
+  """
+
+  def __init__(self, max_acc=4.0, smooth_n=5):
+    self.last_dist_m = None
+    self.last_t_ms = None
+    self.last_speed = 0.0
+    self.max_acc = max_acc  # m/s²
+    self.smooth_n = smooth_n
+    self.speed_hist = []
+
+  def update(self, dist_mm, t_ms):
+    # 目标丢失
+    if dist_mm is None or t_ms is None:
+      self.last_dist_m = None
+      self.last_t_ms = None
+      return None
+
+    # 转米
+    dist_m = dist_mm / 1000.0
+
+    # 第一帧
+    if self.last_dist_m is None or self.last_t_ms is None:
+      self.last_dist_m = dist_m
+      self.last_t_ms = t_ms
+      self.last_speed = 0.0
+      self._update_hist(0.0)
+      return None
+
+    # 时间差
+    dt_ms = t_ms - self.last_t_ms
+    if dt_ms <= 0:
+      return self.last_speed  # 时间异常，保留上次速度
+
+    dt = dt_ms / 1000.0
+    raw_speed = (dist_m - self.last_dist_m) / dt
+
+    # 加速度限制
+    allowed_dv = self.max_acc * dt
+    low = self.last_speed - allowed_dv
+    high = self.last_speed + allowed_dv
+    filtered_speed = min(max(raw_speed, low), high)
+
+    # 保存状态
+    self.last_dist_m = dist_m
+    self.last_t_ms = t_ms
+    self.last_speed = filtered_speed
+    return self._update_hist(filtered_speed)
+
+  def _update_hist(self, speed):
+    """滑动平均（只对非 None 值）"""
+    self.speed_hist.append(speed)
+    if len(self.speed_hist) > self.smooth_n:
+      self.speed_hist.pop(0)
+    return sum(self.speed_hist) / len(self.speed_hist)
+
 class SharedData:
   def __init__(self):
     #=============共享数据（来自amap_navi）=============
@@ -36,6 +95,10 @@ class SharedData:
     self.lidar_r = False
     self.camera_l = False
     self.camera_r = False
+    self.lf_vrel = None #雷达左前车相对速度
+    self.lb_vrel = None #雷达左后车相对速度
+    self.rf_vrel = None #雷达右前车相对速度
+    self.rb_vrel = None #雷达右后车相对速度
 
     #客户端控制命令
     self.cmd_index = -1
@@ -91,6 +154,12 @@ class AmapNaviServ:
     now = time.time()
     self.blinker_alive = False
     self.blinker_time = now
+    self.lead_left_right = False
+
+    self.leftFrontTarget = RadarSpeedEstimator()
+    self.leftBehindTarget = RadarSpeedEstimator()
+    self.rightFrontTarget = RadarSpeedEstimator()
+    self.rightBehindTarget = RadarSpeedEstimator()
 
     threading.Thread(target=self.navi_broadcast_info).start()
     threading.Thread(target=self.navi_comm_thread).start()
@@ -226,6 +295,10 @@ class AmapNaviServ:
                     #雷达盲区信号和距离
                     if resp == "blindspot":
                       lidar_data = True
+                      detect_side = json_obj.get("detect_side",0)
+                      #雷达编号，0号为主雷达
+                      lidar_id = int(json_obj.get("lidar_id", 0))
+                      dist_timems = int(json_obj["dist_time"]) if "dist_time" in json_obj else None
                       #盲区
                       if "lidar_lblind" in json_obj:
                         lidar_lblind = json_obj.get("lidar_lblind")
@@ -237,15 +310,23 @@ class AmapNaviServ:
                       if "lf_drel" in json_obj:
                         lf_drel = int(json_obj.get("lf_drel"))
                         lf_drel_alive = True
+                      if (0 == lidar_id) and (detect_side & 1): #仅主雷达计算速度
+                        self.shared_data.lf_vrel = self.leftFrontTarget.update(lf_drel, dist_timems)
                       if "lb_drel" in json_obj:
                         lb_drel = int(json_obj.get("lb_drel"))
                         lb_drel_alive = True
+                      if (0 == lidar_id) and (detect_side & 1): #仅主雷达计算速度
+                        self.shared_data.lb_vrel = self.leftBehindTarget.update(lb_drel, dist_timems)
                       if "rf_drel" in json_obj:
                         rf_drel = int(json_obj.get("rf_drel"))
                         rf_drel_alive = True
+                      if (0 == lidar_id) and (detect_side & 2): #仅主雷达计算速度
+                        self.shared_data.rf_vrel = self.rightFrontTarget.update(rf_drel, dist_timems)
                       if "rb_drel" in json_obj:
                         rb_drel = int(json_obj.get("rb_drel"))
                         rb_drel_alive = True
+                      if (0 == lidar_id) and (detect_side & 2): #仅主雷达计算速度
+                        self.shared_data.rb_vrel = self.rightBehindTarget.update( rb_drel, dist_timems)
 
                       if "lf_xrel" in json_obj:
                         lf_xrel = int(json_obj.get("lf_xrel"))
@@ -619,6 +700,7 @@ class AmapNaviServ:
           msg["lead1"] = False
         # 左侧前车
         if hasattr(radar_state, 'leadLeft') and radar_state.leadLeft and hasattr(radar_state.leadLeft,'status') and radar_state.leadLeft.status:
+          self.lead_left_right = True
           msg["l_lead"] = True
           if hasattr(radar_state.leadLeft, 'dRel'):
             msg["l_drel"] = int(radar_state.leadLeft.dRel)
@@ -630,6 +712,7 @@ class AmapNaviServ:
           msg["l_lead"] = False
         # 右侧前车
         if hasattr(radar_state, 'leadRight') and radar_state.leadRight and hasattr(radar_state.leadRight,'status') and radar_state.leadRight.status:
+          self.lead_left_right = True
           msg["r_lead"] = True
           if hasattr(radar_state.leadRight, 'dRel'):
             msg["r_drel"] = int(radar_state.leadRight.dRel)
@@ -639,6 +722,17 @@ class AmapNaviServ:
             msg["r_vrel"] = int(radar_state.leadRight.vRel * 3.6)
         else:
           msg["r_lead"] = False
+
+      #前方激光雷达速度
+      if self.shared_data.lf_vrel is not None:
+        msg["lf_vrel"] = int(self.shared_data.lf_vrel * 3.6)
+      if self.shared_data.rf_vrel is not None:
+        msg["rf_vrel"] = int(self.shared_data.rf_vrel * 3.6)
+      #后方激光雷达速度
+      if self.shared_data.lb_vrel is not None:
+        msg["lb_vrel"] = int(self.shared_data.lb_vrel * 3.6)
+      if self.shared_data.rb_vrel is not None:
+        msg["rb_vrel"] = int(self.shared_data.rb_vrel * 3.6)
 
       #前雷达盲区信号
       if self.shared_data.leftFrontBlind is not None:

@@ -261,6 +261,9 @@ class CarrotMan:
       self.carrot_serv.carrotCmd = self.amap_navi.shared_data.remote_cmd
       self.carrot_serv.carrotArg = self.amap_navi.shared_data.remote_arg
 
+    #更新调试信息标志
+    self.amap_navi.shared_data.showDebugLog = self.carrot_serv.showDebugLog
+
   def update_amap_navi(self):
     #更新共享数据
     self.amap_navi.shared_data.roadcate = self.carrot_serv.roadcate

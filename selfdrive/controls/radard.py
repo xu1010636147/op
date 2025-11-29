@@ -10,6 +10,7 @@ import capnp
 from cereal import messaging, log, car
 from openpilot.common.filter_simple import FirstOrderFilter
 from openpilot.common.params import Params
+from openpilot.selfdrive.carrot.config import UnifiedParams
 from openpilot.common.realtime import DT_MDL, Priority, config_realtime_process
 from openpilot.common.swaglog import cloudlog
 from openpilot.common.simple_kalman import KF1D
@@ -378,7 +379,7 @@ class RadarD:
 
     self.vision_tracks = [VisionTrack(DT_MDL), VisionTrack(DT_MDL)]
 
-    self.params = Params()
+    self.params = UnifiedParams()
     self.enable_radar_tracks = self.params.get_int("EnableRadarTracks")
     self.enable_corner_radar = self.params.get_int("EnableCornerRadar")
     self.radar_lat_factor = 0.0

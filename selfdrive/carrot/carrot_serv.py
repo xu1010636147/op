@@ -15,6 +15,7 @@ from cereal import log
 import cereal.messaging as messaging
 from openpilot.common.realtime import Ratekeeper
 from openpilot.common.params import Params
+from openpilot.selfdrive.carrot.config import UnifiedParams
 from openpilot.common.filter_simple import MyMovingAverage
 from openpilot.system.hardware import PC, TICI
 from openpilot.selfdrive.navd.helpers import Coordinate
@@ -84,7 +85,7 @@ nav_type_mapping = {
 import collections
 class CarrotServ:
   def __init__(self):
-    self.params = Params()
+    self.params = UnifiedParams()
     self.params_memory = Params("/dev/shm/params")
 
     self.nRoadLimitSpeed = 30

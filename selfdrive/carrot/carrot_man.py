@@ -16,6 +16,7 @@ from cereal import log
 import cereal.messaging as messaging
 from openpilot.common.realtime import Ratekeeper
 from openpilot.common.params import Params
+from openpilot.selfdrive.carrot.config import UnifiedParams
 from openpilot.common.filter_simple import MyMovingAverage
 from openpilot.system.hardware import PC, TICI
 from openpilot.selfdrive.navd.helpers import Coordinate
@@ -26,6 +27,7 @@ from openpilot.selfdrive.carrot.carrot_serv import CarrotServ
 from openpilot.common.realtime import DT_MDL
 
 from openpilot.selfdrive.carrot.amap_navi import AmapNaviServ #new
+from openpilot.selfdrive.carrot.web_interface import WebInterface #new
 
 try:
   from shapely.geometry import LineString
@@ -189,13 +191,18 @@ class CarrotMan:
     self.amap_navi = AmapNaviServ()
     self.shared_cmd_index_last = -1
     print("************************************************CarrotMan init************************************************")
-    self.params = Params()
+    self.params = UnifiedParams()
+    self.sys_params = Params()
     self.params_memory = Params("/dev/shm/params")
     self.sm = messaging.SubMaster(['deviceState', 'carState', 'controlsState', 'longitudinalPlan', 'modelV2', 'selfdriveState', 'carControl', 'navRouteNavd', 'liveLocationKalman', 'navInstruction', 'radarState'])
     self.pm = messaging.PubMaster(['carrotMan', "navRoute", "navInstructionCarrot"])
 
     self.carrot_serv = CarrotServ()
-
+    self.web_interface = WebInterface(self, port=8088)
+    self.web_interface_thread = threading.Thread(target=self.web_interface.start_web_server, args=[])
+    self.web_interface_thread.daemon = True
+    self.web_interface_thread.start()
+    
     self.show_panda_debug = False
     self.broadcast_ip = self.get_broadcast_address()
     self.broadcast_port = 7705
@@ -245,6 +252,67 @@ class CarrotMan:
     self.is_metric = self.params.get_bool("IsMetric")
 
   #new
+  def get_radar_data(self):
+    """获取雷达数据用于显示"""
+    try:
+        radar_data = {
+            'points': [],
+            'tracks': [],
+            'leads': [],
+            'timestamp': time.time()
+        }
+        
+        if self.sm.alive['radarState']:
+            radarState = self.sm['radarState']
+            
+            # 处理雷达点云数据
+            if hasattr(radarState, 'points') and radarState.points:
+                for point in radarState.points:
+                    if point.trackId > 0:  # 有效的跟踪点
+                        radar_data['points'].append({
+                            'id': point.trackId,
+                            'dRel': float(point.dRel),      # 相对距离
+                            'yRel': float(point.yRel),      # 横向位置
+                            'vRel': float(point.vRel),      # 相对速度
+                            'aRel': float(point.aRel),      # 相对加速度
+                            'measured': bool(point.measured),
+                            'status': point.status
+                        })
+            
+            # 处理跟踪目标
+            if hasattr(radarState, 'tracks') and radarState.tracks:
+                for track in radarState.tracks:
+                    radar_data['tracks'].append({
+                        'id': track.trackId,
+                        'dRel': float(track.dRel),
+                        'yRel': float(track.yRel),
+                        'vRel': float(track.vRel),
+                        'aRel': float(track.aRel),
+                        'status': track.status
+                    })
+            
+            # 处理前车数据
+            leads = []
+            for attr in ['leadOne', 'leadLeft', 'leadRight']:
+                if hasattr(radarState, attr):
+                    lead = getattr(radarState, attr)
+                    if lead.status:
+                        leads.append({
+                            'type': attr,
+                            'dRel': float(lead.dRel),
+                            'yRel': float(lead.yRel) if hasattr(lead, 'yRel') else 0,
+                            'vRel': float(lead.vRel),
+                            'aRel': float(lead.aRel) if hasattr(lead, 'aRel') else 0,
+                            'status': lead.status
+                        })
+            radar_data['leads'] = leads
+            
+        return radar_data
+        
+    except Exception as e:
+        debug_print(f"获取雷达数据错误: {e}")
+        return {'points': [], 'tracks': [], 'leads': [], 'timestamp': time.time(), 'error': str(e)}
+
   def get_data_amap_navi(self):
     #获取共享数据
     self.carrot_serv.ext_blinker = self.amap_navi.shared_data.ext_blinker
@@ -487,7 +555,7 @@ class CarrotMan:
 
   def make_send_message(self):
     msg = {}
-    msg['Carrot2'] = self.params.get("Version").decode('utf-8')
+    msg['Carrot2'] = self.sys_params.get("Version").decode('utf-8')
     isOnroad = self.params.get_bool("IsOnroad")
     msg['IsOnroad'] = isOnroad
     msg['CarrotRouteActive'] = self.navi_points_active
@@ -1010,7 +1078,11 @@ def main():
       print(f"carrot_man error...: {e}")
       traceback.print_exc()
       time.sleep(10)
-
+    except KeyboardInterrupt:
+        print("正在关闭 CarrotManager...")
+        carrot_man.is_running = False
+        carrot_man.web_interface.stop_web_server()
+        print("CarrotManager 已关闭")
 
 if __name__ == "__main__":
   main()

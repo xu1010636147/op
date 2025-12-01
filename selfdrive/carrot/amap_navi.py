@@ -190,7 +190,7 @@ class AmapNaviServ:
       if hasattr(carState, 'vCruise'):
         self.shared_data.v_cruise_kph = carState.vCruise
       if hasattr(carState, 'vEgo'):
-        self.shared_data.vEgo = int(carState.vEgo * 3.6)
+        self.shared_data.vEgo = f1(carState.vEgo * 3.6)
       if hasattr(carState, 'aEgo'):
         self.shared_data.aEgo = round(carState.aEgo, 1)
       if hasattr(carState, 'steeringAngleDeg'):
@@ -849,6 +849,38 @@ class AmapNaviServ:
     msg = {}
     msg['ip'] = self.local_ip_address
     msg['port'] = self.listen_port
+    isOnroad = self.params.get_bool("IsOnroad")
+    msg['IsOnroad'] = isOnroad
+
+    if isOnroad:
+      # 车辆状态
+      if self.shared_data.carState:
+        if self.shared_data.v_cruise_kph is not None:
+          msg['v_cruise_kph'] = self.shared_data.v_cruise_kph  # 巡航速度
+        if self.shared_data.v_ego_kph is not None:
+          msg['v_ego_kph'] = self.shared_data.v_ego_kph  # 当前速度
+        if self.shared_data.vEgo is not None:
+          msg["vego"] = self.shared_data.vEgo
+        if self.shared_data.gas_press is not None:
+          msg["gas_press"] = self.shared_data.gas_press
+        if self.shared_data.break_press is not None:
+          msg["break_press"] = self.shared_data.break_press
+      # 雷达数据
+      if self.sm.alive['radarState']:  # and self.sm.updated['radarState']:
+        radar_state = self.sm['radarState']
+        # 当前车道前车
+        if hasattr(radar_state, 'leadOne') and radar_state.leadOne and hasattr(radar_state.leadOne,'status') and radar_state.leadOne.status:
+          msg["lead1"] = True
+          if hasattr(radar_state.leadOne, 'dRel'):
+            msg["drel"] = f1(radar_state.leadOne.dRel)
+          if hasattr(radar_state.leadOne, 'vLead'):
+            msg["vlead"] = f1(radar_state.leadOne.vLead * 3.6)
+          if hasattr(radar_state.leadOne, 'vRel'):
+            msg["vrel"] = f1(radar_state.leadOne.vRel * 3.6)
+          if hasattr(radar_state.leadOne, 'aRel'):
+            msg["lead_accel"] = radar_state.leadOne.aRel
+        else:
+          msg["lead1"] = False
 
     # 来自模型的消息
     if self.sm.alive['modelV2']:

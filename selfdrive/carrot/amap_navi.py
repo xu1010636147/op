@@ -127,6 +127,7 @@ class SharedData:
     self.gas_press = None
     self.break_press = None
     self.engaged = None
+    self.cruise_valid = None
     self.left_blindspot = None
     self.right_blindspot = None
 
@@ -201,6 +202,7 @@ class AmapNaviServ:
         self.shared_data.break_press = carState.brakePressed
       if hasattr(carState, 'cruiseState'):
         self.shared_data.engaged = carState.cruiseState.enabled
+        self.shared_data.cruise_valid = carState.cruiseState.available
       # 盲区检测
       if hasattr(carState, 'leftBlindspot'):
         self.shared_data.left_blindspot = int(carState.leftBlindspot)
@@ -818,6 +820,9 @@ class AmapNaviServ:
       if selfdrive.active and not msg.get('engaged', False):
         msg['engaged'] = True
 
+    if self.shared_data.cruise_valid is not None:
+      msg['active'] = self.shared_data.cruise_valid
+
     return json.dumps(msg)
 
   def make_lidar_message(self):
@@ -892,6 +897,9 @@ class AmapNaviServ:
     if self.sm.alive['selfdriveState']:
       selfdrive = self.sm['selfdriveState']
       msg['active'] = True if selfdrive.active else False
+
+    if self.shared_data.cruise_valid is not None:
+      msg['active'] = self.shared_data.cruise_valid
 
     return json.dumps(msg)
 

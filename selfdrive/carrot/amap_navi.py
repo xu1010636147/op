@@ -823,9 +823,9 @@ class AmapNaviServ:
       msg['active'] = self.shared_data.cruise_valid
     # 是否在巡航
     cruise_enable = False
-    if self.shared_data.cruise_enable is not None and self.shared_data.cruise_enable:
-      cruise_enable = True
-    if self.shared_data.cruise_valid is not None and self.shared_data.cruise_valid:
+    #if self.shared_data.cruise_enable is not None and self.shared_data.cruise_enable:
+    #  cruise_enable = True
+    if self.shared_data.selfdrive_active is not None and self.shared_data.selfdrive_active:
       cruise_enable = True
     # 在巡航，active强制为True
     if cruise_enable:
@@ -859,9 +859,9 @@ class AmapNaviServ:
         msg['active'] = self.shared_data.cruise_valid
       # 是否在巡航
       cruise_enable = False
-      if self.shared_data.cruise_enable is not None and self.shared_data.cruise_enable:
-        cruise_enable = True
-      if self.shared_data.cruise_valid is not None and self.shared_data.cruise_valid:
+      #if self.shared_data.cruise_enable is not None and self.shared_data.cruise_enable:
+      #  cruise_enable = True
+      if self.shared_data.selfdrive_active is not None and self.shared_data.selfdrive_active:
         cruise_enable = True
       # 在巡航，active强制为True
       if cruise_enable:
@@ -929,9 +929,9 @@ class AmapNaviServ:
       msg['active'] = self.shared_data.cruise_valid
     # 是否在巡航
     cruise_enable = False
-    if self.shared_data.cruise_enable is not None and self.shared_data.cruise_enable:
-      cruise_enable = True
-    if self.shared_data.cruise_valid is not None and self.shared_data.cruise_valid:
+    #if self.shared_data.cruise_enable is not None and self.shared_data.cruise_enable:
+    #  cruise_enable = True
+    if self.shared_data.selfdrive_active is not None and self.shared_data.selfdrive_active:
       cruise_enable = True
     # 在巡航，active强制为True
     if cruise_enable:

@@ -137,6 +137,8 @@ class SharedData:
 
 def f1(x):
   return round(float(x), 1)
+def f2(x):
+  return round(float(x), 2)
 
 class AmapNaviServ:
   def __init__(self):
@@ -773,9 +775,9 @@ class AmapNaviServ:
       if self.shared_data.roadcate is not None:
         msg['roadcate'] = self.shared_data.roadcate
       if self.shared_data.lat_a is not None:
-        msg['lat_a'] = self.shared_data.lat_a
+        msg['lat_a'] = f2(self.shared_data.lat_a)
       if self.shared_data.max_curve is not None:
-        msg['max_curve'] = self.shared_data.max_curve
+        msg['max_curve'] = f2(self.shared_data.max_curve)
 
       # carrotMan数据
       if self.sm.alive['carrotMan']:

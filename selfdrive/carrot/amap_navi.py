@@ -463,10 +463,10 @@ class AmapNaviServ:
                   print(f"navi_comm_thread: error...: {e}")
                 break
 
-              # 修改: 清理超过 10 秒未活跃的客户端
+              # 修改: 清理超过1.0秒未活跃的客户端
               now = time.time()
               with lock:
-                self.clients = {ip: info for ip, info in self.clients.items() if now - info["last_seen"] < 10}
+                self.clients = {ip: info for ip, info in self.clients.items() if now - info["last_seen"] < 1.0}
 
               #超过10秒后重启转向灯和盲区状态
               if self.blinker_alive and (now - self.blinker_time) > 10:

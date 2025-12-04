@@ -772,7 +772,6 @@ class AmapNaviServ:
       msg['lidar_r'] = self.shared_data.lidar_r
       msg['camera_l'] = self.shared_data.camera_l
       msg['camera_r'] = self.shared_data.camera_r
-      msg['blind_enable'] = (self.shared_data.lidar_l or self.shared_data.camera_l) and (self.shared_data.lidar_r or self.shared_data.camera_r)
 
       #来自共享数据
       if self.shared_data.roadcate is not None:
@@ -790,12 +789,11 @@ class AmapNaviServ:
         #msg['road_name'] = carrotMan.szPosRoadName
         atc_type = carrotMan.atcType
         road_name = carrotMan.szPosRoadName
-        op_blocked = ("none" not in atc_type and "prepare" not in atc_type)
-        if op_blocked:
-          self.shared_data.op_blocked = True
-        if "隧道" in road_name:
-          self.shared_data.road_blocked = True
+        op_blocked = ("none" not in atc_type and "prepare" not in atc_type and not atc_type.strip())
+        self.shared_data.op_blocked = op_blocked
+        self.shared_data.road_blocked = ("隧道" in road_name)
 
+      msg['blind_enable'] = (self.shared_data.lidar_l or self.shared_data.camera_l) and (self.shared_data.lidar_r or self.shared_data.camera_r)
       msg['op_blocked'] = self.shared_data.op_blocked
       msg['road_blocked'] = self.shared_data.road_blocked
 

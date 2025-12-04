@@ -789,7 +789,7 @@ class AmapNaviServ:
         #msg['road_name'] = carrotMan.szPosRoadName
         atc_type = carrotMan.atcType
         road_name = carrotMan.szPosRoadName
-        op_blocked = ("none" not in atc_type and "prepare" not in atc_type and not atc_type.strip())
+        op_blocked = ("none" not in atc_type and "prepare" not in atc_type)
         self.shared_data.op_blocked = op_blocked
         self.shared_data.road_blocked = ("隧道" in road_name)
 

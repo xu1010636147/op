@@ -789,9 +789,11 @@ class AmapNaviServ:
         #msg['road_name'] = carrotMan.szPosRoadName
         atc_type = carrotMan.atcType
         road_name = carrotMan.szPosRoadName
+        x_spd_type = carrotMan.xSpdType
+        x_spd_dist = carrotMan.xSpdDist
         op_blocked = ("none" not in atc_type and "prepare" not in atc_type)
         self.shared_data.op_blocked = op_blocked
-        self.shared_data.road_blocked = ("隧道" in road_name)
+        self.shared_data.road_blocked = ("隧道" in road_name) or (x_spd_type >= 0 and 0 < x_spd_dist < 500)
 
       msg['blind_enable'] = (self.shared_data.lidar_l or self.shared_data.camera_l) and (self.shared_data.lidar_r or self.shared_data.camera_r)
       msg['op_blocked'] = self.shared_data.op_blocked

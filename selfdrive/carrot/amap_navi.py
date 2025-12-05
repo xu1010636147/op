@@ -83,6 +83,8 @@ class SharedData:
     self.right_blind = False
     self.lidar_lblind = False #雷达盲区信号
     self.lidar_rblind = False
+    self.lidar_car_lblind = False #车身雷达盲区
+    self.lidar_car_rblind = False #车身雷达盲区
     self.lf_drel = {} #雷达左前车距离
     self.lb_drel = {} #雷达左后车距离
     self.rf_drel = {} #雷达右前车距离
@@ -466,7 +468,14 @@ class AmapNaviServ:
               # 修改: 清理超过1.0秒未活跃的客户端
               now = time.time()
               with lock:
-                self.clients = {ip: info for ip, info in self.clients.items() if now - info["last_seen"] < 1.0}
+                #self.clients = {ip: info for ip, info in self.clients.items() if now - info["last_seen"] < 1.0}
+                new_clients = {}
+                for ip, info in self.clients.items():
+                  last_seen = info["last_seen"]
+                  # 如果这个客户端在 1 秒内更新过，就保留
+                  if now - last_seen < 1.0:
+                    new_clients[ip] = info
+                self.clients = new_clients
 
               #超过10秒后重启转向灯和盲区状态
               if self.blinker_alive and (now - self.blinker_time) > 10:
@@ -525,6 +534,8 @@ class AmapNaviServ:
             camera_r = False
             lidar_lblind = False
             lidar_rblind = False
+            lidar_car_lblind = False
+            lidar_car_rblind = False
             left_blind = False
             right_blind = False
             now = time.time()
@@ -558,8 +569,18 @@ class AmapNaviServ:
                       #获取盲区状态
                       if info.get("lidar_lblind", False):
                         lidar_lblind = True
+                        #判断车身范围是否有障碍物
+                        _lf_drel = info.get("lf_drel", None)
+                        _lb_drel = info.get("lb_drel", None)
+                        if (_lf_drel is not None and _lf_drel < 5000) or (_lb_drel is not None and _lb_drel > -4000): #车头5米或车向4米内有障碍
+                          lidar_car_lblind = True
                       if info.get("lidar_rblind", False):
                         lidar_rblind = True
+                        # 判断车身范围是否有障碍物
+                        _rf_drel = info.get("rf_drel", None)
+                        _rb_drel = info.get("rb_drel", None)
+                        if (_rf_drel is not None and _rf_drel < 5000) or (_rb_drel is not None and _rb_drel > -4000):  # 车头5米或车向4米内有障碍
+                          lidar_car_rblind = True
                       if info.get("left_blind", False):
                         left_blind = True
                       if info.get("right_blind", False):
@@ -586,6 +607,8 @@ class AmapNaviServ:
                 #更新盲区状态
                 self.shared_data.lidar_lblind = lidar_lblind
                 self.shared_data.lidar_rblind = lidar_rblind
+                self.shared_data.lidar_car_lblind = lidar_car_lblind
+                self.shared_data.lidar_car_rblind = lidar_car_rblind
                 self.shared_data.left_blind = left_blind
                 self.shared_data.right_blind = right_blind
 

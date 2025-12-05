@@ -1513,9 +1513,10 @@ public:
             icon_show = true;
         }
 
-        //if(icon_show){
+        icon_show = true;
+        if(icon_show){
             top_y += vertical_spacing;
-        //}
+        }
 
         icon_show = false;
         if (carrotLeftBlind) {
@@ -1563,9 +1564,10 @@ public:
             icon_show = true;
         }
 
-        //if(icon_show){
+        icon_show = true;
+        if(icon_show){
             top_y += vertical_spacing;
-        //}
+        }
 
         icon_show = false;
         if (left_blindspot) {

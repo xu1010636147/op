@@ -1331,7 +1331,7 @@ class CarrotServ:
       self.nSdiPlusBlockSpeed = int(json.get("nSdiPlusBlockSpeed", 0))
       self.nSdiPlusBlockDist = int(json.get("nSdiPlusBlockDist", 0))
       if self.roadType < 0:
-        self.roadcate = int(json.get("roadcate", 0))
+        self.roadcate = int(json.get("roadcate", 8))
 
       ## GuidePoint
       self.nTBTDist = int(json.get("nTBTDist", 0))

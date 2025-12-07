@@ -487,6 +487,15 @@
                 ],
                 category: "公共参数设置"
             },
+            "ShowDebugLog": {
+                chineseName: "调试信息显示",
+                defaultValue: 0,
+                description: "设置不同的值，输出不同的调试信息",
+                inputRange: [0, 256],
+                step: 1,
+                uiType: "number",
+                category: "公共参数设置"
+            },
             "LaneStabTime": {
                 chineseName: "车道数稳定时间(10x0.1s)",
                 defaultValue: 50,
@@ -494,6 +503,31 @@
                 inputRange: [2, 100],
                 step: 1,
                 uiType: "number",
+                category: "公共参数设置"
+            },
+            "DynamicBlindRange": {
+                chineseName: "动态盲区范围",
+                defaultValue: 0,
+                description: "盲区的宽度和前后距离是否动态调整",
+                inputRange: [0, 1],
+                uiType: "select",
+                options: [
+                    { value: 0, text: "盲区范围固定" },
+                    { value: 1, text: "导航时动态调整盲区范围" },
+                    { value: 2, text: "动态调整盲区范围" }
+                ],
+                category: "公共参数设置"
+            },
+            "DynamicBlindDistance": {
+                chineseName: "动态前后车变道距离",
+                defaultValue: 0,
+                description: "是否通过前后车的速度和时间计算允许变道的距离",
+                inputRange: [0, 1],
+                uiType: "select",
+                options: [
+                    { value: 0, text: "固定的前后车变道距离" },
+                    { value: 1, text: "根据前后车速度动态调整变道距离" }
+                ],
                 category: "公共参数设置"
             },
             "DisableBlindSpot": {

@@ -138,6 +138,7 @@ class SharedData:
     self.carState = False
     self.v_ego_kph = None
     self.v_cruise_kph = None
+    self.v_ego_m = None
     self.vEgo = None
     self.aEgo = None
     self.steer_angle = None
@@ -189,6 +190,8 @@ class AmapNaviServ:
     self.sideRelDistTime = 1.
     self.sidevRelDistTime = 1.
     self.disableBlindSpot = False
+    self.dynamicBlindRange = 1
+    self.dynamicBlindDistance = 1
     self.lf_object_detected_count = 0
     self.lb_object_detected_count = 0
     self.rf_object_detected_count = 0
@@ -237,6 +240,8 @@ class AmapNaviServ:
       self.min_vrel_vego_time = self.sidevRelDistTime
       self.min_object_detected_count_thr = int(-1 * self.sideBsdDelayTime / DT_BROADCAST)
       self.disableBlindSpot = self.params.get_bool("DisableBlindSpot")
+      self.dynamicBlindRange = self.params.get_int("DynamicBlindRange")
+      self.dynamicBlindDistance = self.params.get_int("DynamicBlindDistance")
       #new
     self.frame += 1
 
@@ -276,14 +281,14 @@ class AmapNaviServ:
       atc_left_right = True
 
     # 动态限制激光雷达的盲区侧面范围和前后范围
-    if fork_left_right or atc_left_right or turn_left_right:
-      if self.shared_data.main_lf_xrel is not None and self.shared_data.main_lf_xrel < laneWidthLeft:
+    if (fork_left_right or atc_left_right or turn_left_right) and self.dynamicBlindRange >= 1: #导航时动态调整盲宽度和前后距离
+      if self.shared_data.main_lf_xrel is not None and self.shared_data.main_lf_xrel > laneWidthLeft*1000.: #控测的目标侧面距离超过路宽，屏蔽盲区标志
         lf_blind_mask = True
-      if self.shared_data.main_lb_xrel is not None and self.shared_data.main_lb_xrel < laneWidthLeft:
+      if self.shared_data.main_lb_xrel is not None and self.shared_data.main_lb_xrel > laneWidthLeft*1000.: #控测的目标侧面距离超过路宽，屏蔽盲区标志
         lb_blind_mask = True
-      if self.shared_data.main_rf_xrel is not None and self.shared_data.main_rf_xrel < laneWidthRight:
+      if self.shared_data.main_rf_xrel is not None and self.shared_data.main_rf_xrel > laneWidthRight*1000.: #控测的目标侧面距离超过路宽，屏蔽盲区标志
         rf_blind_mask = True
-      if self.shared_data.main_rb_xrel is not None and self.shared_data.main_rb_xrel < laneWidthRight:
+      if self.shared_data.main_rb_xrel is not None and self.shared_data.main_rb_xrel > laneWidthRight*1000.: #控测的目标侧面距离超过路宽，屏蔽盲区标志
         rb_blind_mask = True
       if fork_left_right:
         if atc_blinker_state == BLINKER_LEFT:
@@ -296,6 +301,18 @@ class AmapNaviServ:
             rf_blind_mask = True
           if self.shared_data.main_rb_drel is not None and self.shared_data.main_rb_drel < -10000: #右后方大于10米
             rb_blind_mask = True
+
+    if self.dynamicBlindRange >= 2: #强制动态调整盲宽度
+      if not lf_blind_mask:
+        if self.shared_data.main_lf_xrel is not None and self.shared_data.main_lf_xrel > laneWidthLeft * 1000.:  # 控测的目标侧面距离超过路宽，屏蔽盲区标志
+          lf_blind_mask = True
+        if self.shared_data.main_lb_xrel is not None and self.shared_data.main_lb_xrel > laneWidthLeft * 1000.:  # 控测的目标侧面距离超过路宽，屏蔽盲区标志
+          lb_blind_mask = True
+      if not rf_blind_mask:
+        if self.shared_data.main_rf_xrel is not None and self.shared_data.main_rf_xrel > laneWidthRight * 1000.:  # 控测的目标侧面距离超过路宽，屏蔽盲区标志
+          rf_blind_mask = True
+        if self.shared_data.main_rb_xrel is not None and self.shared_data.main_rb_xrel > laneWidthRight * 1000.:  # 控测的目标侧面距离超过路宽，屏蔽盲区标志
+          rb_blind_mask = True
 
     #左前方
     if self.lf_object_detected and not lf_blind_mask:
@@ -374,6 +391,7 @@ class AmapNaviServ:
       if hasattr(carState, 'vCruise'):
         self.shared_data.v_cruise_kph = carState.vCruise
       if hasattr(carState, 'vEgo'):
+        self.shared_data.v_ego_m = carState.vEgo
         self.shared_data.vEgo = f1(carState.vEgo * 3.6)
       if hasattr(carState, 'aEgo'):
         self.shared_data.aEgo = round(carState.aEgo, 1)
@@ -500,10 +518,10 @@ class AmapNaviServ:
                         self.shared_data.main_lf_drel = lf_drel
                         self.shared_data.lf_vrel = self.leftFrontTarget.update(lf_drel, dist_timems)
                         #左前盲区时距检测
-                        if lf_drel is not None and self.shared_data.lf_vrel is not None and self.shared_data.vEgo is not None: #有距离和有速度
+                        if lf_drel is not None and self.shared_data.lf_vrel is not None and self.shared_data.v_ego_m is not None: #有距离和有速度
                           drel = lf_drel/1000.
-                          v_ego = self.shared_data.vEgo
-                          vlead = self.shared_data.lf_vrel + self.shared_data.vEgo
+                          v_ego = self.shared_data.v_ego_m
+                          vlead = self.shared_data.lf_vrel + self.shared_data.v_ego_m
                           object_dist = drel + vlead * 3.0
                           self.lf_object_detected = ((object_dist < v_ego * (3.0 + self.min_vrel_vego_time)) or (drel < (v_ego * self.min_drel_vego_time)))
                         else:
@@ -515,10 +533,10 @@ class AmapNaviServ:
                         self.shared_data.main_lb_drel = lb_drel
                         self.shared_data.lb_vrel = self.leftBehindTarget.update(lb_drel, dist_timems)
                         # 左后盲区时距检测
-                        if lb_drel is not None and self.shared_data.lb_vrel is not None and self.shared_data.vEgo is not None:  # 有距离和有速度
+                        if lb_drel is not None and self.shared_data.lb_vrel is not None and self.shared_data.v_ego_m is not None:  # 有距离和有速度
                           drel = (lb_drel if lb_drel >= 0 else lb_drel*(-1))/1000.
-                          v_ego = self.shared_data.lb_vrel + self.shared_data.vEgo
-                          vlead = self.shared_data.vEgo
+                          v_ego = self.shared_data.lb_vrel + self.shared_data.v_ego_m
+                          vlead = self.shared_data.v_ego_m
                           object_dist = drel + vlead * 3.0
                           self.lb_object_detected = ((object_dist < v_ego * (3.0 + self.min_vrel_vego_time)) or (drel < (v_ego * self.min_drel_vego_time)))
                         else:
@@ -530,10 +548,10 @@ class AmapNaviServ:
                         self.shared_data.main_rf_drel = rf_drel
                         self.shared_data.rf_vrel = self.rightFrontTarget.update(rf_drel, dist_timems)
                         # 右前盲区时距检测
-                        if rf_drel is not None and self.shared_data.rf_vrel is not None and self.shared_data.vEgo is not None:  # 有距离和有速度
+                        if rf_drel is not None and self.shared_data.rf_vrel is not None and self.shared_data.v_ego_m is not None:  # 有距离和有速度
                           drel = rf_drel / 1000.
-                          v_ego = self.shared_data.vEgo
-                          vlead = self.shared_data.rf_vrel + self.shared_data.vEgo
+                          v_ego = self.shared_data.v_ego_m
+                          vlead = self.shared_data.rf_vrel + self.shared_data.v_ego_m
                           object_dist = drel + vlead * 3.0
                           self.rf_object_detected = ((object_dist < v_ego * (3.0 + self.min_vrel_vego_time)) or (drel < (v_ego * self.min_drel_vego_time)))
                         else:
@@ -545,10 +563,10 @@ class AmapNaviServ:
                         self.shared_data.main_rb_drel = rb_drel
                         self.shared_data.rb_vrel = self.rightBehindTarget.update( rb_drel, dist_timems)
                         # 左后盲区时距检测
-                        if rb_drel is not None and self.shared_data.rb_vrel is not None and self.shared_data.vEgo is not None:  # 有距离和有速度
+                        if rb_drel is not None and self.shared_data.rb_vrel is not None and self.shared_data.v_ego_m is not None:  # 有距离和有速度
                           drel = (rb_drel if rb_drel >= 0 else rb_drel * (-1)) / 1000.
-                          v_ego = self.shared_data.rb_vrel + self.shared_data.vEgo
-                          vlead = self.shared_data.vEgo
+                          v_ego = self.shared_data.rb_vrel + self.shared_data.v_ego_m
+                          vlead = self.shared_data.v_ego_m
                           object_dist = drel + vlead * 3.0
                           self.rb_object_detected = ((object_dist < v_ego * (3.0 + self.min_vrel_vego_time)) or (drel < (v_ego * self.min_drel_vego_time)))
                         else:
@@ -797,14 +815,16 @@ class AmapNaviServ:
                         #判断车身范围是否有障碍物
                         _lf_drel = info.get("lf_drel", None)
                         _lb_drel = info.get("lb_drel", None)
-                        if (_lf_drel is not None and _lf_drel < 5000) or (_lb_drel is not None and _lb_drel > -4000): #车头5米或车向4米内有障碍
+                        lf_limit_val = max(3000 + (_lb_drel if _lb_drel is not None else -2000), 1000)
+                        if (_lf_drel is not None and _lf_drel < lf_limit_val) or (_lb_drel is not None and _lb_drel > -2000): #车头3米或车2米内有障碍
                           lidar_car_lblind = True
                       if info.get("lidar_rblind", False):
                         lidar_rblind = True
                         # 判断车身范围是否有障碍物
                         _rf_drel = info.get("rf_drel", None)
                         _rb_drel = info.get("rb_drel", None)
-                        if (_rf_drel is not None and _rf_drel < 5000) or (_rb_drel is not None and _rb_drel > -4000):  # 车头5米或车向4米内有障碍
+                        lf_limit_val = max(3000 + (_rb_drel if _rb_drel is not None else -2000), 1000)
+                        if (_rf_drel is not None and _rf_drel < lf_limit_val) or (_rb_drel is not None and _rb_drel > -2000):  #车头3米或车2米内有障碍
                           lidar_car_rblind = True
                       if info.get("left_blind", False):
                         left_blind = True
@@ -830,10 +850,12 @@ class AmapNaviServ:
                       print(f"sendto {ip} failed: {e}")
 
                 #更新盲区状态
-                #self.shared_data.lidar_lblind = lidar_lblind
-                #self.shared_data.lidar_rblind = lidar_rblind
-                self.shared_data.lidar_lblind = self.lf_side_object_detected or self.lb_side_object_detected
-                self.shared_data.lidar_rblind = self.rf_side_object_detected or self.rb_side_object_detected
+                if not self.dynamicBlindDistance:
+                  self.shared_data.lidar_lblind = lidar_lblind
+                  self.shared_data.lidar_rblind = lidar_rblind
+                else:
+                  self.shared_data.lidar_lblind = self.lf_side_object_detected or self.lb_side_object_detected
+                  self.shared_data.lidar_rblind = self.rf_side_object_detected or self.rb_side_object_detected
                 self.shared_data.lidar_car_lblind = lidar_car_lblind
                 self.shared_data.lidar_car_rblind = lidar_car_rblind
                 self.shared_data.left_blind = left_blind

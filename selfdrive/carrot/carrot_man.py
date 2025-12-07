@@ -321,6 +321,8 @@ class CarrotMan:
     self.carrot_serv.right_blind = self.amap_navi.shared_data.right_blind
     self.carrot_serv.lidar_lblind = self.amap_navi.shared_data.lidar_lblind
     self.carrot_serv.lidar_rblind = self.amap_navi.shared_data.lidar_rblind
+    self.carrot_serv.lidar_car_lblind = self.amap_navi.shared_data.lidar_car_lblind
+    self.carrot_serv.lidar_car_rblind = self.amap_navi.shared_data.lidar_car_rblind
 
     #获取共享数据中的控制命令
     if self.shared_cmd_index_last != self.amap_navi.shared_data.cmd_index:

@@ -107,6 +107,16 @@ class SharedData:
     self.op_blocked = False
     self.road_blocked = False
 
+    self.main_lf_xrel = None
+    self.main_lb_xrel = None
+    self.main_rf_xrel = None
+    self.main_rb_xrel = None
+
+    self.main_lf_drel = None
+    self.main_lb_drel = None
+    self.main_rf_drel = None
+    self.main_rb_drel = None
+
     #客户端控制命令
     self.cmd_index = -1
     self.remote_cmd = ""
@@ -232,8 +242,63 @@ class AmapNaviServ:
 
   # 盲区消抖处理
   def lidar_object_blind(self):
+    carrotMan = self.sm['carrotMan']
+    modelV2 = self.sm['modelV2']
+    meta = modelV2.meta
+
+    atc_type = carrotMan.atcType
+    laneWidthLeft = round(meta.laneWidthLeft, 1)
+    laneWidthRight = round(meta.laneWidthRight, 1)
+    distanceToRoadEdgeLeft = round(meta.distanceToRoadEdgeLeft, 1)
+    distanceToRoadEdgeRight = round(meta.distanceToRoadEdgeRight, 1)
+
+    atc_blinker_state = BLINKER_NONE
+    turn_left_right = False
+    fork_left_right = False
+    fork_now = False
+    atc_left_right = False
+    lf_blind_mask = False
+    lb_blind_mask = False
+    rf_blind_mask = False
+    rb_blind_mask = False
+    if atc_type in ["turn left", "turn right"]: #转弯请求
+      atc_blinker_state = BLINKER_LEFT if "left" in atc_type else BLINKER_RIGHT
+      turn_left_right = True
+    elif atc_type in ["fork left", "fork right"]: #变道请求
+      atc_blinker_state = BLINKER_LEFT if "left" in atc_type else BLINKER_RIGHT
+      fork_left_right = True
+    elif atc_type in ["fork left now", "fork right now"]: #立即变道请求
+      atc_blinker_state = BLINKER_LEFT if "left" in atc_type else BLINKER_RIGHT
+      fork_now = True
+      fork_left_right = True
+    elif atc_type in ["atc left", "atc right"]: #提前变道请求
+      atc_blinker_state = BLINKER_LEFT if "left" in atc_type else BLINKER_RIGHT
+      atc_left_right = True
+
+    # 动态限制激光雷达的盲区侧面范围和前后范围
+    if fork_left_right or atc_left_right or turn_left_right:
+      if self.shared_data.main_lf_xrel is not None and self.shared_data.main_lf_xrel < laneWidthLeft:
+        lf_blind_mask = True
+      if self.shared_data.main_lb_xrel is not None and self.shared_data.main_lb_xrel < laneWidthLeft:
+        lb_blind_mask = True
+      if self.shared_data.main_rf_xrel is not None and self.shared_data.main_rf_xrel < laneWidthRight:
+        rf_blind_mask = True
+      if self.shared_data.main_rb_xrel is not None and self.shared_data.main_rb_xrel < laneWidthRight:
+        rb_blind_mask = True
+      if fork_left_right:
+        if atc_blinker_state == BLINKER_LEFT:
+          if self.shared_data.main_lf_drel is not None and self.shared_data.main_lf_drel > 5000: #左前方大于5米
+            lf_blind_mask = True
+          if self.shared_data.main_lb_drel is not None and self.shared_data.main_lb_drel < -10000: #左后方大于10米
+            lb_blind_mask = True
+        elif atc_blinker_state == BLINKER_RIGHT:
+          if self.shared_data.main_rf_drel is not None and self.shared_data.main_rf_drel > 5000: #右前方大于5米
+            rf_blind_mask = True
+          if self.shared_data.main_rb_drel is not None and self.shared_data.main_rb_drel < -10000: #右后方大于10米
+            rb_blind_mask = True
+
     #左前方
-    if self.lf_object_detected:
+    if self.lf_object_detected and not lf_blind_mask:
       self.lf_object_detected_count = 1
     else:
       self.lf_object_detected_count -= 1
@@ -250,7 +315,7 @@ class AmapNaviServ:
       self.lf_side_object_detected = True
 
     #左后方
-    if self.lb_object_detected:
+    if self.lb_object_detected and not lb_blind_mask:
       self.lb_object_detected_count = 1
     else:
       self.lb_object_detected_count -= 1
@@ -267,7 +332,7 @@ class AmapNaviServ:
       self.lb_side_object_detected = True
 
     #右前方
-    if self.rf_object_detected:
+    if self.rf_object_detected and not rf_blind_mask:
       self.rf_object_detected_count = 1
     else:
       self.rf_object_detected_count -= 1
@@ -284,7 +349,7 @@ class AmapNaviServ:
       self.rf_side_object_detected = True
 
     #右后方
-    if self.rb_object_detected:
+    if self.rb_object_detected and rb_blind_mask:
       self.rb_object_detected_count = 1
     else:
       self.rb_object_detected_count -= 1
@@ -432,6 +497,7 @@ class AmapNaviServ:
                         lf_drel = int(json_obj.get("lf_drel"))
                         lf_drel_alive = True
                       if (0 == lidar_id) and (detect_side & 1): #仅主雷达计算速度
+                        self.shared_data.main_lf_drel = lf_drel
                         self.shared_data.lf_vrel = self.leftFrontTarget.update(lf_drel, dist_timems)
                         #左前盲区时距检测
                         if lf_drel is not None and self.shared_data.lf_vrel is not None and self.shared_data.vEgo is not None: #有距离和有速度
@@ -446,6 +512,7 @@ class AmapNaviServ:
                         lb_drel = int(json_obj.get("lb_drel"))
                         lb_drel_alive = True
                       if (0 == lidar_id) and (detect_side & 1): #仅主雷达计算速度
+                        self.shared_data.main_lb_drel = lb_drel
                         self.shared_data.lb_vrel = self.leftBehindTarget.update(lb_drel, dist_timems)
                         # 左后盲区时距检测
                         if lb_drel is not None and self.shared_data.lb_vrel is not None and self.shared_data.vEgo is not None:  # 有距离和有速度
@@ -460,6 +527,7 @@ class AmapNaviServ:
                         rf_drel = int(json_obj.get("rf_drel"))
                         rf_drel_alive = True
                       if (0 == lidar_id) and (detect_side & 2): #仅主雷达计算速度
+                        self.shared_data.main_rf_drel = rf_drel
                         self.shared_data.rf_vrel = self.rightFrontTarget.update(rf_drel, dist_timems)
                         # 右前盲区时距检测
                         if rf_drel is not None and self.shared_data.rf_vrel is not None and self.shared_data.vEgo is not None:  # 有距离和有速度
@@ -474,6 +542,7 @@ class AmapNaviServ:
                         rb_drel = int(json_obj.get("rb_drel"))
                         rb_drel_alive = True
                       if (0 == lidar_id) and (detect_side & 2): #仅主雷达计算速度
+                        self.shared_data.main_rb_drel = rb_drel
                         self.shared_data.rb_vrel = self.rightBehindTarget.update( rb_drel, dist_timems)
                         # 左后盲区时距检测
                         if rb_drel is not None and self.shared_data.rb_vrel is not None and self.shared_data.vEgo is not None:  # 有距离和有速度
@@ -488,15 +557,23 @@ class AmapNaviServ:
                       if "lf_xrel" in json_obj:
                         lf_xrel = int(json_obj.get("lf_xrel"))
                         lf_xrel_alive = True
+                      if (0 == lidar_id) and (detect_side & 1):
+                        self.shared_data.main_lf_xrel = lf_xrel
                       if "lb_xrel" in json_obj:
                         lb_xrel = int(json_obj.get("lb_xrel"))
                         lb_xrel_alive = True
+                      if (0 == lidar_id) and (detect_side & 1):
+                        self.shared_data.main_lb_xrel = lb_xrel
                       if "rf_xrel" in json_obj:
                         rf_xrel = int(json_obj.get("rf_xrel"))
                         rf_xrel_alive = True
+                      if (0 == lidar_id) and (detect_side & 2):
+                        self.shared_data.main_rf_xrel = rf_xrel
                       if "rb_xrel" in json_obj:
                         rb_xrel = int(json_obj.get("rb_xrel"))
                         rb_xrel_alive = True
+                      if (0 == lidar_id) and (detect_side & 2):
+                        self.shared_data.main_rb_xrel = rb_xrel
 
                   #更新客户端信息
                   old_info = self.clients.get(ip, {})

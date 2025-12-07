@@ -496,6 +496,18 @@
                 uiType: "number",
                 category: "公共参数设置"
             },
+            "DisableBlindSpot": {
+                chineseName: "禁用原车盲区设备(0)",
+                defaultValue: 0,
+                description: "0:不禁用,1:禁用",
+                inputRange: [0, 1],
+                uiType: "select",
+                options: [
+                    { value: 0, text: "不禁用原车盲区" },
+                    { value: 1, text: "禁用原车盲区" }
+                ],
+                category: "公共参数设置"
+            },
             "BsdDelayTime": {
                 chineseName: "后盲区有车延时(20x0.1s)",
                 defaultValue: 20,

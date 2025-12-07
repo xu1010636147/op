@@ -148,6 +148,7 @@ class UnifiedParams:
             "ExtBlinkerCtrlTest": 0,
             "BlinkerMode": 1,
             "LaneStabTime": 50,
+            "DisableBlindSpot": 0,
             "BsdDelayTime": 20,
             "SideBsdDelayTime": 20,
             "SideRelDistTime": 10,

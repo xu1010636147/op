@@ -5,15 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CP导航参数设置</title>
     <style>
-        * { 
-            margin: 0; 
-            padding: 0; 
-            box-sizing: border-box; 
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        body { 
-            background: #1a1a1a; 
-            color: white; 
+        body {
+            background: #1a1a1a;
+            color: white;
             font-family: Arial, sans-serif;
             padding: 10px;
             line-height: 1.4;
@@ -282,15 +282,15 @@
             background: #1a1a1a;
         }
 
-        .success { 
-            background: rgba(76, 175, 80, 0.6); 
-            color: #fff; 
+        .success {
+            background: rgba(76, 175, 80, 0.6);
+            color: #fff;
             border: 1px solid #4CAF50;
         }
 
-        .error { 
-            background: rgba(244, 67, 54, 0.8); 
-            color: #fff; 
+        .error {
+            background: rgba(244, 67, 54, 0.8);
+            color: #fff;
             border: 1px solid #f44336;
         }
 
@@ -335,7 +335,7 @@
         }
 
         .highway-subgroup .subgroup-title {
-            background-color: #E91E63; 
+            background-color: #E91E63;
             text-align: center;
         }
 
@@ -366,17 +366,17 @@
                 flex-direction: column;
                 align-items: flex-start;
             }
-            
+
             .param-label {
                 min-width: auto;
                 margin-right: 0;
                 margin-bottom: 10px;
             }
-            
+
             .param-controls {
                 width: 100%;
             }
-            
+
             .save-btn, .reset-btn {
                 margin: 5px;
             }
@@ -387,7 +387,7 @@
             margin-top: 15px;
             font-size: clamp(0.7rem, 2.5vw, 0.85rem);
             padding: 0 5px;
-        }		
+        }
     </style>
 </head>
 <body>
@@ -396,7 +396,7 @@
             <h1>⚙️ CP导航参数设置</h1>
             <p>根据参数下面的说明设置适合的值</p>
         </div>
-        
+
         <div class="search-container">
             <input type="text" class="search-input" id="search-input" placeholder="搜索参数名称或描述...">
         </div>
@@ -404,10 +404,10 @@
             <button class="expand-btn" id="expand-all-btn">展开所有参数</button>
             <button class="expand-btn" id="collapse-all-btn" style="display:none;">折叠所有参数</button>
         </div>
-        
+
         <div class="params-container" id="params-container">
         </div>
-        
+
         <div class="no-results" id="no-results">
             没有找到匹配的参数
         </div>
@@ -418,7 +418,7 @@
         </div>
         <div class="connection-info">
             系统运行中 | 访问地址: <span id="nav_params-ip">-</span>:8088/nav_params
-        </div>		
+        </div>
     </div>
 
     <script>
@@ -497,7 +497,7 @@
                 category: "公共参数设置"
             },
             "DisableBlindSpot": {
-                chineseName: "禁用原车盲区设备(0)",
+                chineseName: "禁用原车盲区信号(0)",
                 defaultValue: 0,
                 description: "0:不禁用,1:禁用",
                 inputRange: [0, 1],
@@ -850,7 +850,7 @@
                     if (xhr.status === 200) {
                         try {
                             NavParamsData = JSON.parse(xhr.responseText);
-                            
+
                             if (!NavParamsData || Object.keys(NavParamsData).length === 0) {
                                 for (var key in paramConfig) {
                                     if (paramConfig.hasOwnProperty(key)) {
@@ -858,12 +858,12 @@
                                     }
                                 }
                             }
-                            
+
                             renderParams();
                         } catch (error) {
                             console.error('加载参数失败:', error);
                             showStatus('加载参数失败: ' + error, 'error');
-                            
+
                             for (var key in paramConfig) {
                                 if (paramConfig.hasOwnProperty(key)) {
                                     NavParamsData[key] = paramConfig[key].defaultValue;
@@ -874,7 +874,7 @@
                     } else {
                         console.error('加载参数失败: ' + xhr.status);
                         showStatus('加载参数失败: ' + xhr.status, 'error');
-                        
+
                         for (var key in paramConfig) {
                             if (paramConfig.hasOwnProperty(key)) {
                                 NavParamsData[key] = paramConfig[key].defaultValue;
@@ -890,7 +890,7 @@
         function renderParams() {
             var container = document.getElementById('params-container');
             var html = '';
-            
+
             var categories = {};
             for (var key in paramConfig) {
                 if (paramConfig.hasOwnProperty(key)) {
@@ -901,18 +901,18 @@
                     categories[category].push(key);
                 }
             }
-            
+
             for (var category in categories) {
                 if (categories.hasOwnProperty(category)) {
                     var categoryId = category.replace(/\s+/g, '-');
                     var isExpanded = expandedCategories[category] || false;
                     var categoryColor = categoryColors[category] || "#4CAF50";
-                    
+
                     html += '<div class="category-title ' + (isExpanded ? 'expanded' : '') + '" data-category="' + category + '" style="background-color: ' + categoryColor + '">' +
                         category +
                     '</div>' +
                     '<div class="category-content ' + (isExpanded ? 'expanded' : '') + '" id="' + categoryId + '">';
-                    
+
                     if (category === "速度参数") {
                         html += '<div class="subgroup highway-subgroup">' +
                             '<div class="subgroup-title">高速公路速度参数</div>' +
@@ -924,7 +924,7 @@
                             if (key.indexOf('H') !== -1 || key.indexOf('Highway') !== -1) {
                                 var config = paramConfig[key];
                                 var value = NavParamsData[key] !== undefined ? NavParamsData[key] : config.defaultValue;
-                                
+
                                 html += '<div class="param-item" data-param-key="' + key + '">' +
                                     '<div class="param-label">' + config.chineseName + '</div>' +
                                     '<div class="param-controls">' +
@@ -937,7 +937,7 @@
                                 '</div>';
                             }
                         }
-                        
+
                         html += '</div>' +
                         '</div>' +
                         '<div class="subgroup normal-road-subgroup">' +
@@ -950,7 +950,7 @@
                             if (key.indexOf('H') === -1 && key.indexOf('Highway') === -1) {
                                 var config = paramConfig[key];
                                 var value = NavParamsData[key] !== undefined ? NavParamsData[key] : config.defaultValue;
-                                
+
                                 html += '<div class="param-item" data-param-key="' + key + '">' +
                                     '<div class="param-label">' + config.chineseName + '</div>' +
                                     '<div class="param-controls">' +
@@ -963,7 +963,7 @@
                                 '</div>';
                             }
                         }
-                        
+
                         html += '</div>' +
                         '</div>';
                     } else {
@@ -972,7 +972,7 @@
                             var key = categoryKeys[k];
                             var config = paramConfig[key];
                             var value = NavParamsData[key] !== undefined ? NavParamsData[key] : config.defaultValue;
-                            
+
                             html += '<div class="param-item" data-param-key="' + key + '">' +
                                 '<div class="param-label">' + config.chineseName + '</div>' +
                                 '<div class="param-controls">' +
@@ -985,13 +985,13 @@
                             '</div>';
                         }
                     }
-                    
+
                     html += '</div>';
                 }
             }
-            
+
             container.innerHTML = html;
-            
+
             setupCategoryToggles();
             setupSearch();
             disableInputFields();
@@ -1005,7 +1005,7 @@
                     var selected = option.value == value ? 'selected' : '';
                     options += '<option value="' + option.value + '" ' + selected + '>' + option.text + '</option>';
                 }
-                
+
                 return '<select class="param-select" id="' + key + '">' + options + '</select>';
             } else if (config.uiType === 'number') {
                 return '<div class="param-number-controls">' +
@@ -1024,17 +1024,17 @@
             var inputs = document.querySelectorAll('.param-input');
             for (var i = 0; i < inputs.length; i++) {
                 var input = inputs[i];
-                
+
                 input.addEventListener('keydown', function(e) {
                     e.preventDefault();
                     return false;
                 });
-                
+
                 input.addEventListener('paste', function(e) {
                     e.preventDefault();
                     return false;
                 });
-                
+
                 input.addEventListener('drop', function(e) {
                     e.preventDefault();
                     return false;
@@ -1045,47 +1045,47 @@
         function adjustNumber(id, step) {
             var input = document.getElementById(id);
             if (!input) return;
-            
+
             var value = parseFloat(input.value) || 0;
             var min = parseFloat(input.min);
             var max = parseFloat(input.max);
-            
+
             value += step;
-            
+
             if (value < min) value = min;
             if (value > max) value = max;
-            
+
             input.value = value;
         }
 
         function setupCategoryToggles() {
             var categoryTitles = document.querySelectorAll('.category-title');
-            
+
             for (var i = 0; i < categoryTitles.length; i++) {
                 (function() {
                     var title = categoryTitles[i];
-                    
+
                     title.addEventListener('click', function() {
                         var category = this.getAttribute('data-category');
                         var content = this.nextElementSibling;
-                        
+
                         if (hasClass(content, 'expanded')) {
                             removeClass(content, 'expanded');
                             removeClass(this, 'expanded');
                             expandedCategories[category] = false;
                         } else {
                             collapseAllCategories();
-                            
+
                             addClass(content, 'expanded');
                             addClass(this, 'expanded');
                             expandedCategories[category] = true;
                         }
-                        
+
                         updateExpandButtons();
                     });
                 })();
             }
-            
+
             document.getElementById('expand-all-btn').addEventListener('click', expandAllCategories);
             document.getElementById('collapse-all-btn').addEventListener('click', collapseAllCategories);
         }
@@ -1117,45 +1117,45 @@
         function expandAllCategories() {
             var categories = document.querySelectorAll('.category-title');
             var contents = document.querySelectorAll('.category-content');
-            
+
             for (var i = 0; i < categories.length; i++) {
                 var category = categories[i];
                 addClass(category, 'expanded');
                 var categoryName = category.getAttribute('data-category');
                 expandedCategories[categoryName] = true;
             }
-            
+
             for (var j = 0; j < contents.length; j++) {
                 var content = contents[j];
                 addClass(content, 'expanded');
             }
-            
+
             updateExpandButtons();
         }
 
         function collapseAllCategories() {
             var categories = document.querySelectorAll('.category-title');
             var contents = document.querySelectorAll('.category-content');
-            
+
             for (var i = 0; i < categories.length; i++) {
                 var category = categories[i];
                 removeClass(category, 'expanded');
                 var categoryName = category.getAttribute('data-category');
                 expandedCategories[categoryName] = false;
             }
-            
+
             for (var j = 0; j < contents.length; j++) {
                 var content = contents[j];
                 removeClass(content, 'expanded');
             }
-            
+
             updateExpandButtons();
         }
 
         function updateExpandButtons() {
             var expandBtn = document.getElementById('expand-all-btn');
             var collapseBtn = document.getElementById('collapse-all-btn');
-            
+
             var isAnyExpanded = false;
             for (var key in expandedCategories) {
                 if (expandedCategories.hasOwnProperty(key)) {
@@ -1165,7 +1165,7 @@
                     }
                 }
             }
-            
+
             if (isAnyExpanded) {
                 expandBtn.style.display = 'none';
                 collapseBtn.style.display = 'inline-block';
@@ -1179,25 +1179,25 @@
             var searchInput = document.getElementById('search-input');
             var paramItems = document.querySelectorAll('.param-item');
             var noResults = document.getElementById('no-results');
-            
+
             searchInput.addEventListener('input', function() {
                 var searchTerm = this.value.toLowerCase();
                 var visibleCount = 0;
-                
+
                 for (var i = 0; i < paramItems.length; i++) {
                     var item = paramItems[i];
                     var key = item.getAttribute('data-param-key');
                     var config = paramConfig[key];
                     var text = (config.chineseName + ' ' + config.description).toLowerCase();
-                    
+
                     if (text.indexOf(searchTerm) !== -1) {
                         item.style.display = 'flex';
                         visibleCount++;
-                        
+
                         var categoryContent = item.closest('.category-content');
                         var categoryTitle = categoryContent.previousElementSibling;
                         var category = categoryTitle.getAttribute('data-category');
-                        
+
                         if (!hasClass(categoryContent, 'expanded')) {
                             addClass(categoryContent, 'expanded');
                             addClass(categoryTitle, 'expanded');
@@ -1207,26 +1207,26 @@
                         item.style.display = 'none';
                     }
                 }
-                
+
                 if (visibleCount === 0 && searchTerm) {
                     noResults.style.display = 'block';
                 } else {
                     noResults.style.display = 'none';
                 }
-                
+
                 updateExpandButtons();
             });
         }
 
         function saveParams() {
             var formData = {};
-            
+
             for (var key in paramConfig) {
                 if (paramConfig.hasOwnProperty(key)) {
                     var element = document.getElementById(key);
                     if (element) {
                         var value;
-                        
+
                         if (paramConfig[key].uiType === 'select') {
                             value = parseInt(element.value, 10);
                         } else if (paramConfig[key].uiType === 'number') {
@@ -1234,13 +1234,13 @@
                         } else {
                             value = element.value;
                         }
-                        
+
                         var config = paramConfig[key];
                         if (config.inputRange && Array.isArray(config.inputRange)) {
                             if (value < config.inputRange[0]) value = config.inputRange[0];
                             if (value > config.inputRange[1]) value = config.inputRange[1];
                         }
-                        
+
                         formData[key] = value;
                     }
                 }
@@ -1279,7 +1279,7 @@
 					if (xhr.status === 200) {
 						try {
 							var defaultData = JSON.parse(xhr.responseText);
-							
+
 							for (var key in paramConfig) {
 								if (paramConfig.hasOwnProperty(key)) {
 									if (defaultData.hasOwnProperty(key)) {
@@ -1289,7 +1289,7 @@
 									}
 								}
 							}
-							
+
 							var saveXhr = new XMLHttpRequest();
 							saveXhr.open('POST', '/nav_params', true);
 							saveXhr.setRequestHeader('Content-Type', 'application/json');
@@ -1313,7 +1313,7 @@
 								}
 							};
 							saveXhr.send(JSON.stringify(NavParamsData));
-							
+
 						} catch (error) {
 							// 如果从服务器获取默认值失败，则使用本地默认值
 							for (var key in paramConfig) {
@@ -1321,7 +1321,7 @@
 									NavParamsData[key] = paramConfig[key].defaultValue;
 								}
 							}
-							
+
 							var saveXhr = new XMLHttpRequest();
 							saveXhr.open('POST', '/nav_params', true);
 							saveXhr.setRequestHeader('Content-Type', 'application/json');
@@ -1353,7 +1353,7 @@
 								NavParamsData[key] = paramConfig[key].defaultValue;
 							}
 						}
-						
+
 						var saveXhr = new XMLHttpRequest();
 						saveXhr.open('POST', '/nav_params', true);
 						saveXhr.setRequestHeader('Content-Type', 'application/json');

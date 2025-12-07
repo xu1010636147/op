@@ -6,8 +6,9 @@ import fcntl
 import struct
 import cereal.messaging as messaging
 from openpilot.common.realtime import Ratekeeper
-from openpilot.common.params import Params
+#from openpilot.common.params import Params
 from openpilot.system.hardware import PC
+from openpilot.selfdrive.carrot.config import UnifiedParams
 
 BLINKER_NONE = 0
 BLINKER_LEFT = 1
@@ -149,7 +150,7 @@ def f2(x):
 class AmapNaviServ:
   def __init__(self):
     self.shared_data = SharedData() #new
-    self.params = Params()
+    self.params = UnifiedParams()
     #self.sm = messaging.SubMaster(['carState', 'modelV2', 'selfdriveState', 'radarState', 'carrotMan'])
     self.sm = messaging.SubMaster(['modelV2', 'selfdriveState', 'radarState', 'carrotMan'])
 
@@ -177,6 +178,7 @@ class AmapNaviServ:
     self.sideBsdDelayTime = 2.
     self.sideRelDistTime = 1.
     self.sidevRelDistTime = 1.
+    self.disableBlindSpot = False
     self.lf_object_detected_count = 0
     self.lb_object_detected_count = 0
     self.rf_object_detected_count = 0
@@ -224,6 +226,7 @@ class AmapNaviServ:
       self.min_drel_vego_time = self.sideRelDistTime
       self.min_vrel_vego_time = self.sidevRelDistTime
       self.min_object_detected_count_thr = int(-1 * self.sideBsdDelayTime / DT_BROADCAST)
+      self.disableBlindSpot = self.params.get_bool("DisableBlindSpot")
       #new
     self.frame += 1
 
@@ -856,10 +859,14 @@ class AmapNaviServ:
         if self.shared_data.engaged is not None:
           msg["engaged"] = self.shared_data.engaged
         # 盲区检测
-        if self.shared_data.left_blindspot is not None:
-          msg["left_blindspot"] = self.shared_data.left_blindspot
-        if self.shared_data.right_blindspot is not None:
-          msg["right_blindspot"] = self.shared_data.right_blindspot
+        if not self.disableBlindSpot:
+          if self.shared_data.left_blindspot is not None:
+            msg["left_blindspot"] = self.shared_data.left_blindspot
+          if self.shared_data.right_blindspot is not None:
+            msg["right_blindspot"] = self.shared_data.right_blindspot
+        else:
+          msg["left_blindspot"] = False
+          msg["right_blindspot"] = False
 
       # 雷达数据
       if self.sm.alive['radarState']:# and self.sm.updated['radarState']:
@@ -877,29 +884,33 @@ class AmapNaviServ:
             msg["lead_accel"] = radar_state.leadOne.aRel
         else:
           msg["lead1"] = False
-        # 左侧前车
-        if hasattr(radar_state, 'leadLeft') and radar_state.leadLeft and hasattr(radar_state.leadLeft,'status') and radar_state.leadLeft.status:
-          self.lead_left_right = True
-          msg["l_lead"] = True
-          if hasattr(radar_state.leadLeft, 'dRel'):
-            msg["l_drel"] = int(radar_state.leadLeft.dRel)
-          if hasattr(radar_state.leadLeft, 'vLead'):
-            msg["l_vlead"] = int(radar_state.leadLeft.vLead * 3.6)
-          if hasattr(radar_state.leadLeft, 'vRel'):
-            msg["l_vrel"] = int(radar_state.leadLeft.vRel * 3.6)
+        if not self.disableBlindSpot:
+          # 左侧前车
+          if hasattr(radar_state, 'leadLeft') and radar_state.leadLeft and hasattr(radar_state.leadLeft,'status') and radar_state.leadLeft.status:
+            self.lead_left_right = True
+            msg["l_lead"] = True
+            if hasattr(radar_state.leadLeft, 'dRel'):
+              msg["l_drel"] = int(radar_state.leadLeft.dRel)
+            if hasattr(radar_state.leadLeft, 'vLead'):
+              msg["l_vlead"] = int(radar_state.leadLeft.vLead * 3.6)
+            if hasattr(radar_state.leadLeft, 'vRel'):
+              msg["l_vrel"] = int(radar_state.leadLeft.vRel * 3.6)
+          else:
+            msg["l_lead"] = False
+          # 右侧前车
+          if hasattr(radar_state, 'leadRight') and radar_state.leadRight and hasattr(radar_state.leadRight,'status') and radar_state.leadRight.status:
+            self.lead_left_right = True
+            msg["r_lead"] = True
+            if hasattr(radar_state.leadRight, 'dRel'):
+              msg["r_drel"] = int(radar_state.leadRight.dRel)
+            if hasattr(radar_state.leadRight, 'vLead'):
+              msg["r_vlead"] = int(radar_state.leadRight.vLead * 3.6)
+            if hasattr(radar_state.leadRight, 'vRel'):
+              msg["r_vrel"] = int(radar_state.leadRight.vRel * 3.6)
+          else:
+            msg["r_lead"] = False
         else:
           msg["l_lead"] = False
-        # 右侧前车
-        if hasattr(radar_state, 'leadRight') and radar_state.leadRight and hasattr(radar_state.leadRight,'status') and radar_state.leadRight.status:
-          self.lead_left_right = True
-          msg["r_lead"] = True
-          if hasattr(radar_state.leadRight, 'dRel'):
-            msg["r_drel"] = int(radar_state.leadRight.dRel)
-          if hasattr(radar_state.leadRight, 'vLead'):
-            msg["r_vlead"] = int(radar_state.leadRight.vLead * 3.6)
-          if hasattr(radar_state.leadRight, 'vRel'):
-            msg["r_vrel"] = int(radar_state.leadRight.vRel * 3.6)
-        else:
           msg["r_lead"] = False
 
       #前方激光雷达速度

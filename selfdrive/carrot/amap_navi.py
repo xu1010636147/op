@@ -190,8 +190,8 @@ class AmapNaviServ:
     self.sideRelDistTime = 1.
     self.sidevRelDistTime = 1.
     self.disableBlindSpot = False
-    self.dynamicBlindRange = 1
-    self.dynamicBlindDistance = 1
+    self.dynamicBlindRange = 0
+    self.dynamicBlindDistance = 0
     self.lf_object_detected_count = 0
     self.lb_object_detected_count = 0
     self.rf_object_detected_count = 0
@@ -460,6 +460,9 @@ class AmapNaviServ:
                 camera_data = False
                 lidar_data = False
 
+                dist_timems = None
+                old_info = self.clients.get(ip, {})
+
                 try:
                   json_obj = json.loads(data.decode())
 
@@ -593,8 +596,16 @@ class AmapNaviServ:
                       if (0 == lidar_id) and (detect_side & 2):
                         self.shared_data.main_rb_xrel = rb_xrel
 
+                      #超时检查
+                      last_dis_timems = old_info.get("dis_timems", None)
+                      last_seen = old_info.get("last_seen", None)
+                      now = time.time()
+                      if last_dis_timems is not None and dist_timems is not None and (dist_timems - last_dis_timems) > 150:
+                        print(f"lidar{detect_side} data interval time large than 150ms({dist_timems-last_dis_timems})")
+                      if last_seen is not None and (now - last_seen) > 0.15:
+                        print(f"lidar{detect_side} last_seen time large than 0.15s({now-last_seen})")
+
                   #更新客户端信息
-                  old_info = self.clients.get(ip, {})
 
                   #检测盲区状态是否超时
                   l_blindspot_time = old_info.get("l_blindspot_time", now)
@@ -658,6 +669,7 @@ class AmapNaviServ:
 
                   with lock:
                     self.clients[ip] = {
+                      "port": int(json_obj["port"]) if "port" in json_obj else None,
                       "last_seen": time.time(),
                       "device": json_obj.get("device", old_info.get("device", "")),
                       "detect_side":json_obj.get("detect_side", old_info.get("detect_side", 0)),
@@ -689,6 +701,7 @@ class AmapNaviServ:
                       "lb_xrel_time": now if lb_xrel_alive else old_info.get("lb_xrel_time", now),
                       "rf_xrel_time": now if rf_xrel_alive else old_info.get("rf_xrel_time", now),
                       "rb_xrel_time": now if rb_xrel_alive else old_info.get("rb_xrel_time", now),
+                      "dist_time": dist_timems,
                     }
 
                   if (self.shared_data.showDebugLog & 32) > 0:
@@ -864,6 +877,12 @@ class AmapNaviServ:
                 # 向所有客户端发送数据
                 for ip, info in self.clients_copy.items():
                   try:
+                    port_val = info.get("port", self.broadcast_port)
+                    if port_val is not None:
+                      port = int(port_val)
+                    else:
+                      port = self.broadcast_port
+                    #port = self.broadcast_port
                     device_type = info.get("device", None)
                     detect_side = info.get("detect_side", None)
 
@@ -873,7 +892,7 @@ class AmapNaviServ:
                         navi_msg = self.make_navi_message()
                         navi_dat = navi_msg.encode('utf-8')
                       if navi_dat is not None:
-                        sock.sendto(navi_dat, (ip, self.broadcast_port))
+                        sock.sendto(navi_dat, (ip, port))
                         if (self.shared_data.showDebugLog & 32) > 0:
                           print(f"sendto {ip} (overtake): {navi_dat}")
                     elif device_type == "lidar" or device_type == "camera": #雷达模块
@@ -892,11 +911,11 @@ class AmapNaviServ:
                         lidar_msg = self.make_lidar_message()
                         lidar_dat = lidar_msg.encode('utf-8')
                       if lidar_dat is not None:
-                        sock.sendto(lidar_dat, (ip, self.broadcast_port))
+                        sock.sendto(lidar_dat, (ip, port))
                         if (self.shared_data.showDebugLog & 32) > 0:
                           print(f"sendto {ip} (lidar): {lidar_dat}")
                     else: #其他
-                      sock.sendto(blinker_dat, (ip, self.broadcast_port))
+                      sock.sendto(blinker_dat, (ip, port))
                       if (self.shared_data.showDebugLog & 32) > 0:
                         print(f"sendto {ip} (blinker): {blinker_dat}")
                   except Exception as e:
@@ -934,6 +953,7 @@ class AmapNaviServ:
     msg = {}
     msg['ip'] = self.local_ip_address
     msg['port'] = self.listen_port
+    msg['device'] = "op"
     isOnroad = self.params.get_bool("IsOnroad")
     msg['IsOnroad'] = isOnroad
 
@@ -1135,6 +1155,7 @@ class AmapNaviServ:
     msg = {}
     msg['ip'] = self.local_ip_address
     msg['port'] = self.listen_port
+    msg['device'] = "op"
     isOnroad = self.params.get_bool("IsOnroad")
     msg['IsOnroad'] = isOnroad
 
@@ -1176,6 +1197,7 @@ class AmapNaviServ:
     msg = {}
     msg['ip'] = self.local_ip_address
     msg['port'] = self.listen_port
+    msg['device'] = "op"
     isOnroad = self.params.get_bool("IsOnroad")
     msg['IsOnroad'] = isOnroad
 
@@ -1241,6 +1263,7 @@ class AmapNaviServ:
     msg = {}
     msg['ip'] = self.local_ip_address
     msg['port'] = self.listen_port
+    msg['device'] = "op"
 
     return json.dumps(msg)
 

@@ -626,9 +626,10 @@ class AmapNaviServ:
 
     try:
       json_obj = json.loads(data.decode())
-      self._update_blinker(json_obj, ip, now)
+      self._update_blinker(json_obj, ip, old_info, now)
       self._update_command(json_obj, ip)
       self._update_sensors(json_obj, ip, old_info, now)
+      if (self.shared_data.showDebugLog & 32) > 0: print(f"receive: {json_obj}")
     except Exception as e:
       print(f"Process packet {ip} error: {e}")
       print(data)
@@ -636,7 +637,7 @@ class AmapNaviServ:
   # ----------------------
   # 更新转向灯状态
   # ----------------------
-  def _update_blinker(self, json_obj, ip, now):
+  def _update_blinker(self, json_obj, ip, old_info, now):
     if "blinker" not in json_obj:
       return
     val = json_obj.get("blinker")
@@ -649,6 +650,11 @@ class AmapNaviServ:
         self.shared_data.ext_blinker = BLINKER_NONE
       self.blinker_alive = True
       self.blinker_time = now
+      
+    #now = time.time()
+    #last_seen = old_info.get("last_seen", None)
+    #if last_seen is not None and (now - last_seen) > 0.15:
+    #  print(f"=========blinker time > {now - last_seen}")
 
   # ----------------------
   # 更新客户端命令
@@ -810,11 +816,11 @@ class AmapNaviServ:
         # 通讯时间检查
         now = time.time()
         last_dis_timems = old_info.get("dis_timems", None)
-        last_seen = old_info.get("last_seen", None)
+        #last_seen = old_info.get("last_seen", None)
         if last_dis_timems is not None and dist_timems is not None and (dist_timems - last_dis_timems) > 150:
-          print(f"{"left" if detect_side == 1 else "right"} lidar{lidar_id} time > {dist_timems - last_dis_timems}ms")
-        if last_seen is not None and (now - last_seen) > 0.15:
-          print(f"{"left" if detect_side == 1 else "right"} lidar{lidar_id} time > {now - last_seen}")
+          print(f"$$$$$$$${"left" if detect_side == 1 else "right"} lidar{lidar_id} time > {dist_timems - last_dis_timems}ms")
+        #if last_seen is not None and (now - last_seen) > 0.15:
+        #  print(f"{"=========left" if detect_side == 1 else "right"} lidar{lidar_id} time > {now - last_seen}")
 
     if device == "lidar": #激光雷达
       # 若本次通讯无雷达数据，加载上次的数据
@@ -979,6 +985,11 @@ class AmapNaviServ:
             self.client_active[ip] = False
 
         self.clients = active_clients
+        if self.clients:
+          self.shared_data.ext_state = len(self.clients)
+        else:
+          self.shared_data.ext_state = 0
+          self.shared_data.ext_blinker = BLINKER_NONE
       time.sleep(0.2)
 
   '''

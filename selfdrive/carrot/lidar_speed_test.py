@@ -9,19 +9,31 @@ class RadarSpeedEstimator:
   升级版鲁棒跳变过滤器（单位：mm 输入 / ms 时间戳，输出 m/s）
   """
 
-  def __init__(self, max_acc=4.0, smooth_n=5):
+  def __init__(self, max_acc=4.0, smooth_n=5, lost_timeout_ms=500):
     self.last_dist_m = None
     self.last_t_ms = None
-    self.last_speed = 0.0
+    self.last_speed = None   # 修改：初始化由 0.0 改为 None，更合理
     self.max_acc = max_acc  # m/s²
     self.smooth_n = smooth_n
     self.speed_hist = []
+    self.lost_timeout_ms = lost_timeout_ms # 修改点：新增丢失超时参数
 
   def update(self, dist_mm, t_ms):
-    # 目标丢失
-    if dist_mm is None or t_ms is None:
+    # 处理“距离丢失”逻辑
+    if dist_mm is None:
+      # 没有历史数据 -> 无法产生速度
+      if self.last_t_ms is None:
+        return None
+
+      # 距离丢失但未超过超时 -> 保持上一帧速度
+      if t_ms - self.last_t_ms < self.lost_timeout_ms:
+        return self.last_speed   # 关键改动：不立刻恢复为 None
+
+      # 距离丢失超过超时，真正重置速度
       self.last_dist_m = None
       self.last_t_ms = None
+      self.last_speed = None
+      self.speed_hist.clear()
       return None
 
     # 转米

@@ -270,7 +270,7 @@ def main(demo=False):
 
   # messaging
   pm = PubMaster(["modelV2", "drivingModelData", "cameraOdometry"])
-  sm = SubMaster(["deviceState", "carState", "roadCameraState", "liveCalibration", "driverMonitoringState", "carControl", "liveDelay", "carrotMan", "radarState"])
+  sm = SubMaster(["deviceState", "carState", "roadCameraState", "liveCalibration", "driverMonitoringState", "carControl", "liveDelay", "carrotMan", "radarState", "amapNavi"])
 
   publish_state = PublishState()
   params = Params()
@@ -301,7 +301,7 @@ def main(demo=False):
   long_delay = CP.longitudinalActuatorDelay + LONG_SMOOTH_SECONDS
   prev_action = log.ModelDataV2.Action()
 
-  DH = DesireHelper()
+  DH = DesireHelper(sm)
 
   frame = 0
   custom_lat_delay = 0.0

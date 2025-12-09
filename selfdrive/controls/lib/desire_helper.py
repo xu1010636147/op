@@ -102,7 +102,8 @@ class ExistCounter:
     return self.true_count
 
 class DesireHelper:
-  def __init__(self):
+  def __init__(self, sm):
+    self.sm = sm
     self.params = UnifiedParams()
     self.frame = 0
     self.lane_change_state = LaneChangeState.off
@@ -402,6 +403,7 @@ class DesireHelper:
     lane_change_state = self.lane_change_state
     blinker_val = self.blinker_val
 
+    amapNavi = self.sm['amapNavi']
     self.xroadcate = carrotMan.roadCate
     #if self.roadType >= 0: #大于0表示用户指定道路类型
     #  self.xroadcate = self.roadType
@@ -595,8 +597,8 @@ class DesireHelper:
       self.lane_appeared = self.lane_appeared or lane_exist_counter == int(0.2 / DT_MDL) #
       curr_lane_width_diff = self.lane_width_left_curr_diff if blinker_state == BLINKER_LEFT else self.lane_width_right_curr_diff #当前车道宽度和旁边车道宽度的差值
 
-      carrot_left_blind = carrotMan.leftBlind
-      carrot_right_blind = carrotMan.rightBlind
+      carrot_left_blind = carrotMan.leftBlind or amapNavi.leftBlind
+      carrot_right_blind = carrotMan.rightBlind or amapNavi.rightBlind
       car_left_blind = (carrot_left_blind & 0x04) #车身侧面盲区
       car_right_blind = (carrot_right_blind & 0x04) #车身侧面盲区
       carrot_blind = carrot_left_blind if blinker_state == BLINKER_LEFT else carrot_right_blind

@@ -177,6 +177,7 @@ class AmapNaviServ:
     self.params = UnifiedParams()
     #self.sm = messaging.SubMaster(['carState', 'modelV2', 'selfdriveState', 'radarState', 'carrotMan'])
     self.sm = messaging.SubMaster(['modelV2', 'selfdriveState', 'radarState', 'carrotMan'])
+    self.pm = messaging.PubMaster(['amapNavi'])
 
     self.broadcast_ip = self.navi_get_broadcast_address() #广播地址
     self.broadcast_port = 4210 #广播端口
@@ -228,6 +229,15 @@ class AmapNaviServ:
     threading.Thread(target=self.navi_broadcast_info).start()
     #threading.Thread(target=self.navi_comm_thread).start()
     self.start_navi_comm()
+
+  def public_amap_navi(self):
+    msg = messaging.new_message('amapNavi')
+    msg.valid = True
+    msg.amapNavi.leftBlind = ((4 if self.shared_data.lidar_car_lblind else 0) +
+                              (2 if self.shared_data.left_blind else 0) + (1 if self.shared_data.lidar_lblind else 0))
+    msg.amapNavi.rightBlind = ((4 if self.shared_data.lidar_car_lblind else 0) +
+                               (2 if self.shared_data.left_blind else 0) + (1 if self.shared_data.lidar_lblind else 0))
+    self.pm.send('amapNavi', msg)
 
   def left_blindspot(self):
     return self.shared_data.left_blind or self.shared_data.lidar_lblind
@@ -557,6 +567,9 @@ class AmapNaviServ:
         self.shared_data.camera_l = camera_l
         self.shared_data.camera_r = camera_r
 
+        #发送消息
+        self.public_amap_navi()
+
         rk.keep_time()
 
       except Exception as e:
@@ -650,7 +663,7 @@ class AmapNaviServ:
         self.shared_data.ext_blinker = BLINKER_NONE
       self.blinker_alive = True
       self.blinker_time = now
-      
+
     #now = time.time()
     #last_seen = old_info.get("last_seen", None)
     #if last_seen is not None and (now - last_seen) > 0.15:

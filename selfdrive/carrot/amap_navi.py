@@ -765,9 +765,12 @@ class AmapNaviServ:
             self.shared_data.main_lf_drel = lf_drel
             self.shared_data.main_lf_xrel = lf_xrel
             #计算速度
-            if lf_drel is None: lf_drel = old_info.get("lf_drel", None)
+            if lf_drel is None: lf_drel = old_info.get("lf_drel", None) #距离数据消抖
             self.shared_data.lf_vrel = self.leftFrontTarget.update(lf_drel, dist_timems)
             #动态时距判断
+            self.lb_object_detected = self.is_side_object_risky(lf_drel, self.shared_data.lf_vrel, self.shared_data.v_ego_m,
+                                                                self.min_vrel_vego_time, self.min_drel_vego_time)
+            '''
             if lf_drel is not None and self.shared_data.lf_vrel is not None and self.shared_data.v_ego_m is not None:
               drel = lf_drel / 1000.
               v_ego = self.shared_data.v_ego_m
@@ -777,13 +780,18 @@ class AmapNaviServ:
                                          (drel < (v_ego * self.min_drel_vego_time)))
             else:
               self.lf_object_detected = False
+            '''
           # 左后方
           if detect_side & 1:
             self.shared_data.main_lb_drel = lb_drel
             self.shared_data.main_lb_xrel = lb_xrel
             # 计算速度
+            if lb_drel is None: lb_drel = old_info.get("lb_drel", None) #距离数据消抖
             self.shared_data.lb_vrel = self.leftBehindTarget.update(lb_drel, dist_timems)
             # 动态时距判断
+            self.lf_object_detected = self.is_side_object_risky(lb_drel, self.shared_data.lb_vrel, self.shared_data.v_ego_m,
+                                                                self.min_vrel_vego_time, self.min_drel_vego_time)
+            '''
             if lb_drel is not None and self.shared_data.lb_vrel is not None and self.shared_data.v_ego_m is not None:
               drel = abs(lb_drel) / 1000.
               v_ego = self.shared_data.lb_vrel + self.shared_data.v_ego_m
@@ -793,13 +801,18 @@ class AmapNaviServ:
                                          (drel < (v_ego * self.min_drel_vego_time)))
             else:
               self.lb_object_detected = False
+            '''
           # 右前方
           if detect_side & 2:
             self.shared_data.main_rf_drel = rf_drel
             self.shared_data.main_rf_xrel = rf_xrel
             # 计算速度
+            if rf_drel is None: rf_drel = old_info.get("rf_drel", None)  # 距离数据消抖
             self.shared_data.rf_vrel = self.rightFrontTarget.update(rf_drel, dist_timems)
             # 动态时距判断
+            self.rb_object_detected = self.is_side_object_risky(rf_drel, self.shared_data.rf_vrel, self.shared_data.v_ego_m,
+                                                                self.min_vrel_vego_time, self.min_drel_vego_time)
+            '''
             if rf_drel is not None and self.shared_data.rf_vrel is not None and self.shared_data.v_ego_m is not None:
               drel = rf_drel / 1000.
               v_ego = self.shared_data.v_ego_m
@@ -809,13 +822,18 @@ class AmapNaviServ:
                                          (drel < (v_ego * self.min_drel_vego_time)))
             else:
               self.rf_object_detected = False
+            '''
           # 右后方
           if detect_side & 2:
             self.shared_data.main_rb_drel = rb_drel
             self.shared_data.main_rb_xrel = rb_xrel
             # 计算速度
+            if rb_drel is None: rb_drel = old_info.get("rb_drel", None)  # 距离数据消抖
             self.shared_data.rb_vrel = self.rightBehindTarget.update(rb_drel, dist_timems)
             # 动态时距判断
+            self.rf_object_detected = self.is_side_object_risky(rb_drel, self.shared_data.rb_vrel, self.shared_data.v_ego_m,
+                                                                self.min_vrel_vego_time, self.min_drel_vego_time)
+            '''
             if rb_drel is not None and self.shared_data.rb_vrel is not None and self.shared_data.v_ego_m is not None:
               drel = abs(rb_drel) / 1000.
               v_ego = self.shared_data.rb_vrel + self.shared_data.v_ego_m
@@ -825,6 +843,7 @@ class AmapNaviServ:
                                          (drel < (v_ego * self.min_drel_vego_time)))
             else:
               self.rb_object_detected = False
+            '''
 
         # 通讯时间检查
         now = time.time()
@@ -931,6 +950,53 @@ class AmapNaviServ:
           "last_seen": now,
           "device": device,
         }
+
+  def is_side_object_risky(self, drel_mm, vrel_mps, v_ego_mps,
+                           time_horizon=3.0,
+                           min_drel_scale=1.0):
+    """
+    侧向车辆未来距离风险评估（前方和后方通用）
+    参数：
+      drel_mm       : 当前相对距离（mm），前方为正，后方为负
+      vrel_mps      : 相对速度（m/s），对方速度 - 本车速度
+      v_ego_mps     : 本车速度（m/s）
+      time_horizon  : 预测未来的时间窗，默认 3 秒
+      min_drel_scale: 安全距离比例（drel < v * scale 判断），默认 1.0
+    返回：
+      True  = 未来存在潜在碰撞风险
+      False = 安全
+    """
+
+    # 数据检查
+    if drel_mm is None or vrel_mps is None or v_ego_mps is None:
+      return False
+
+    # 距离取米
+    drel = abs(drel_mm) / 1000.0
+
+    # 对方速度 = 本车速度 + 相对速度
+    v_other = v_ego_mps + vrel_mps
+
+    # closing_speed 为“未来距离缩小的速度”
+    if drel_mm > 0:
+      # 前方目标：风险来自我追它，所以 closing = max(v_ego - v_other, 0)
+      closing_speed = max(v_ego_mps - v_other, 0.0)
+    else:
+      # 后方目标：风险来自它追我，所以 closing = max(v_other - v_ego, 0)
+      closing_speed = max(v_other - v_ego_mps, 0.0)
+
+    # 未来距离预测
+    future_dist = drel - closing_speed * time_horizon * 3
+
+    # 判定规则：
+    # 1) 未来距离过小（可调阈值 3~5m，我设成 4m)
+    # 2) 当前距离小于速度比例阈值（如：d < v * 1.0）
+    risk = (
+      future_dist < v_ego_mps * min_drel_scale or
+      drel < v_ego_mps * min_drel_scale
+    )
+
+    return risk
 
   def camera_data_timeout(self, ip, info):
     now = time.time()

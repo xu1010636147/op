@@ -1411,10 +1411,12 @@ public:
         auto meta = sm["modelV2"].getModelV2().getMeta();
         bool leftFrontBlind = meta.getLeftFrontBlind();
         bool rightFrontBlind = meta.getRightFrontBlind();
-        auto carrotMan = sm["carrotMan"].getCarrotMan();
+        //auto carrotMan = sm["carrotMan"].getCarrotMan();
+        //bool carrotLeftBlind = carrotMan.getLeftBlind() || amapNavi.getLeftBlind();
+        //bool carrotRightBlind = carrotMan.getRightBlind() || amapNavi.getRightBlind();
         auto amapNavi = sm["amapNavi"].getAmapNavi();
-        bool carrotLeftBlind = carrotMan.getLeftBlind() || amapNavi.getLeftBlind();
-        bool carrotRightBlind = carrotMan.getRightBlind() || amapNavi.getRightBlind();
+        bool carrotLeftBlind = amapNavi.getLeftBlind();
+        bool carrotRightBlind = amapNavi.getRightBlind();
         /*
         auto laneChangeState = meta.getLaneChangeState();
         auto laneChangeDirection = meta.getLaneChangeDirection();

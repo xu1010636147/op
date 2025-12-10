@@ -235,8 +235,8 @@ class AmapNaviServ:
     msg.valid = True
     msg.amapNavi.leftBlind = ((4 if self.shared_data.lidar_car_lblind else 0) +
                               (2 if self.shared_data.left_blind else 0) + (1 if self.shared_data.lidar_lblind else 0))
-    msg.amapNavi.rightBlind = ((4 if self.shared_data.lidar_car_lblind else 0) +
-                               (2 if self.shared_data.left_blind else 0) + (1 if self.shared_data.lidar_lblind else 0))
+    msg.amapNavi.rightBlind = ((4 if self.shared_data.lidar_car_rblind else 0) +
+                               (2 if self.shared_data.right_blind else 0) + (1 if self.shared_data.lidar_rblind else 0))
     self.pm.send('amapNavi', msg)
 
   def left_blindspot(self):
@@ -981,9 +981,11 @@ class AmapNaviServ:
     if drel_mm > 0:
       # 前方目标：风险来自我追它，所以 closing = max(v_ego - v_other, 0)
       closing_speed = max(v_ego_mps - v_other, 0.0)
+      danger_dist = max(v_ego_mps * min_drel_scale, 10)
     else:
       # 后方目标：风险来自它追我，所以 closing = max(v_other - v_ego, 0)
       closing_speed = max(v_other - v_ego_mps, 0.0)
+      danger_dist = max(v_ego_mps * min_drel_scale, 15)
 
     # 未来距离预测
     future_dist = drel - closing_speed * time_horizon * 3
@@ -992,8 +994,8 @@ class AmapNaviServ:
     # 1) 未来距离过小（可调阈值 3~5m，我设成 4m)
     # 2) 当前距离小于速度比例阈值（如：d < v * 1.0）
     risk = (
-      future_dist < v_ego_mps * min_drel_scale or
-      drel < v_ego_mps * min_drel_scale
+      future_dist < danger_dist or
+      drel < danger_dist
     )
 
     return risk

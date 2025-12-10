@@ -850,9 +850,9 @@ class AmapNaviServ:
         last_dis_timems = old_info.get("dis_timems", None)
         #last_seen = old_info.get("last_seen", None)
         if last_dis_timems is not None and dist_timems is not None and (dist_timems - last_dis_timems) > 150:
-          print(f"$$$$$$$${"left" if detect_side == 1 else "right"} lidar{lidar_id} time > {dist_timems - last_dis_timems}ms")
+          print(f"$$$$$$$${'left' if detect_side == 1 else 'right'} lidar{lidar_id} time > {dist_timems - last_dis_timems}ms")
         #if last_seen is not None and (now - last_seen) > 0.15:
-        #  print(f"{"=========left" if detect_side == 1 else "right"} lidar{lidar_id} time > {now - last_seen}")
+        #  print(f"========={'left' if detect_side == 1 else 'right'} lidar{lidar_id} time > {now - last_seen}")
 
     if device == "lidar": #激光雷达
       # 若本次通讯无雷达数据，加载上次的数据

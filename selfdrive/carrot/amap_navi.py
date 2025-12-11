@@ -224,6 +224,8 @@ class AmapNaviServ:
     self.rf_side_object_detected = False
     self.rb_side_object_detected = False
 
+    self.model_event_type = 0
+    self.sec_count_down = 0
     self.frame = 0
 
     threading.Thread(target=self.navi_broadcast_info).start()
@@ -1669,7 +1671,28 @@ class AmapNaviServ:
     if self.sm.alive['modelV2']:
       modelV2 = self.sm['modelV2']
       meta = modelV2.meta
-
+      #添加事件
+      if hasattr(meta, 'eventType'):
+        model_event_type = meta.eventType
+        if model_event_type > 0 and model_event_type != self.model_event_type:
+          event_type_val = model_event_type & 255
+          event_type_id = int((model_event_type - event_type_val) / 256)
+          msg['sound'] = event_type_val
+      #倒计时
+      if hasattr(meta, 'leftSec'):
+        sec_count_down = meta.leftSec
+        if self.sec_count_down != sec_count_down:
+          self.sec_count_down = sec_count_down
+          if sec_count_down == 0:
+            #new_alert = AudibleAlert.longDisengaged
+            msg['sound'] = 26
+          elif 0 < sec_count_down <= 10:
+            #new_alert = getattr(AudibleAlert, f'audio{sec_count_down}')
+            msg['sound'] = 30 + sec_count_down
+          elif sec_count_down == 11:
+            #new_alert = AudibleAlert.promptDistracted
+            msg['sound'] = 23
+      #转向灯状态
       if hasattr(meta, 'blinker'):
         msg['blinker'] = meta.blinker
       if isOnroad:

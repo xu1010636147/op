@@ -723,6 +723,12 @@ class AmapNaviServ:
     if "resp" in json_obj:
       resp = json_obj.get("resp")  # 响应类型
 
+      if resp == "overtake":
+        # 通讯时间检查
+        last_seen = old_info.get("last_seen", None)
+        if last_seen is not None and (now - last_seen) > 0.5:
+          print(f"********overtake interval > {now - last_seen}")
+
       # 摄像头盲区信号
       if resp == "cam_blind":
         camera_data = True
@@ -850,11 +856,11 @@ class AmapNaviServ:
         # 通讯时间检查
         now = time.time()
         last_dis_timems = old_info.get("dis_timems", None)
-        #last_seen = old_info.get("last_seen", None)
-        if last_dis_timems is not None and dist_timems is not None and (dist_timems - last_dis_timems) > 150:
-          print(f"$$$$$$$${'left' if detect_side == 1 else 'right'} lidar{lidar_id} time > {dist_timems - last_dis_timems}ms")
-        #if last_seen is not None and (now - last_seen) > 0.15:
-        #  print(f"========={'left' if detect_side == 1 else 'right'} lidar{lidar_id} time > {now - last_seen}")
+        if last_dis_timems is not None and dist_timems is not None and (dist_timems - last_dis_timems) > 80:
+          print(f"$$$$$$$${'left' if detect_side == 1 else 'right'} lidar{lidar_id} interval > {dist_timems - last_dis_timems}ms")
+        last_seen = old_info.get("last_seen", None)
+        if last_seen is not None and (now - last_seen) > 0.2:
+          print(f"========={'left' if detect_side == 1 else 'right'} lidar{lidar_id} interval > {now - last_seen}")
 
     if device == "lidar": #激光雷达
       # 若本次通讯无雷达数据，加载上次的数据
@@ -1062,17 +1068,24 @@ class AmapNaviServ:
         # 保留活跃客户端
         active_clients = {ip: info for ip, info in self.clients.items() if now - info["last_seen"] < 1.0}
 
-        # 标记超时客户端线程停止
-        for ip in self.clients.keys():
+        # 标记超时客户端线程停止，并打印超时信息
+        for ip, info in self.clients.items():
           if ip not in active_clients and ip in self.client_active:
+            last = info.get("last_seen", 0)
+            dt = now - last
+            print(f"[Client Timeout] ip={ip}, last_seen={last:.3f}, now={now:.3f}, dt={dt:.3f}s")
             self.client_active[ip] = False
 
+        # 更新 clients 列表
         self.clients = active_clients
+
+        # 更新状态
         if self.clients:
           self.shared_data.ext_state = len(self.clients)
         else:
           self.shared_data.ext_state = 0
           self.shared_data.ext_blinker = BLINKER_NONE
+
       time.sleep(0.2)
 
   '''

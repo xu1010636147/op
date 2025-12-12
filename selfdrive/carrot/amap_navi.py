@@ -1675,6 +1675,7 @@ class AmapNaviServ:
       if hasattr(meta, 'eventType'):
         model_event_type = meta.eventType
         if model_event_type > 0 and model_event_type != self.model_event_type:
+          self.model_event_type = model_event_type
           event_type_val = model_event_type & 255
           event_type_id = int((model_event_type - event_type_val) / 256)
           msg['sound'] = event_type_val

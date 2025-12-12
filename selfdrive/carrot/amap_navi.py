@@ -281,7 +281,6 @@ class AmapNaviServ:
 
     #动态调整盲区范围
     if self.dynamicBlindRange >= 1:
-      self.sm.update(0)
 
       carrotMan = self.sm['carrotMan']
       modelV2 = self.sm['modelV2']
@@ -462,6 +461,7 @@ class AmapNaviServ:
 
     while True:
       try:
+        self.sm.update(0)
         self.update_param()  # 更新参数
         self.lidar_object_blind()
 
@@ -1429,7 +1429,7 @@ class AmapNaviServ:
 
     while True:
       try:
-        self.sm.update(0)
+        #self.sm.update(0)
         # 修改: 获取当前活跃客户端
         with lock:
           self.clients_copy = getattr(self, "clients", {}).copy()

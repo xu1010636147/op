@@ -457,7 +457,7 @@ class AmapNaviServ:
   def _data_deal_thread(self):
     _clients = {}
     _active_clients = {}
-    rk = Ratekeeper(20, print_delay_threshold=None) #50Hz
+    rk = Ratekeeper(20, print_delay_threshold=0.02) #50Hz
 
     while True:
       try:
@@ -1424,7 +1424,7 @@ class AmapNaviServ:
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     frame = 0
-    rk = Ratekeeper(10, print_delay_threshold=None)
+    rk = Ratekeeper(10, print_delay_threshold=0.03)
     broadcast_cnt = 0
 
     while True:
@@ -1448,13 +1448,7 @@ class AmapNaviServ:
                 self.clients = {}  # 修改: 本地 IP 变化时清空客户端
 
             # 消息
-            navi_msg = navi_dat = lidar_msg = lidar_dat = None
-
-            blinker_msg = self.make_blinker_message()
-            blinker_dat = blinker_msg.encode('utf-8')
-
-            broadcast_msg = self.make_broadcast_message()
-            broadcast_dat = broadcast_msg.encode('utf-8')
+            navi_msg = navi_dat = lidar_msg = lidar_dat = blinker_msg = blinker_dat = None
 
             if self.active_clients:
               if self.clients_copy:
@@ -1488,15 +1482,21 @@ class AmapNaviServ:
                         if (self.shared_data.showDebugLog & 32) > 0:
                           print(f"sendto {ip} (lidar): {lidar_dat}")
                     else:  # 其他
-                      sock.sendto(blinker_dat, (ip, port))
-                      if (self.shared_data.showDebugLog & 32) > 0:
-                        print(f"sendto {ip} (blinker): {blinker_dat}")
+                      if blinker_msg is None:
+                        blinker_msg = self.make_blinker_message()
+                        blinker_dat = blinker_msg.encode('utf-8')
+                      if blinker_dat is not None:
+                        sock.sendto(blinker_dat, (ip, port))
+                        if (self.shared_data.showDebugLog & 32) > 0:
+                          print(f"sendto {ip} (blinker): {blinker_dat}")
                   except Exception as e:
                     if (self.shared_data.showDebugLog & 32) > 0:
                       print(f"sendto {ip} failed: {e}")
 
             # 每2秒广播一次自己的ip和端口
             if frame % 20 == 0:
+              broadcast_msg = self.make_broadcast_message()
+              broadcast_dat = broadcast_msg.encode('utf-8')
               if self.broadcast_ip is not None and broadcast_dat is not None:
                 self.broadcast_ip = self.navi_get_broadcast_address()
                 sock.sendto(broadcast_dat, (self.broadcast_ip, self.broadcast_port))
@@ -1678,20 +1678,21 @@ class AmapNaviServ:
           event_type_val = model_event_type & 255
           event_type_id = int((model_event_type - event_type_val) / 256)
           msg['sound'] = event_type_val
+          print(f"------sound index {event_type_val}")
       #倒计时
       if hasattr(meta, 'leftSec'):
         sec_count_down = meta.leftSec
         if self.sec_count_down != sec_count_down:
           self.sec_count_down = sec_count_down
-          if sec_count_down == 0:
-            #new_alert = AudibleAlert.longDisengaged
+          if sec_count_down == 0: #AudibleAlert.longDisengaged
             msg['sound'] = 26
-          elif 0 < sec_count_down <= 10:
-            #new_alert = getattr(AudibleAlert, f'audio{sec_count_down}')
+            print(f"------sound index {msg['sound']}")
+          elif 0 < sec_count_down <= 10: #audio_x
             msg['sound'] = 30 + sec_count_down
-          elif sec_count_down == 11:
-            #new_alert = AudibleAlert.promptDistracted
+            print(f"------sound index {msg['sound']}")
+          elif sec_count_down == 11: #promptDistracted
             msg['sound'] = 23
+            print(f"------sound index {msg['sound']}")
       #转向灯状态
       if hasattr(meta, 'blinker'):
         msg['blinker'] = meta.blinker

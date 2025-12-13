@@ -1486,7 +1486,7 @@ class AmapNaviServ:
                         sock.sendto(navi_dat, (ip, port))
                         if (self.shared_data.showDebugLog & 32) > 0:
                           print(f"sendto {ip} (overtake): {navi_dat}")
-                    elif device_type == "lidar" or device_type == "camera":  # 雷达模块
+                    elif (device_type == "lidar" or device_type == "camera") and ((frame % 10) == 0):  # 雷达模块
                       if lidar_msg is None:
                         lidar_msg = self.make_lidar_message()
                         lidar_dat = lidar_msg.encode('utf-8')
@@ -1494,7 +1494,7 @@ class AmapNaviServ:
                         sock.sendto(lidar_dat, (ip, port))
                         if (self.shared_data.showDebugLog & 32) > 0:
                           print(f"sendto {ip} (lidar): {lidar_dat}")
-                    else:  # 其他
+                    elif ((frame + 5) % 10) == 0:  # 其他
                       if blinker_msg is None:
                         blinker_msg = self.make_blinker_message()
                         blinker_dat = blinker_msg.encode('utf-8')

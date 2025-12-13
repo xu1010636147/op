@@ -1494,7 +1494,7 @@ class AmapNaviServ:
                         sock.sendto(lidar_dat, (ip, port))
                         if (self.shared_data.showDebugLog & 32) > 0:
                           print(f"sendto {ip} (lidar): {lidar_dat}")
-                    elif ((frame + 5) % 10) == 0:  # 其他
+                    elif ((frame + 3) % 5) == 0:  # 其他
                       if blinker_msg is None:
                         blinker_msg = self.make_blinker_message()
                         blinker_dat = blinker_msg.encode('utf-8')

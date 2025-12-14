@@ -25,14 +25,14 @@ Tools
             class="btn btn-primary"
             onclick="fetchToggleValues()"
         >
-            <i class="fas fa-download me-2"></i>读取参数
+            <i class="fas fa-download me-2"></i>从OP读取参数
         </button>
         <button
             id="submitButton"
             class="btn btn-success"
             onclick="saveToggleValues()"
         >
-            <i class="fas fa-upload me-2"></i>保存参数
+            <i class="fas fa-upload me-2"></i>写入参数到OP
         </button>
     </div>
 </div>
@@ -45,7 +45,7 @@ Tools
             document.getElementById('toggleValuesBox').value =
                 JSON.stringify(data, null, 2);
         } catch (error) {
-            alert('Error fetching values');
+            alert('读取参数失败');
         }
     }
 
@@ -61,12 +61,12 @@ Tools
             });
 
             if (response.ok) {
-                alert('Successfully saved!');
+                alert('参数写入OP成功!');
             } else {
-                throw new Error('Save failed');
+                throw new Error('参数写入OP失败');
             }
         } catch (error) {
-            alert('Invalid JSON format!');
+            alert('输入的参数无效!');
             textarea.classList.add('is-invalid');
             setTimeout(() => textarea.classList.remove('is-invalid'), 2000);
         }

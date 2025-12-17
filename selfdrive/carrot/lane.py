@@ -17,9 +17,9 @@ from openpilot.common.swaglog import cloudlog
 class LaneLineDetector:
     """车道线实线/虚线检测器
 
-    通过分析车道线像素值的方差来判断车道线类型:
-    - 虚线: 相对标准差较低 (间断的线)
-    - 实线: 相对标准差较高 (连续的线)
+    通过分析车道线像素值的方差和存在比例来判断车道线类型:
+    - 虚线: 存在比例较低 (间断的线)
+    - 实线: 存在比例较高 (连续的线)
     """
 
     # 系统常量
@@ -44,6 +44,14 @@ class LaneLineDetector:
         self.w, self.h = None, None
         self.left_history = None
         self.right_history = None
+
+        # ===================== 【新增】横向采样 & presence 参数 =====================
+        self.line_y_threshold = 200        # Y 平面亮度阈值
+        self.lateral_range_m = 0.3         # ±30cm
+        self.lateral_samples = 15          # 横向采样点数
+        self.min_x_presence_ratio = 0.7    # 实线阈值
+        self.max_x_absence_ratio = 0.5     # 虚线阈值
+        # ==========================================================================
 
         # 从 Params 读取可调参数（会创建历史队列）
         self.update_params()
@@ -137,6 +145,7 @@ class LaneLineDetector:
             cloudlog.error(f"Camera initialization failed: {e}")
             return False
 
+    # ===================== 【修改】核心 update 函数 =====================
     def update(self, sm, yuv_buf):
         """主检测逻辑"""
         result = {
@@ -154,9 +163,6 @@ class LaneLineDetector:
 
         # 提取 YUV 数据的 Y 平面
         try:
-            #imgff = np.frombuffer(yuv_buf.data, dtype=np.uint8).reshape(
-            #    (len(yuv_buf.data) // vipc_client.stride, vipc_client.stride))
-            #y_data = imgff[:self.h, :self.w]
             imgff = np.frombuffer(yuv_buf.data, dtype=np.uint8)
             y_plane = imgff[: self.stride * self.h]
             y_data = y_plane.reshape(self.h, self.stride)[:, :self.w]
@@ -168,8 +174,8 @@ class LaneLineDetector:
         try:
             extrinsic_matrix_full = get_view_frame_from_calib_frame(
                 calib.rpyCalib[0],  # roll
-                0.0,                # pitch (已在 calibrated frame 中处理)
-                0.0,                # yaw (已在 calibrated frame 中处理)
+                0.0,                # pitch
+                0.0,                # yaw
                 0.0                 # height
             )
         except Exception as e:
@@ -186,7 +192,7 @@ class LaneLineDetector:
 
             side_key = 'left' if i == 0 else 'right'
             current_history = self.left_history if i == 0 else self.right_history
-            last_type = self.left_last_type if i == 0 else self.right_last_type  # 修改点1：迟滞使用上一帧状态
+            last_type = self.left_last_type if i == 0 else self.right_last_type
 
             # 检查车道线置信度
             if line_prob < self.prob_threshold:
@@ -204,75 +210,79 @@ class LaneLineDetector:
             sample_ys = np.interp(sample_xs, xs, ys)
             sample_zs = np.interp(sample_xs, xs, zs)
 
-            pixel_values = []
+            # ===================== 【修改】横向 ±30cm 扫描 + 按 x 聚合 presence =====================
+            y_offsets = np.linspace(-self.lateral_range_m, self.lateral_range_m, self.lateral_samples)
+            per_x_has_line = []
+            all_pixel_values = []
+
             for k in range(self.num_points):
-                # 使用齐次坐标
-                local_point_homo = np.array([sample_xs[k], sample_ys[k], sample_zs[k], 1.0])
+                base_x = sample_xs[k]
+                base_y = sample_ys[k]
+                base_z = sample_zs[k]
+                has_line_at_x = False
 
-                # 应用完整的 4x4 变换
-                view_point_homo = extrinsic_matrix_full.dot(local_point_homo)
+                for dy in y_offsets:
+                    local_point_homo = np.array([base_x, base_y + dy, base_z, 1.0])
+                    view_point_homo = extrinsic_matrix_full @ local_point_homo
 
-                # 检查深度
-                if view_point_homo[2] <= 0:
-                    continue
+                    if view_point_homo[2] <= 0:
+                        continue
 
-                # 投影到像素坐标
-                u = int(view_point_homo[0] / view_point_homo[2] * self.intrinsics[0, 0] + self.intrinsics[0, 2])
-                v = int(view_point_homo[1] / view_point_homo[2] * self.intrinsics[1, 1] + self.intrinsics[1, 2])
+                    u = int(view_point_homo[0] / view_point_homo[2] * self.intrinsics[0, 0] + self.intrinsics[0, 2])
+                    v = int(view_point_homo[1] / view_point_homo[2] * self.intrinsics[1, 1] + self.intrinsics[1, 2])
 
-                if 0 <= u < self.w and 0 <= v < self.h:
-                    pixel_values.append(int(y_data[v, u]))
+                    if 0 <= u < self.w and 0 <= v < self.h:
+                        y_val = int(y_data[v, u])
+                        all_pixel_values.append(y_val)
+                        if y_val > self.line_y_threshold:  # 横向任意点命中即判定
+                            has_line_at_x = True
+                            break
+                per_x_has_line.append(has_line_at_x)
 
-            # 结果分析
-            if len(pixel_values) < 10:
-                current_history.append(None)
-                continue
+            valid_x = [v for v in per_x_has_line if v is not None]
 
-            pixel_std = np.std(pixel_values)
-            pixel_mean = np.mean(pixel_values)
-            relative_std_current = pixel_std / max(pixel_mean, 1.0)
-
-            # 时间平滑
-            current_history.append(relative_std_current)
-            valid_history = [x for x in current_history if x is not None]
-
-            if len(valid_history) < 2:
-                avg_rel_std = relative_std_current
+            if len(valid_x) < self.num_points // 2:
+                cur_type = -1  # 数据不足
             else:
-                avg_rel_std = np.mean(valid_history)
+                x_presence_ratio = np.mean(valid_x)
 
-            # 三段式判断
-            if avg_rel_std < self.relative_threshold_low:
-                result[side_key] = 0  # 虚线
-            elif avg_rel_std > self.relative_threshold_high:
-                result[side_key] = 1  # 实线
-            else:
-                result[side_key] = -1  # 不确定
+                # 统计最大连续段
+                max_run = 0
+                current_run = 0
+                for v in valid_x:
+                    if v:
+                        current_run += 1
+                        max_run = max(max_run, current_run)
+                    else:
+                        current_run = 0
 
-            result[f'{side_key}_rel_std'] = avg_rel_std
-
-            # 修改点2：数据不足直接 UNKNOWN
-            if len(valid_history) < self.history_frames // 2:
-                cur_type = -1
-            else:
-                # 修改点3：迟滞判断，保持上一状态
-                if avg_rel_std < self.relative_threshold_low:
-                    cur_type = 0  # 虚线
-                elif avg_rel_std > self.relative_threshold_high:
-                    cur_type = 1  # 实线
+                # 三段式判定 + 迟滞
+                if x_presence_ratio > self.min_x_presence_ratio:
+                    cur_type = 1
+                elif x_presence_ratio < self.max_x_absence_ratio:
+                    cur_type = 0
                 else:
                     cur_type = last_type
 
-            # 修改点4：记录上一帧状态
+                # 连续段兜底
+                if cur_type == 1 and max_run < self.num_points * 0.4:
+                    cur_type = last_type
+
+            # 时间平滑
+            current_history.append(cur_type if cur_type >= 0 else None)
             if i == 0:
                 self.left_last_type = cur_type
             else:
                 self.right_last_type = cur_type
 
+            # 记录结果
             result[side_key] = cur_type
-            result[f'{side_key}_rel_std'] = avg_rel_std
+            result[f'{side_key}_rel_std'] = np.std(all_pixel_values) / max(np.mean(all_pixel_values), 1.0)
+            result[f'{side_key}_x_presence'] = np.mean(valid_x) if valid_x else 0.0
+            result[f'{side_key}_max_run'] = max_run if valid_x else 0
 
         return result
+    # ===================== 【修改结束】update =====================
 
     def publish_result(self, pm, result):
       try:
@@ -348,8 +358,8 @@ def main():
 
         print(f"\033[2J\033[H", end="")
         print(f"=== 车道线识别 (Res: {detector.w}x{detector.h}) ===")
-        print(f"左侧: {left_type}  (AvgRel: {result['left_rel_std']:.3f})")
-        print(f"右侧: {right_type}  (AvgRel: {result['right_rel_std']:.3f})")
+        print(f"左侧: {left_type}  (AvgRel: {result['left_rel_std']:.3f}, Presence: {result['left_x_presence']:.2f})")
+        print(f"右侧: {right_type}  (AvgRel: {result['right_rel_std']:.3f}, Presence: {result['right_x_presence']:.2f})")
         print("----------------------------------")
 
 if __name__ == "__main__":

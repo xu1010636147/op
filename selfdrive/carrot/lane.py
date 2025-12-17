@@ -15,15 +15,9 @@ from openpilot.common.swaglog import cloudlog
 # ==============================================================================
 
 class LaneLineDetector:
-    """车道线实线/虚线检测器
+    """车道线实线/虚线检测器"""
 
-    通过分析车道线像素值的方差和存在比例来判断车道线类型:
-    - 虚线: 存在比例较低 (间断的线)
-    - 实线: 存在比例较高 (连续的线)
-    """
-
-    # 系统常量
-    FULL_RES_WIDTH = 1928  # openpilot 标准相机全分辨率宽度
+    FULL_RES_WIDTH = 1928
 
     def __init__(self):
         self.params = Params()
@@ -38,7 +32,6 @@ class LaneLineDetector:
         self.left_last_type = -1
         self.right_last_type = -1
 
-        # 初始化状态变量（在 update_params 之前）
         self.intrinsics = None
         self.stride = None
         self.w, self.h = None, None
@@ -48,111 +41,95 @@ class LaneLineDetector:
         # ===================== 【新增】横向采样 & presence 参数 =====================
         self.line_y_threshold = 200        # Y 平面亮度阈值
         self.lateral_range_m = 0.3         # ±30cm
-        self.lateral_samples = 15          # 横向采样点数
+        self.lateral_samples = 15          # 【修改】横向采样点数 11->15
         self.min_x_presence_ratio = 0.7    # 实线阈值
         self.max_x_absence_ratio = 0.5     # 虚线阈值
         # ==========================================================================
 
-        # 从 Params 读取可调参数（会创建历史队列）
         self.update_params()
-
         cloudlog.info("LaneLineDetector initialized")
 
     def update_params(self):
-        """从 Params 系统更新可调参数，使用 try-except 处理未注册的键"""
-        # 采样范围参数
+        """从 Params 系统更新可调参数"""
         try:
             self.lookahead_start = float(self.params.get("LaneDetectLookaheadStart", encoding='utf8') or "6.0")
         except Exception:
             self.lookahead_start = 6.0
-            cloudlog.warning("LaneDetectLookaheadStart not found, using default: 6.0")
 
         try:
             self.lookahead_end = float(self.params.get("LaneDetectLookaheadEnd", encoding='utf8') or "30.0")
         except Exception:
             self.lookahead_end = 30.0
-            cloudlog.warning("LaneDetectLookaheadEnd not found, using default: 30.0")
 
         try:
             self.num_points = int(self.params.get("LaneDetectNumPoints", encoding='utf8') or "40")
         except Exception:
             self.num_points = 40
-            cloudlog.warning("LaneDetectNumPoints not found, using default: 40")
 
-        # 识别阈值参数
         try:
             self.relative_threshold_low = float(self.params.get("LaneDetectThresholdLow", encoding='utf8') or "0.095")
         except Exception:
             self.relative_threshold_low = 0.095
-            cloudlog.warning("LaneDetectThresholdLow not found, using default: 0.095")
 
         try:
             self.relative_threshold_high = float(self.params.get("LaneDetectThresholdHigh", encoding='utf8') or "0.105")
         except Exception:
             self.relative_threshold_high = 0.105
-            cloudlog.warning("LaneDetectThresholdHigh not found, using default: 0.105")
 
         try:
             self.prob_threshold = float(self.params.get("LaneDetectProbThreshold", encoding='utf8') or "0.3")
         except Exception:
             self.prob_threshold = 0.3
-            cloudlog.warning("LaneDetectProbThreshold not found, using default: 0.3")
 
-        # 时间平滑参数
         try:
             new_history_frames = int(self.params.get("LaneDetectHistoryFrames", encoding='utf8') or "5")
         except Exception:
             new_history_frames = 5
-            cloudlog.warning("LaneDetectHistoryFrames not found, using default: 5")
 
         self.history_frames = new_history_frames
 
-        # 重新创建历史队列（如果大小改变或首次初始化）
         if self.left_history is None or self.right_history is None:
             self.left_history = deque(maxlen=self.history_frames)
             self.right_history = deque(maxlen=self.history_frames)
         elif len(self.left_history) != 0 and self.left_history.maxlen != self.history_frames:
-            # 保留现有数据，只改变最大长度
             self.left_history = deque(self.left_history, maxlen=self.history_frames)
             self.right_history = deque(self.right_history, maxlen=self.history_frames)
 
     def init_camera(self, sm, vipc_client):
-        """初始化相机内参矩阵"""
         if self.intrinsics is not None:
             return True
-
         if not sm.updated['deviceState'] or not sm.updated['roadCameraState']:
             return False
-
         try:
             device_type = str(sm['deviceState'].deviceType)
             sensor = str(sm['roadCameraState'].sensor)
             camera = DEVICE_CAMERAS[(device_type, sensor)]
 
-            # 获取实际分辨率
             self.stride = vipc_client.stride
             self.w = vipc_client.width
             self.h = vipc_client.height
 
-            # 根据实际分辨率缩放内参矩阵
             scale = self.w / self.FULL_RES_WIDTH
             self.intrinsics = camera.fcam.intrinsics * scale
-            self.intrinsics[2, 2] = 1.0  # 保持齐次坐标
-
+            self.intrinsics[2, 2] = 1.0
             cloudlog.info(f"Camera initialized: {self.w}x{self.h}, device={device_type}")
             return True
         except Exception as e:
             cloudlog.error(f"Camera initialization failed: {e}")
             return False
 
-    # ===================== 【修改】核心 update 函数 =====================
+    # ===================== 【修改】完整 update 函数 =====================
     def update(self, sm, yuv_buf):
-        """主检测逻辑"""
         result = {
-            'left': -1,  # -1: 丢失/视野外, 0: 虚线, 1: 实线
+            'left': -1,
             'right': -1,
             'left_rel_std': 0.0,
-            'right_rel_std': 0.0
+            'right_rel_std': 0.0,
+            # 【新增】保证 Presence 字段存在
+            'left_x_presence': 0.0,
+            'right_x_presence': 0.0,
+            'left_max_run': 0,
+            'right_max_run': 0,
         }
 
         if not sm.updated['modelV2'] or not sm.updated['liveCalibration']:
@@ -161,7 +138,6 @@ class LaneLineDetector:
         model = sm['modelV2']
         calib = sm['liveCalibration']
 
-        # 提取 YUV 数据的 Y 平面
         try:
             imgff = np.frombuffer(yuv_buf.data, dtype=np.uint8)
             y_plane = imgff[: self.stride * self.h]
@@ -170,19 +146,17 @@ class LaneLineDetector:
             cloudlog.error(f"YUV extraction failed: {e}")
             return result
 
-        # 获取外参矩阵
         try:
             extrinsic_matrix_full = get_view_frame_from_calib_frame(
-                calib.rpyCalib[0],  # roll
-                0.0,                # pitch
-                0.0,                # yaw
-                0.0                 # height
+                calib.rpyCalib[0],
+                0.0,
+                0.0,
+                0.0
             )
         except Exception as e:
             cloudlog.error(f"Calibration frame conversion failed: {e}")
             return result
 
-        # 处理左右车道线 (索引 1 和 2)
         for i, line_idx in enumerate([1, 2]):
             try:
                 line = model.laneLines[line_idx]
@@ -194,23 +168,20 @@ class LaneLineDetector:
             current_history = self.left_history if i == 0 else self.right_history
             last_type = self.left_last_type if i == 0 else self.right_last_type
 
-            # 检查车道线置信度
             if line_prob < self.prob_threshold:
                 current_history.append(None)
                 continue
 
-            # 提取车道线坐标
             xs, ys, zs = np.array(line.x), np.array(line.y), np.array(line.z)
             if len(xs) < 10:
                 current_history.append(None)
                 continue
 
-            # 沿车道线采样
             sample_xs = np.linspace(self.lookahead_start, self.lookahead_end, self.num_points)
             sample_ys = np.interp(sample_xs, xs, ys)
             sample_zs = np.interp(sample_xs, xs, zs)
 
-            # ===================== 【修改】横向 ±30cm 扫描 + 按 x 聚合 presence =====================
+            # ===================== 【新增】横向 ±30cm 扫描 + 按 x 聚合 presence =====================
             y_offsets = np.linspace(-self.lateral_range_m, self.lateral_range_m, self.lateral_samples)
             per_x_has_line = []
             all_pixel_values = []
@@ -234,7 +205,7 @@ class LaneLineDetector:
                     if 0 <= u < self.w and 0 <= v < self.h:
                         y_val = int(y_data[v, u])
                         all_pixel_values.append(y_val)
-                        if y_val > self.line_y_threshold:  # 横向任意点命中即判定
+                        if y_val > self.line_y_threshold:
                             has_line_at_x = True
                             break
                 per_x_has_line.append(has_line_at_x)
@@ -242,7 +213,7 @@ class LaneLineDetector:
             valid_x = [v for v in per_x_has_line if v is not None]
 
             if len(valid_x) < self.num_points // 2:
-                cur_type = -1  # 数据不足
+                cur_type = -1
             else:
                 x_presence_ratio = np.mean(valid_x)
 
@@ -256,7 +227,7 @@ class LaneLineDetector:
                     else:
                         current_run = 0
 
-                # 三段式判定 + 迟滞
+                # 判定 + 迟滞
                 if x_presence_ratio > self.min_x_presence_ratio:
                     cur_type = 1
                 elif x_presence_ratio < self.max_x_absence_ratio:
@@ -264,11 +235,9 @@ class LaneLineDetector:
                 else:
                     cur_type = last_type
 
-                # 连续段兜底
                 if cur_type == 1 and max_run < self.num_points * 0.4:
                     cur_type = last_type
 
-            # 时间平滑
             current_history.append(cur_type if cur_type >= 0 else None)
             if i == 0:
                 self.left_last_type = cur_type
@@ -285,74 +254,53 @@ class LaneLineDetector:
     # ===================== 【修改结束】update =====================
 
     def publish_result(self, pm, result):
-      try:
-        # 左车道线类型
-        if result['left'] != self._last_params["left"]:
-          self.params.put_nonblocking("LaneLineTypeLeft", str(result['left']))
-          self._last_params["left"] = result['left']
+        try:
+            if result['left'] != self._last_params["left"]:
+                self.params.put_nonblocking("LaneLineTypeLeft", str(result['left']))
+                self._last_params["left"] = result['left']
 
-        # 右车道线类型
-        if result['right'] != self._last_params["right"]:
-          self.params.put_nonblocking("LaneLineTypeRight", str(result['right']))
-          self._last_params["right"] = result['right']
+            if result['right'] != self._last_params["right"]:
+                self.params.put_nonblocking("LaneLineTypeRight", str(result['right']))
+                self._last_params["right"] = result['right']
 
-        # 左侧相对标准差（保留 4 位小数，减少抖动）
-        left_rel = round(result['left_rel_std'], 4)
-        if left_rel != self._last_params["left_rel"]:
-          self.params.put_nonblocking("LaneLineRelStdLeft", f"{left_rel:.4f}")
-          self._last_params["left_rel"] = left_rel
+            left_rel = round(result['left_rel_std'], 4)
+            if left_rel != self._last_params["left_rel"]:
+                self.params.put_nonblocking("LaneLineRelStdLeft", f"{left_rel:.4f}")
+                self._last_params["left_rel"] = left_rel
 
-        # 右侧相对标准差
-        right_rel = round(result['right_rel_std'], 4)
-        if right_rel != self._last_params["right_rel"]:
-          self.params.put_nonblocking("LaneLineRelStdRight", f"{right_rel:.4f}")
-          self._last_params["right_rel"] = right_rel
+            right_rel = round(result['right_rel_std'], 4)
+            if right_rel != self._last_params["right_rel"]:
+                self.params.put_nonblocking("LaneLineRelStdRight", f"{right_rel:.4f}")
+                self._last_params["right_rel"] = right_rel
 
-      except Exception as e:
-        cloudlog.warning(f"Failed to publish results to Params: {e}")
-
-      # 如果需要通过消息系统发布（需要先在 log.capnp 中定义消息结构）
-        # if pm is not None:
-        #     msg = messaging.new_message('laneLineType')
-        #     msg.laneLineType.left = result['left']
-        #     msg.laneLineType.right = result['right']
-        #     pm.send('laneLineType', msg)
-
+        except Exception as e:
+            cloudlog.warning(f"Failed to publish results to Params: {e}")
 
 # ==============================================================================
-# 主程序 (用于独立测试)
+# 主程序 (独立测试)
 # ==============================================================================
 
 def main():
-    """独立运行模式 - 用于测试和调试"""
     detector = LaneLineDetector()
     sm = messaging.SubMaster(['modelV2', 'liveCalibration', 'deviceState', 'roadCameraState'])
     vipc_client = VisionIpcClient("camerad", VisionStreamType.VISION_STREAM_ROAD, True)
 
-    cloudlog.info("Waiting for stream... (请确保 ./replay 正在运行)")
     while not vipc_client.connect(False):
         time.sleep(0.2)
-    cloudlog.info("Stream connected! Waiting for model and calibration data...")
 
-    # 等待相机初始化
     while True:
         sm.update(0)
         if detector.init_camera(sm, vipc_client):
             break
         time.sleep(0.1)
 
-    cloudlog.info("Camera initialized, starting detection...")
-
     while True:
         sm.update(0)
         yuv_buf = vipc_client.recv()
 
         result = detector.update(sm, yuv_buf)
-
-        # 发布结果到 Params（供其他模块使用）
         detector.publish_result(None, result)
 
-        # 格式化输出
         left_type = ['虚线', '实线', '不确定/丢失'][result['left'] if result['left'] >= 0 else 2]
         right_type = ['虚线', '实线', '不确定/丢失'][result['right'] if result['right'] >= 0 else 2]
 

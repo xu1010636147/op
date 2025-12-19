@@ -717,7 +717,7 @@ class VCruiseCarrot:
       elif self._brake_pressed_count < 0 and self._gas_pressed_count < 0:
         if not CC.enabled:
           if self.d_rel > 0 and CS.vEgo > 0.02:
-            safe_state, safe_dist = self._check_safe_stop(CS, 5)
+            safe_state, safe_dist = self._check_safe_stop(CS, 4)
             if abs(CS.steeringAngleDeg) > 70:
               pass
             elif not safe_state:
@@ -745,15 +745,15 @@ class VCruiseCarrot:
 
 
       if self._gas_pressed_count > self._gas_tok_timer:
-        if CS.aEgo < -0.5:
-          self._cruise_control(-1, 5.0, "Cruise off (gas pressed while braking)")
+        #if CS.aEgo < -0.5:
+        #  self._cruise_control(-1, 5.0, "Cruise off (gas pressed while braking)")
         if self.v_ego_kph_set > v_cruise_kph and self.autoGasSyncSpeed:
           v_cruise_kph = self.v_ego_kph_set
 
       if self._gas_pressed_count == 1 or CS.vEgo < 0.1:
         self._pause_auto_speed_up = False
-        if self._gas_pressed_count == 1 and CS.vEgo < 0.1:
-          self._cruise_control(-1, -1, "Cruise off (gasPressed)")
+        #if self._gas_pressed_count == 1 and CS.vEgo < 0.1:
+        #  self._cruise_control(-1, -1, "Cruise off (gasPressed)")
       elif self._brake_pressed_count == 1:
         self._pause_auto_speed_up = True
 

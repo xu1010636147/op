@@ -703,10 +703,10 @@ class VCruiseCarrot:
         if 0 < self.d_rel < CS.vEgo * 0.8:
           if CS.vEgo < 1.0:
             self._cruise_control(1, -1 if self.aTarget > 0.0 else 0, "Cruise on (safe speed)")
-          else:
-            self._cruise_control(-1, 0, "Cruise off (lead car too close)")
-        elif self.v_ego_kph_set < 30:
-          self._cruise_control(-1, 0, "Cruise off (gas speed)")
+          #else:
+          #  self._cruise_control(-1, 0, "Cruise off (lead car too close)")
+        #elif self.v_ego_kph_set < 30:
+        #  self._cruise_control(-1, 0, "Cruise off (gas speed)")
         elif self.xState == 3:
           v_cruise_kph = self.v_ego_kph_set
           self._cruise_control(-1, 3, "Cruise off (traffic sign)")

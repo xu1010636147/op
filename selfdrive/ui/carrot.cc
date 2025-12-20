@@ -1424,14 +1424,13 @@ public:
         auto amapNavi = sm["amapNavi"].getAmapNavi();
         bool carrotLeftBlind = amapNavi.getLeftBlind();
         bool carrotRightBlind = amapNavi.getRightBlind();
-        /*
+
         auto laneChangeState = meta.getLaneChangeState();
         auto laneChangeDirection = meta.getLaneChangeDirection();
         bool rightLaneChange = (laneChangeState == cereal::LaneChangeState::PRE_LANE_CHANGE) &&
             (laneChangeDirection == cereal::LaneChangeDirection::RIGHT);
         bool leftLaneChange = (laneChangeState == cereal::LaneChangeState::PRE_LANE_CHANGE) &&
             (laneChangeDirection == cereal::LaneChangeDirection::LEFT);
-        */
 
 #if 0
         //TEST
@@ -1442,24 +1441,28 @@ public:
         left_blindspot = 1;
         right_blindspot = 1;
 #endif
-        if (left_blindspot) {
-            ui_draw_bsd(s, lane_barrier_vertices[0], &color_red, false);
-        }
-        else if (carrotLeftBlind) {
-            ui_draw_bsd(s, lane_barrier_vertices[0], &color_blue, false);
-        }
-        else if (leftFrontBlind) {
-            ui_draw_bsd(s, lane_barrier_vertices[0], &color_yellow, false);
+        if(leftLaneChange){
+            if (left_blindspot) {
+                ui_draw_bsd(s, lane_barrier_vertices[0], &color_red, false);
+            }
+            else if (carrotLeftBlind) {
+                ui_draw_bsd(s, lane_barrier_vertices[0], &color_blue, false);
+            }
+            else if (leftFrontBlind) {
+                ui_draw_bsd(s, lane_barrier_vertices[0], &color_yellow, false);
+            }
         }
 
-        if (right_blindspot) {
-            ui_draw_bsd(s, lane_barrier_vertices[1], &color_red, true);
-        }
-        else if (carrotRightBlind) {
-            ui_draw_bsd(s, lane_barrier_vertices[1], &color_blue, true);
-        }
-        else if (rightFrontBlind){
-            ui_draw_bsd(s, lane_barrier_vertices[1], &color_yellow, true);
+        if(rightLaneChange){
+            if (right_blindspot) {
+                ui_draw_bsd(s, lane_barrier_vertices[1], &color_red, true);
+            }
+            else if (carrotRightBlind) {
+                ui_draw_bsd(s, lane_barrier_vertices[1], &color_blue, true);
+            }
+            else if (rightFrontBlind){
+                ui_draw_bsd(s, lane_barrier_vertices[1], &color_yellow, true);
+            }
         }
 
         int center_x = s->fb_w / 2;

@@ -1466,10 +1466,10 @@ public:
         }
 
         int center_x = s->fb_w / 2;
-        int circle_radius = 30;
+        int circle_radius = 38;
         int vertical_spacing = 80;
         int horizontal_offset = 150;
-        int top_y = 20;
+        int top_y = 10;
         int arrow_body_width = 14;
         int arrow_body_length = 15;
         int arrow_head_width = 30;

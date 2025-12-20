@@ -9,6 +9,31 @@ import os
 import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
+from openpilot.common.params import Params
+from openpilot.system.manager.manager import get_default_params_key
+
+params = Params()
+
+def get_all_toggle_values():
+  """导出所有 OpenPilot 参数值，bytes -> str"""
+  all_keys = get_default_params_key()
+  toggle_values = {}
+  for key in all_keys:
+    try:
+      value = params.get(key)
+    except Exception:
+      value = b"0"
+    toggle_values[key] = value.decode('utf-8') if value is not None else "0"
+  return toggle_values
+
+
+def store_toggle_values(updated_values):
+  """将前端发送的 JSON 写入 OpenPilot Params"""
+  for key, value in updated_values.items():
+    try:
+      params.put(key, value.encode('utf-8'))
+    except Exception as e:
+      print(f"Failed to update {key}: {e}")
 
 class WebInterface:
     """Web界面处理器"""
@@ -90,6 +115,8 @@ class WebInterface:
                         self.send_header('Content-type', 'application/json; charset=utf-8')
                         self.end_headers()
                         self.send_default_nav_params()
+                    elif self.path == '/fetch_params':
+                        self.fetch_params()
                     else:
                         self.send_error(404, f"{self.path} Page not found")
 
@@ -111,6 +138,8 @@ class WebInterface:
 
                     if self.path == '/nav_params':
                         self.handle_nav_params(data)
+                    elif self.path == '/save_params':
+                      self.save_params(post_data)
                     else:
                         self.send_error(404, "API not found")
                 except json.JSONDecodeError:
@@ -120,6 +149,21 @@ class WebInterface:
                 except Exception as e:
                     print(f"请求处理错误: {e}")
                     self.send_error(500, f"Internal server erro: {str(e)}")
+
+            def fetch_params(self):
+              try:
+                data = get_all_toggle_values()
+                self.send_json_response(data)
+              except Exception as e:
+                self.send_json_response({"status": "error", "message": f"导出参数失败: {e}"})
+
+            def save_params(self, post_data):
+              try:
+                updated_values = json.loads(post_data)
+                store_toggle_values(updated_values)
+                self.send_json_response({"status": "success", "message": "参数写入成功"})
+              except Exception as e:
+                self.send_json_response({"status": "error", "message": f"写入失败: {e}"})
 
             def send_nav_params_page(self):
                 """发送CP导航参数设置页面"""

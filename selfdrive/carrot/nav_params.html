@@ -416,6 +416,21 @@
             <button class="save-btn" onclick="saveParams()">💾 保存参数设置</button>
             <button class="reset-btn" onclick="resetParams()">🔄 恢复默认参数</button>
         </div>
+
+        <div>
+            <textarea
+                id="toggleValuesBox"
+                class="form-control"
+                style="width:100%; height: 300px; font-family: monospace;"
+                placeholder='在此输入或粘贴要设置的参数...'
+            ></textarea>
+        </div>
+
+        <div class="buttons">
+            <button class="reset-btn" onclick="fetchToggleValues()">🔄 从OP读取参数</button>
+            <button class="save-btn" onclick="importParams()">💾 写入参数到OP</button>
+        </div>
+
         <div class="connection-info">
             系统运行中 | 访问地址: <span id="nav_params-ip">-</span>:8088/nav_params
         </div>
@@ -1425,6 +1440,67 @@
             setTimeout(function() {
                 status.style.display = 'none';
             }, 3000);
+        }
+
+        function fetchToggleValues() {
+            const textarea = document.getElementById("toggleValuesBox");
+            showStatus("正在从 OP 读取参数...", "tip");
+
+            const xhr = new XMLHttpRequest();
+            xhr.open("GET", "/fetch_params", true);
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        try {
+                            const jsonData = JSON.parse(xhr.responseText);
+                            textarea.value = JSON.stringify(jsonData, null, 2);
+                            showStatus("参数读取成功", "success");
+                        } catch (e) {
+                            showStatus("读取失败: " + e, "error");
+                        }
+                    } else {
+                        showStatus("读取失败: HTTP " + xhr.status, "error");
+                    }
+                }
+            };
+            xhr.send();
+        }
+
+        function importParams() {
+            const textarea = document.getElementById("toggleValuesBox");
+            const text = textarea.value.trim();
+
+            if (!text) {
+                showStatus("文本框为空，未发送", "error");
+                return;
+            }
+
+            try {
+                JSON.parse(text);  // 校验 JSON
+                showStatus("正在写入参数...", "tip");
+
+                const xhr = new XMLHttpRequest();
+                xhr.open("POST", "/save_params", true);
+                xhr.setRequestHeader("Content-Type", "application/json");
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState === 4) {
+                        if (xhr.status === 200) {
+                            try {
+                                const result = JSON.parse(xhr.responseText);
+                                if (result.status === "success") showStatus("参数写入成功", "success");
+                                else showStatus("写入失败: " + result.message, "error");
+                            } catch (e) {
+                                showStatus("写入失败: " + e, "error");
+                            }
+                        } else {
+                            showStatus("写入失败: HTTP " + xhr.status, "error");
+                        }
+                    }
+                };
+                xhr.send(text);
+            } catch (e) {
+                showStatus("JSON 格式错误", "error");
+            }
         }
 
         // 页面加载完成后初始化

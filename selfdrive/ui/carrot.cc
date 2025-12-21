@@ -1394,7 +1394,7 @@ protected:
         return true;
     }
 public:
-    void draw(const UIState* s) {
+    void draw(const UIState* s,int show_lane_info) {
         if (!make_data(s)) return;
 
         NVGcolor color_red = nvgRGBA(255, 0, 0, 60); //红色
@@ -1441,7 +1441,7 @@ public:
         left_blindspot = 1;
         right_blindspot = 1;
 #endif
-        if(leftLaneChange){
+        if(leftLaneChange || show_lane_info == 2){
             if (left_blindspot) {
                 ui_draw_bsd(s, lane_barrier_vertices[0], &color_red, false);
             }
@@ -1453,7 +1453,7 @@ public:
             }
         }
 
-        if(rightLaneChange){
+        if(rightLaneChange || show_lane_info == 2){
             if (right_blindspot) {
                 ui_draw_bsd(s, lane_barrier_vertices[1], &color_red, true);
             }
@@ -1488,18 +1488,21 @@ public:
             nvgCircle(s->vg, cx, cy, circle_radius);
             nvgFillColor(s->vg, icon_color_yellow);
             nvgFill(s->vg);
-            nvgBeginPath(s->vg);
-            nvgRect(s->vg, cx - total_arrow_length/2 + arrow_head_length, cy - arrow_body_width/2,
-                    arrow_body_length, arrow_body_width);
-            nvgFillColor(s->vg, red_arrow_color);
-            nvgFill(s->vg);
-            nvgBeginPath(s->vg);
-            nvgMoveTo(s->vg, cx - total_arrow_length/2, cy);
-            nvgLineTo(s->vg, cx - total_arrow_length/2 + arrow_head_length, cy - arrow_head_width/2);
-            nvgLineTo(s->vg, cx - total_arrow_length/2 + arrow_head_length, cy + arrow_head_width/2);
-            nvgClosePath(s->vg);
-            nvgFillColor(s->vg, red_arrow_color);
-            nvgFill(s->vg);
+            if(show_lane_info >= 1)
+            {
+                nvgBeginPath(s->vg);
+                nvgRect(s->vg, cx - total_arrow_length/2 + arrow_head_length, cy - arrow_body_width/2,
+                        arrow_body_length, arrow_body_width);
+                nvgFillColor(s->vg, red_arrow_color);
+                nvgFill(s->vg);
+                nvgBeginPath(s->vg);
+                nvgMoveTo(s->vg, cx - total_arrow_length/2, cy);
+                nvgLineTo(s->vg, cx - total_arrow_length/2 + arrow_head_length, cy - arrow_head_width/2);
+                nvgLineTo(s->vg, cx - total_arrow_length/2 + arrow_head_length, cy + arrow_head_width/2);
+                nvgClosePath(s->vg);
+                nvgFillColor(s->vg, red_arrow_color);
+                nvgFill(s->vg);
+            }
 
             icon_show = true;
         }
@@ -1510,18 +1513,21 @@ public:
             nvgCircle(s->vg, cx, cy, circle_radius);
             nvgFillColor(s->vg, icon_color_yellow);
             nvgFill(s->vg);
-            nvgBeginPath(s->vg);
-            nvgRect(s->vg, cx - total_arrow_length/2, cy - arrow_body_width/2,
-                    arrow_body_length, arrow_body_width);
-            nvgFillColor(s->vg, red_arrow_color);
-            nvgFill(s->vg);
-            nvgBeginPath(s->vg);
-            nvgMoveTo(s->vg, cx + total_arrow_length/2, cy);
-            nvgLineTo(s->vg, cx + total_arrow_length/2 - arrow_head_length, cy - arrow_head_width/2);
-            nvgLineTo(s->vg, cx + total_arrow_length/2 - arrow_head_length, cy + arrow_head_width/2);
-            nvgClosePath(s->vg);
-            nvgFillColor(s->vg, red_arrow_color);
-            nvgFill(s->vg);
+            if(show_lane_info >= 1)
+            {
+                nvgBeginPath(s->vg);
+                nvgRect(s->vg, cx - total_arrow_length/2, cy - arrow_body_width/2,
+                        arrow_body_length, arrow_body_width);
+                nvgFillColor(s->vg, red_arrow_color);
+                nvgFill(s->vg);
+                nvgBeginPath(s->vg);
+                nvgMoveTo(s->vg, cx + total_arrow_length/2, cy);
+                nvgLineTo(s->vg, cx + total_arrow_length/2 - arrow_head_length, cy - arrow_head_width/2);
+                nvgLineTo(s->vg, cx + total_arrow_length/2 - arrow_head_length, cy + arrow_head_width/2);
+                nvgClosePath(s->vg);
+                nvgFillColor(s->vg, red_arrow_color);
+                nvgFill(s->vg);
+            }
 
             icon_show = true;
         }
@@ -1539,18 +1545,21 @@ public:
             nvgCircle(s->vg, cx, cy, circle_radius);
             nvgFillColor(s->vg, icon_color_blue);
             nvgFill(s->vg);
-            nvgBeginPath(s->vg);
-            nvgRect(s->vg, cx - total_arrow_length/2 + arrow_head_length, cy - arrow_body_width/2,
-                    arrow_body_length, arrow_body_width);
-            nvgFillColor(s->vg, red_arrow_color);
-            nvgFill(s->vg);
-            nvgBeginPath(s->vg);
-            nvgMoveTo(s->vg, cx - total_arrow_length/2, cy);
-            nvgLineTo(s->vg, cx - total_arrow_length/2 + arrow_head_length, cy - arrow_head_width/2);
-            nvgLineTo(s->vg, cx - total_arrow_length/2 + arrow_head_length, cy + arrow_head_width/2);
-            nvgClosePath(s->vg);
-            nvgFillColor(s->vg, red_arrow_color);
-            nvgFill(s->vg);
+            if(show_lane_info >= 1)
+            {
+                nvgBeginPath(s->vg);
+                nvgRect(s->vg, cx - total_arrow_length/2 + arrow_head_length, cy - arrow_body_width/2,
+                        arrow_body_length, arrow_body_width);
+                nvgFillColor(s->vg, red_arrow_color);
+                nvgFill(s->vg);
+                nvgBeginPath(s->vg);
+                nvgMoveTo(s->vg, cx - total_arrow_length/2, cy);
+                nvgLineTo(s->vg, cx - total_arrow_length/2 + arrow_head_length, cy - arrow_head_width/2);
+                nvgLineTo(s->vg, cx - total_arrow_length/2 + arrow_head_length, cy + arrow_head_width/2);
+                nvgClosePath(s->vg);
+                nvgFillColor(s->vg, red_arrow_color);
+                nvgFill(s->vg);
+            }
 
             icon_show = true;
         }
@@ -1561,18 +1570,21 @@ public:
             nvgCircle(s->vg, cx, cy, circle_radius);
             nvgFillColor(s->vg, icon_color_blue);
             nvgFill(s->vg);
-            nvgBeginPath(s->vg);
-            nvgRect(s->vg, cx - total_arrow_length/2, cy - arrow_body_width/2,
-                    arrow_body_length, arrow_body_width);
-            nvgFillColor(s->vg, red_arrow_color);
-            nvgFill(s->vg);
-            nvgBeginPath(s->vg);
-            nvgMoveTo(s->vg, cx + total_arrow_length/2, cy);
-            nvgLineTo(s->vg, cx + total_arrow_length/2 - arrow_head_length, cy - arrow_head_width/2);
-            nvgLineTo(s->vg, cx + total_arrow_length/2 - arrow_head_length, cy + arrow_head_width/2);
-            nvgClosePath(s->vg);
-            nvgFillColor(s->vg, red_arrow_color);
-            nvgFill(s->vg);
+            if(show_lane_info >= 1)
+            {
+                nvgBeginPath(s->vg);
+                nvgRect(s->vg, cx - total_arrow_length/2, cy - arrow_body_width/2,
+                        arrow_body_length, arrow_body_width);
+                nvgFillColor(s->vg, red_arrow_color);
+                nvgFill(s->vg);
+                nvgBeginPath(s->vg);
+                nvgMoveTo(s->vg, cx + total_arrow_length/2, cy);
+                nvgLineTo(s->vg, cx + total_arrow_length/2 - arrow_head_length, cy - arrow_head_width/2);
+                nvgLineTo(s->vg, cx + total_arrow_length/2 - arrow_head_length, cy + arrow_head_width/2);
+                nvgClosePath(s->vg);
+                nvgFillColor(s->vg, red_arrow_color);
+                nvgFill(s->vg);
+            }
 
             icon_show = true;
         }
@@ -1590,18 +1602,21 @@ public:
             nvgCircle(s->vg, cx, cy, circle_radius);
             nvgFillColor(s->vg, icon_color_red);
             nvgFill(s->vg);
-            nvgBeginPath(s->vg);
-            nvgRect(s->vg, cx - total_arrow_length/2 + arrow_head_length, cy - arrow_body_width/2,
-                    arrow_body_length, arrow_body_width);
-            nvgFillColor(s->vg, yellow_arrow_color);
-            nvgFill(s->vg);
-            nvgBeginPath(s->vg);
-            nvgMoveTo(s->vg, cx - total_arrow_length/2, cy);
-            nvgLineTo(s->vg, cx - total_arrow_length/2 + arrow_head_length, cy - arrow_head_width/2);
-            nvgLineTo(s->vg, cx - total_arrow_length/2 + arrow_head_length, cy + arrow_head_width/2);
-            nvgClosePath(s->vg);
-            nvgFillColor(s->vg, yellow_arrow_color);
-            nvgFill(s->vg);
+            if(show_lane_info >= 1)
+            {
+                nvgBeginPath(s->vg);
+                nvgRect(s->vg, cx - total_arrow_length/2 + arrow_head_length, cy - arrow_body_width/2,
+                        arrow_body_length, arrow_body_width);
+                nvgFillColor(s->vg, yellow_arrow_color);
+                nvgFill(s->vg);
+                nvgBeginPath(s->vg);
+                nvgMoveTo(s->vg, cx - total_arrow_length/2, cy);
+                nvgLineTo(s->vg, cx - total_arrow_length/2 + arrow_head_length, cy - arrow_head_width/2);
+                nvgLineTo(s->vg, cx - total_arrow_length/2 + arrow_head_length, cy + arrow_head_width/2);
+                nvgClosePath(s->vg);
+                nvgFillColor(s->vg, yellow_arrow_color);
+                nvgFill(s->vg);
+            }
 
             icon_show = true;
         }
@@ -1612,18 +1627,21 @@ public:
             nvgCircle(s->vg, cx, cy, circle_radius);
             nvgFillColor(s->vg, icon_color_red);
             nvgFill(s->vg);
-            nvgBeginPath(s->vg);
-            nvgRect(s->vg, cx - total_arrow_length/2, cy - arrow_body_width/2,
-                    arrow_body_length, arrow_body_width);
-            nvgFillColor(s->vg, yellow_arrow_color);
-            nvgFill(s->vg);
-            nvgBeginPath(s->vg);
-            nvgMoveTo(s->vg, cx + total_arrow_length/2, cy);
-            nvgLineTo(s->vg, cx + total_arrow_length/2 - arrow_head_length, cy - arrow_head_width/2);
-            nvgLineTo(s->vg, cx + total_arrow_length/2 - arrow_head_length, cy + arrow_head_width/2);
-            nvgClosePath(s->vg);
-            nvgFillColor(s->vg, yellow_arrow_color);
-            nvgFill(s->vg);
+            if(show_lane_info >= 1)
+            {
+                nvgBeginPath(s->vg);
+                nvgRect(s->vg, cx - total_arrow_length/2, cy - arrow_body_width/2,
+                        arrow_body_length, arrow_body_width);
+                nvgFillColor(s->vg, yellow_arrow_color);
+                nvgFill(s->vg);
+                nvgBeginPath(s->vg);
+                nvgMoveTo(s->vg, cx + total_arrow_length/2, cy);
+                nvgLineTo(s->vg, cx + total_arrow_length/2 - arrow_head_length, cy - arrow_head_width/2);
+                nvgLineTo(s->vg, cx + total_arrow_length/2 - arrow_head_length, cy + arrow_head_width/2);
+                nvgClosePath(s->vg);
+                nvgFillColor(s->vg, yellow_arrow_color);
+                nvgFill(s->vg);
+            }
 
             icon_show = true;
         }
@@ -3067,7 +3085,7 @@ void ui_draw(UIState *s, ModelRenderer* model_renderer, int w, int h) {
 
   drawPlot.draw(s);
 
-  drawBlindSpot.draw(s);
+  drawBlindSpot.draw(s,show_lane_info);
 
   if(draw_carrot)
     drawCarrot.drawRadarInfo(s);

@@ -411,11 +411,6 @@
         <div class="no-results" id="no-results">
             没有找到匹配的参数
         </div>
-        <div class="status" id="status-message"></div>
-        <div class="buttons">
-            <button class="save-btn" onclick="saveParams()">💾 保存参数设置</button>
-            <button class="reset-btn" onclick="resetParams()">🔄 恢复默认参数</button>
-        </div>
 
         <div>
             <textarea
@@ -429,6 +424,13 @@
         <div class="buttons">
             <button class="reset-btn" onclick="fetchToggleValues()">🔄 从OP读取参数</button>
             <button class="save-btn" onclick="importParams()">💾 写入参数到OP</button>
+        </div>
+
+        <div class="status" id="status-message"></div>
+
+        <div class="buttons">
+            <button class="save-btn" onclick="saveParams()">💾 保存参数设置</button>
+            <button class="reset-btn" onclick="resetParams()">🔄 恢复默认参数</button>
         </div>
 
         <div class="connection-info">

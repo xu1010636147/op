@@ -399,7 +399,7 @@ class AmapNaviServ:
       self.rf_side_object_detected = True
 
     #右后方
-    if self.rb_object_detected and rb_blind_mask:
+    if self.rb_object_detected and not rb_blind_mask:
       self.rb_object_detected_count = 1
     else:
       self.rb_object_detected_count -= 1
@@ -509,9 +509,11 @@ class AmapNaviServ:
                   # 判断车身范围是否有障碍物
                   _lf_drel = info.get("lf_drel", None)
                   _lb_drel = info.get("lb_drel", None)
+                  _lf_xrel = info.get("lf_xrel", None)
+                  _lb_xrel = info.get("lb_xrel", None)
                   lf_limit_val = max(3000 + (_lb_drel if _lb_drel is not None else -2000), 1000)
-                  if (_lf_drel is not None and _lf_drel < lf_limit_val) or (
-                    _lb_drel is not None and _lb_drel > -2000):  # 车头3米或车2米内有障碍
+                  if ((_lf_drel is not None and _lf_drel < lf_limit_val and _lf_xrel is not None and _lf_xrel < 1200) or
+                    (_lb_drel is not None and _lb_drel > -2000 and _lb_xrel is not None and _lb_xrel < 1200)):  # 车头3米或车2米内有障碍(且侧面距离小于1.2m)
                     lidar_car_lblind = True
 
                 if info.get("lidar_rblind", False):
@@ -520,9 +522,11 @@ class AmapNaviServ:
                   # 判断车身范围是否有障碍物
                   _rf_drel = info.get("rf_drel", None)
                   _rb_drel = info.get("rb_drel", None)
+                  _rf_xrel = info.get("rf_xrel", None)
+                  _rb_xrel = info.get("rb_xrel", None)
                   lf_limit_val = max(3000 + (_rb_drel if _rb_drel is not None else -2000), 1000)
-                  if (_rf_drel is not None and _rf_drel < lf_limit_val) or (
-                    _rb_drel is not None and _rb_drel > -2000):  # 车头3米或车2米内有障碍
+                  if ((_rf_drel is not None and _rf_drel < lf_limit_val and _rf_xrel is not None and _rf_xrel < 1200) or
+                    (_rb_drel is not None and _rb_drel > -2000 and _rb_xrel is not None and _rb_xrel < 1200)):  # 车头3米或车2米内有障碍(且侧面距离小于1.2m)
                     lidar_car_rblind = True
 
                 if info.get("left_blind", False):
@@ -778,23 +782,21 @@ class AmapNaviServ:
             self.shared_data.main_lb_xrel = lb_xrel
             if lb_drel is None: lb_drel = old_info.get("lb_drel", None)  # 距离数据消抖
 
-            # 左前方和右前方距离之前小于2米时
-            lf_dreltmp = lf_drel if lf_drel is not None else 0
-            lb_dreltmp = lb_drel if lb_drel is not None else 0
-            if lf_dreltmp <= 1000 and lb_dreltmp >= -1000: #前后距离在1米内
-              l_drelavg = (lf_dreltmp + lb_dreltmp)/2
-              self.shared_data.lf_vrel = self.leftFrontTarget.update(l_drelavg, dist_timems)
-              self.shared_data.lb_vrel = self.leftBehindTarget.update(l_drelavg, dist_timems)
+            # 左前方和左后方距离均小于1米时
+            lf_dreltmp = lf_drel if lf_drel is not None else 0.1
+            lb_dreltmp = lb_drel if lb_drel is not None else 0.
+            if lf_dreltmp <= 1000 and lb_dreltmp >= -1000 and lf_drel is not None and lb_drel is not None: #前后距离在1米内
+              pass
             else:
-              #计算左前方速度
-              self.shared_data.lf_vrel = self.leftFrontTarget.update(lf_drel, dist_timems)
-              # 计算左后方速度
-              self.shared_data.lb_vrel = self.leftBehindTarget.update(lb_drel, dist_timems)
-
-            #动态时距判断
-            self.lf_object_detected = self.is_side_object_risky(lf_drel, self.shared_data.lf_vrel, self.shared_data.v_ego_m,
+              lf_dreltmp = lf_drel
+              lb_dreltmp = lb_drel
+            #计算左前方和左后方速度
+            self.shared_data.lf_vrel = self.leftFrontTarget.update(lf_dreltmp, dist_timems)
+            self.shared_data.lb_vrel = self.leftFrontTarget.update(lb_dreltmp, dist_timems)
+            #动态时距盲区判断
+            self.lf_object_detected = self.is_side_object_risky(lf_dreltmp, self.shared_data.lf_vrel, self.shared_data.v_ego_m,
                                                                 self.min_vrel_vego_time, self.min_drel_vego_time)
-            self.lb_object_detected = self.is_side_object_risky(lb_drel, self.shared_data.lb_vrel, self.shared_data.v_ego_m,
+            self.lb_object_detected = self.is_side_object_risky(lb_dreltmp, self.shared_data.lb_vrel, self.shared_data.v_ego_m,
                                                                 self.min_vrel_vego_time, self.min_drel_vego_time)
           if detect_side & 2:
             # 右前方
@@ -806,24 +808,26 @@ class AmapNaviServ:
             self.shared_data.main_rb_xrel = rb_xrel
             if rb_drel is None: rb_drel = old_info.get("rb_drel", None)  # 距离数据消抖
 
-            # 右前方和右前方距离之前小于2米时
-            rf_dreltmp = rf_drel if rf_drel is not None else 0
-            rb_dreltmp = rb_drel if rb_drel is not None else 0
-            if rf_dreltmp <= 1000 and rb_dreltmp >= -1000: #前后距离在1米内
-              l_drelavg = (rf_dreltmp + rb_dreltmp)/2
-              self.shared_data.rf_vrel = self.rightFrontTarget.update(l_drelavg, dist_timems)
-              self.shared_data.rb_vrel = self.rightBehindTarget.update(l_drelavg, dist_timems)
+            # 右前方和右后方距离均小于1米时
+            rf_dreltmp = rf_drel if rf_drel is not None else 0.1
+            rb_dreltmp = rb_drel if rb_drel is not None else 0.
+            if rf_dreltmp <= 1000 and rb_dreltmp >= -1000 and rf_drel is not None and rb_drel is not None: #前后距离在1米内
+              pass
             else:
-              #计算右前方速度
-              self.shared_data.rf_vrel = self.rightFrontTarget.update(rf_drel, dist_timems)
-              # 计算右后方速度
-              self.shared_data.rb_vrel = self.rightBehindTarget.update(rb_drel, dist_timems)
-
-            #动态时距判断
-            self.rf_object_detected = self.is_side_object_risky(rf_drel, self.shared_data.rf_vrel, self.shared_data.v_ego_m,
+              rf_dreltmp = rf_drel
+              rb_dreltmp = rb_drel
+            #计算右前方和右后方速度
+            self.shared_data.rf_vrel = self.rightFrontTarget.update(rf_dreltmp, dist_timems)
+            self.shared_data.rb_vrel = self.rightBehindTarget.update(rb_dreltmp, dist_timems)
+            #动态时距盲区判断
+            self.rf_object_detected = self.is_side_object_risky(rf_dreltmp, self.shared_data.rf_vrel, self.shared_data.v_ego_m,
                                                                 self.min_vrel_vego_time, self.min_drel_vego_time)
-            self.rb_object_detected = self.is_side_object_risky(rb_drel, self.shared_data.rb_vrel, self.shared_data.v_ego_m,
+            self.rb_object_detected = self.is_side_object_risky(rb_dreltmp, self.shared_data.rb_vrel, self.shared_data.v_ego_m,
                                                                 self.min_vrel_vego_time, self.min_drel_vego_time)
+            #self.rb_object_detected = self.is_side_object_risky_debug(rb_drel, self.shared_data.rb_vrel,
+            #                                                          self.shared_data.v_ego_m,
+            #                                                          self.min_vrel_vego_time,
+            #                                                          self.min_drel_vego_time, "RB")
 
         # 通讯时间检查
         now = time.time()
@@ -977,6 +981,76 @@ class AmapNaviServ:
       future_dist < danger_dist or
       drel < danger_dist
     )
+
+    return risk
+
+  def is_side_object_risky_debug(self,
+                                 drel_mm,
+                                 vrel_mps,
+                                 v_ego_mps,
+                                 time_horizon=3.0,
+                                 min_drel_scale=1.0,
+                                 tag="SIDE"):
+    """
+    带完整调试信息的侧向风险评估
+    """
+
+    print("\n==============================")
+    print(f"[{tag}] is_side_object_risky")
+
+    # ---------- 基础输入 ----------
+    print(f"input drel_mm   : {drel_mm}")
+    print(f"input vrel_mps  : {vrel_mps}")
+    print(f"input v_ego_mps : {v_ego_mps}")
+
+    if drel_mm is None or vrel_mps is None or v_ego_mps is None:
+      print("invalid input -> risk = False")
+      return False
+
+    # ---------- 距离 ----------
+    drel_m = drel_mm / 1000.0
+    drel_abs = abs(drel_m)
+
+    print(f"drel_m (signed) : {drel_m:.2f} m")
+    print(f"drel_abs        : {drel_abs:.2f} m")
+
+    # ---------- 速度 ----------
+    v_other = v_ego_mps + vrel_mps
+    print(f"v_other_mps     : {v_other:.2f} m/s")
+
+    # ---------- 前 / 后 ----------
+    if drel_mm > 0:
+      pos = "FRONT"
+      closing_speed = max(v_ego_mps - v_other, 0.0)
+      danger_dist = max(v_ego_mps * min_drel_scale, 10)
+    else:
+      pos = "REAR"
+      closing_speed = max(v_other - v_ego_mps, 0.0)
+      danger_dist = max(v_ego_mps * min_drel_scale, 15)
+
+    print(f"position        : {pos}")
+    print(f"closing_speed   : {closing_speed:.2f} m/s")
+    print(f"danger_dist     : {danger_dist:.2f} m")
+
+    # ---------- 未来预测 ----------
+    horizon = time_horizon * 3.0
+    future_dist = drel_abs - closing_speed * horizon
+
+    print(f"time_horizon    : {time_horizon:.2f} s")
+    print(f"horizon_factor  : {horizon:.2f}")
+    print(f"future_dist     : {future_dist:.2f} m")
+
+    # ---------- 判定 ----------
+    cond_future = future_dist < danger_dist
+    cond_now = drel_abs < danger_dist
+
+    print(f"cond_future     : {cond_future}")
+    print(f"cond_now        : {cond_now}")
+
+    risk = cond_future or cond_now
+
+    print(f"FINAL RISK   : {risk}")
+    print("==============================")
 
     return risk
 

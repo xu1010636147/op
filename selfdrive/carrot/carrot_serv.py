@@ -27,6 +27,9 @@ BLINKER_LEFT = 1
 BLINKER_RIGHT = 2
 BLINKER_BOTH = 3
 
+DT = 0.1
+ACCEL_LIMIT = 1.5*3.6  # m/s²，舒适加减速限制
+
 nav_type_mapping = {
   12: ("turn", "left", 1),
   16: ("turn", "sharp left", 1),
@@ -266,6 +269,18 @@ class CarrotServ:
     self.lidar_rblind = False
     self.lidar_car_lblind = False
     self.lidar_car_rblind = False
+    self.enable_radar_tracks = -1
+    self.lidar_lvalid = False
+    self.lidar_rvalid = False
+    self.lf_drel = None
+    self.lb_drel = None
+    self.rf_drel = None
+    self.rb_drel = None
+    self.lf_vrel = None
+    self.lb_vrel = None
+    self.rf_vrel = None
+    self.rb_vrel = None
+    self.atc_speed_delta = None
     #new
     self.atcType = "none"
 
@@ -317,6 +332,7 @@ class CarrotServ:
       self.autoForkSpeedMin = self.params.get_int("AutoForkSpeedMin")
       self.autoKeepForkSpeed = self.params.get_int("AutoKeepForkSpeed")
       self.showDebugLog = self.params.get_int("ShowDebugLog")
+      self.enable_radar_tracks = self.params.get_int("EnableRadarTracks")
 
     self.param_frame += 1
     if self.roadType >= 0: #手动设置道路类型
@@ -700,6 +716,111 @@ class CarrotServ:
 
     return new_lat, new_lon
 
+  def compute_delta_v_for_front(self, lf_drel_mm, lf_vrel, v_ego):
+    """
+    前车侧向危险纵向控制
+    返回 delta_v (m/s)
+      delta_v < 0: 减速
+      delta_v > 0: 加速（一般不需要）
+    """
+    # ---------- 基本量 ----------
+    d = lf_drel_mm * 0.001  # mm -> m，前车为正
+    v_rel = lf_vrel  # v_front - v_ego
+
+    # 前车很远(45米外)，不用干预
+    if d > 45.0:
+      return 0.0
+
+    # 距离 -> 前车要比自己快的“相对速度”，否则就减速
+    D_POINTS = np.array([10.0, 20.0, 30.0, 40.0])
+    V_POINTS = np.array([3.0, 2.0, 1.0, 0.5])  # m/s
+
+    # 距离极近(10米以内)，直接减速
+    if d < D_POINTS[0]:
+      return -1.5  # m/s，保守减速
+
+    # ---------- 插值 ----------
+    v_allow = np.interp(d, D_POINTS, V_POINTS)
+
+    # ---------- 防抖 ----------
+    MARGIN = 0.3
+
+    # ---------- 计算 delta_v ----------
+    if v_rel < v_allow - MARGIN:
+      # 前车明显慢，需要减速
+      delta_v = v_rel - v_allow  # <0
+    else:
+      delta_v = 0.0  # 不动
+
+    # 限幅，防止太猛
+    delta_v = max(delta_v, -2.0)
+    return delta_v
+
+  def compute_delta_v_for_rear(self, lb_drel_mm, lb_vrel, v_ego):
+    """
+    后车侧向危险纵向控制
+    返回 delta_v (m/s)
+      delta_v > 0: 加速
+      delta_v < 0: 减速（一般极少）
+    """
+    # ---------- 基本量 ----------
+    d = abs(lb_drel_mm) * 0.001
+    v_rel = lb_vrel  # v_side - v_ego
+
+    # 距离 -> 容忍相对速度 曲线
+    D_POINTS = np.array([10.0, 20.0, 30.0, 40.0])
+    V_POINTS = np.array([0.0, 1.5, 2.5, 4.0])
+
+    # 距离太小，直接减速
+    if d < D_POINTS[0]:
+      return -1.0  # m/s，极近时减速
+
+    # 插值
+    v_allow = np.interp(d, D_POINTS, V_POINTS)
+
+    MARGIN = 0.5
+
+    # ---------- 计算 delta_v ----------
+    if v_rel > v_allow + MARGIN:
+      delta_v = 0.0  # 它太快，不加速，等后车超过自己
+    elif v_rel > v_allow:
+      delta_v = -0.5  # 临界，轻减速，让后车加速超过自己
+    else:
+      delta_v = v_allow - v_rel  # 加速拉开距离
+
+    # 限幅
+    delta_v = max(min(delta_v, 3.0), -2.0)
+    return delta_v
+
+  def compute_delta_v_for_front_rear(self, lf_drel_mm, lf_vrel, lb_drel_mm, lb_vrel, v_ego):
+    """
+    计算前后车同时存在时，需要的纵向速度调整量 Δv
+    返回：
+      Δv > 0: 加速
+      Δv < 0: 减速
+      magnitude = 绝对速度变化 m/s
+    """
+    # 转 m
+    d_f = lf_drel_mm * 0.001
+    d_b = lb_drel_mm * 0.001
+
+    # 计算真实速度
+    v_f = v_ego + lf_vrel
+    v_b = v_ego + lb_vrel
+
+    # 参数
+    T = 3.0  # 预测时间 horizon s
+    REQUIRED_GAP = 12.0  # 最小侧车道 gap m
+    MAX_DELTA_V = 3.0  # 最大可调 Δv m/s，防止过猛
+
+    # 计算所需 Δv
+    delta_v = ((v_f - v_b) * T + (d_f - d_b - REQUIRED_GAP)) / (2 * T)
+
+    # 限幅
+    delta_v = max(min(delta_v, MAX_DELTA_V), -MAX_DELTA_V)
+
+    return delta_v
+
   def update_auto_turn(self, v_ego_kph, sm, x_turn_info, x_dist_to_turn, check_steer=False):
     turn_speed = self.autoTurnControlSpeedTurn
     fork_speed = self.nRoadLimitSpeed
@@ -759,6 +880,9 @@ class CarrotServ:
     atc_start_dist = mapping["start"]
     atc_type_org = atc_type
     atc_speed_org = atc_speed
+    atc_speedup_enable = False
+    atc_speed_up = False
+    delta_v = None
 
     #导航给出在转弯距离大于开始转弯距离时，进入准备阶段
     if x_dist_to_turn > atc_start_dist:
@@ -771,22 +895,73 @@ class CarrotServ:
 
       if (atc_type in ["turn left", "turn right"]) and (x_dist_to_turn > start_turn_dist):
         atc_type = "atc left" if "left" in atc_type else "atc right" #类型为atc left/right只是进入转弯准备状态，并不是真的在执行转弯
+        atc_speedup_enable = True
       elif atc_type in ["fork left", "fork right"]: #说明x_dist_to_turn>do_fork_dist并且说明x_dist_to_turn <=atc_start_dist
         #atc_dist = do_speed_decal_dist #替换减速距离
         if (fork_dist_offset > 0) and (x_dist_to_turn > do_fork_dist): #设置了提前变道距离，并且剩余距离大于进入匝道口距离，则执行提前变道流程
           atc_type = "atc left" if "left" in atc_type else "atc right"
+          atc_speedup_enable = True
         elif (do_fork_nav_dist > 0) and (x_dist_to_turn <= do_fork_nav_dist): #设置了导航距离控制转弯后，如果距离小于设置值是立即变道
           atc_type += " now"
         if x_dist_to_turn < do_speed_decal_dist: #距离路口的距离小于设定值时要开始减速了，因为到匝道口前nRoadLimitSpeed其实没有变，所以只能用这种方法进行减速
-          if auto_decel_rate > 0: #设置了减速比率
-            if atc_speed > decel_speed_min: #只有车速大于60时才允许降速
+          atc_speedup_enable = False
+          if auto_decel_rate > 0 and check_steer: #设置了减速比率
+            if atc_speed > decel_speed_min: #只有车速大于最小设定速度时才允许降速
               atc_speed = max(decel_speed_min, atc_speed*auto_decel_rate)
-          if check_steer:
-            self.atc_speed_decal = atc_speed #保存进匝道减速的目标速度
-            self.fork_speed_keep_time = int(fork_speed_keep_time/DT_MDL) #重置时间
-    #如果上面的条件都不成立，则atc_type直接就是查表得到的类型，即atc_type = mapping["type"]
+              self.atc_speed_decal = atc_speed #保存进匝道减速的目标速度
+              self.fork_speed_keep_time = int(fork_speed_keep_time/DT_MDL) #重置保持时间
+        # 如果上面的条件都不成立，则atc_type直接就是查表得到的类型，即atc_type = mapping["type"]
 
-    #是否保持进匝道时的速度
+      if check_steer and atc_speedup_enable: #允许自动加减速
+        v_ego = sm["carState"].vEgo
+        meta = sm["modelV2"].meta
+        atc_left_bsd = True if (meta.leftFrontBlind & 16) else False
+        atc_right_bsd = True if (meta.rightFrontBlind & 16) else False
+        atc_bsd = atc_left_bsd if "left" in atc_type else atc_right_bsd
+        left_bsd = True if "left" in atc_type else False
+        # 有盲区阻止了自动变道并且存在激光雷达
+        if atc_bsd and (self.lidar_rvalid and self.lidar_lvalid): # or (self.enable_radar_tracks == 1 or self.enable_radar_tracks > 2)
+            if left_bsd: #左变道受阻
+              if self.lf_drel is not None and self.lb_drel is not None and self.lf_vrel is not None and self.lb_vrel is not None: #前后均有车
+                delta_v = self.compute_delta_v_for_front_rear(self.lf_drel, self.lf_vrel, self.lb_drel, self.lb_vrel, v_ego)
+              elif self.lf_drel is not None and self.lf_vrel is not None: #前方有车，后方无车
+                delta_v = self.compute_delta_v_for_front(self.lf_drel, self.lf_vrel, v_ego)
+              elif self.lb_drel is not None and self.lb_vrel is not None: #前方无车，后方有车
+                delta_v = self.compute_delta_v_for_rear(self.lb_drel, self.lb_vrel, v_ego)
+            else: #右变道受阻
+              if self.rf_drel is not None and self.rb_drel is not None and self.rf_vrel is not None and self.rb_vrel is not None: #前后均有车
+                delta_v = self.compute_delta_v_for_front_rear(self.rf_drel, self.rf_vrel, self.rb_drel, self.rb_vrel, v_ego)
+              elif self.rf_drel is not None and self.rf_vrel is not None: #前方有车，后方无车
+                delta_v = self.compute_delta_v_for_front(self.rf_drel, self.rb_drel, v_ego)
+              elif self.rb_drel is not None and self.rb_vrel is not None: #前方无车，后方有车
+                delta_v = self.compute_delta_v_for_rear(self.rb_drel, self.rb_vrel, v_ego)
+
+            if delta_v is not None:
+              print("======================================")
+              delta_v *=  3.6 #换成km/h
+              print(f"atc_speed delta_v {delta_v:.1f} km/h")
+              # 限制范围
+              speed_max = self.nRoadLimitSpeed * 1.3
+              speed_min = self.nRoadLimitSpeed * 0.6
+              print(f"max speed {speed_max:.1f} km/h, min speed {speed_min:.1f} km/h")
+              # 初始化当前速度状态
+              if self.atc_speed_delta is None:
+                self.atc_speed_delta = 0
+              # 限制每次循环增量
+              max_delta = ACCEL_LIMIT * DT
+              delta_v_applied = np.clip(delta_v, -max_delta, max_delta)
+              print(f"delta_v_applied {delta_v_applied:.1f} km/h")
+              # 累积更新速度并限制
+              self.atc_speed_delta += delta_v_applied
+              atc_speed = np.clip(self.atc_speed_delta + atc_speed, speed_min, speed_max)
+              print(f"final atc_speed {atc_speed:.1f} km/h")
+              print("======================================")
+
+    #清空atc_speed偏差值
+    if check_steer and (not atc_speedup_enable or delta_v is None):
+      self.atc_speed_delta = None
+
+    #速度保持
     if check_steer:
       if atc_type_org in ["fork left", "fork right"] and self.atc_speed_decal > 0:
         self.fork_speed_keep_time = min(-1, self.fork_speed_keep_time - 1)  # 保持速度的时间递减
@@ -841,7 +1016,7 @@ class CarrotServ:
                    )
       print(debugText)
 
-    return atc_desired, atc_type, atc_speed, atc_dist
+    return atc_desired, atc_type, atc_speed, atc_dist, atc_speed_up
 
   def update_nav_instruction(self, sm):
     if sm.alive['navInstruction'] and sm.valid['navInstruction']:
@@ -998,8 +1173,8 @@ class CarrotServ:
 
     #print(f"sdi_speed: {sdi_speed}, hda_active: {hda_active}, xSpdType: {self.xSpdType}, xSpdDist: {self.xSpdDist}, active_carrot: {self.active_carrot}, v_ego_kph: {v_ego_kph}, nRoadLimitSpeed: {self.nRoadLimitSpeed}")
     ### TBT速度控制 self.atcSpeed, self.atcDist这两个变量均未用上
-    atc_desired, self.atcType, self.atcSpeed, self.atcDist = self.update_auto_turn(v_ego*3.6, sm, self.xTurnInfo, self.xDistToTurn, True)
-    atc_desired_next, _, _, _ = self.update_auto_turn(v_ego*3.6, sm, self.xTurnInfoNext, self.xDistToTurnNext, False)
+    atc_desired, self.atcType, self.atcSpeed, self.atcDist, atc_speed_up = self.update_auto_turn(v_ego*3.6, sm, self.xTurnInfo, self.xDistToTurn, True)
+    atc_desired_next, _, _, _, _ = self.update_auto_turn(v_ego*3.6, sm, self.xTurnInfoNext, self.xDistToTurnNext, False)
 
     if self.nSdiType  >= 0: # or self.active_carrot > 0:
       pass
@@ -1019,10 +1194,14 @@ class CarrotServ:
 
     if self.autoTurnControl not in [2, 3]:    # auto turn speed control
       atc_desired = atc_desired_next = 250
+      atc_speed_up = False
 
     if self.autoTurnControl not in [1,2]:    # auto turn control
       self.atcType = "none"
 
+    #临时提高道路限速
+    if atc_speed_up and self.atcType != "none":
+      limit_speed = max(limit_speed, atc_speed_up)
 
     speed_n_sources = [
       (atc_desired, "atc"),

@@ -995,8 +995,8 @@ class DesireHelper:
                 if 0 == (self.frame % int(2 / DT_MDL)):
                   self.lane_change_audio(True, 6, 0)
                 #设置自动变道盲区受阻标志(为了在carrotMan中代码进行加减速处理)
-                #if auto_lane_change_trigger and atc_desire_enabled:
-                if auto_lane_change_trigger or driver_desire_enabled:
+                if auto_lane_change_trigger and atc_desire_enabled:
+                #if auto_lane_change_trigger or driver_desire_enabled:
                   if blinker_state == BLINKER_LEFT:
                     self.leftFrontBlind += 16 #加上16表示自动变道被盲区阻止
                   else:

@@ -202,7 +202,7 @@ class CarrotMan:
     self.web_interface_thread = threading.Thread(target=self.web_interface.start_web_server, args=[])
     self.web_interface_thread.daemon = True
     self.web_interface_thread.start()
-    
+
     self.show_panda_debug = False
     self.broadcast_ip = self.get_broadcast_address()
     self.broadcast_port = 7705
@@ -261,10 +261,10 @@ class CarrotMan:
             'leads': [],
             'timestamp': time.time()
         }
-        
+
         if self.sm.alive['radarState']:
             radarState = self.sm['radarState']
-            
+
             # 处理雷达点云数据
             if hasattr(radarState, 'points') and radarState.points:
                 for point in radarState.points:
@@ -278,7 +278,7 @@ class CarrotMan:
                             'measured': bool(point.measured),
                             'status': point.status
                         })
-            
+
             # 处理跟踪目标
             if hasattr(radarState, 'tracks') and radarState.tracks:
                 for track in radarState.tracks:
@@ -290,7 +290,7 @@ class CarrotMan:
                         'aRel': float(track.aRel),
                         'status': track.status
                     })
-            
+
             # 处理前车数据
             leads = []
             for attr in ['leadOne', 'leadLeft', 'leadRight']:
@@ -306,9 +306,9 @@ class CarrotMan:
                             'status': lead.status
                         })
             radar_data['leads'] = leads
-            
+
         return radar_data
-        
+
     except Exception as e:
         debug_print(f"获取雷达数据错误: {e}")
         return {'points': [], 'tracks': [], 'leads': [], 'timestamp': time.time(), 'error': str(e)}
@@ -323,6 +323,16 @@ class CarrotMan:
     self.carrot_serv.lidar_rblind = self.amap_navi.shared_data.lidar_rblind
     self.carrot_serv.lidar_car_lblind = self.amap_navi.shared_data.lidar_car_lblind
     self.carrot_serv.lidar_car_rblind = self.amap_navi.shared_data.lidar_car_rblind
+    self.carrot_serv.lidar_lvalid = self.amap_navi.shared_data.lidar_l
+    self.carrot_serv.lidar_rvalid = self.amap_navi.shared_data.lidar_r
+    self.carrot_serv.lf_drel = self.amap_navi.shared_data.main_lf_drel
+    self.carrot_serv.lb_drel = self.amap_navi.shared_data.main_lb_drel
+    self.carrot_serv.rf_drel = self.amap_navi.shared_data.main_rf_drel
+    self.carrot_serv.rb_drel = self.amap_navi.shared_data.main_rb_drel
+    self.carrot_serv.lf_vrel = self.amap_navi.shared_data.lf_vrel
+    self.carrot_serv.lb_vrel = self.amap_navi.shared_data.lb_vrel
+    self.carrot_serv.rf_vrel = self.amap_navi.shared_data.rf_vrel
+    self.carrot_serv.rb_vrel = self.amap_navi.shared_data.rb_vrel
 
     #获取共享数据中的控制命令
     if self.shared_cmd_index_last != self.amap_navi.shared_data.cmd_index:

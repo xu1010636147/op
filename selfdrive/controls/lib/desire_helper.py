@@ -243,6 +243,7 @@ class DesireHelper:
     self.lane_change_state_prev = LaneChangeState.off
     self.driver_lane_change_delay = 0.0
     self.disableBlindSpot = False
+    self.atc_bsd = BLINKER_NONE
     #new
 
   def lane_change_audio(self, enable, turn_type, param=0):
@@ -996,11 +997,9 @@ class DesireHelper:
                   self.lane_change_audio(True, 6, 0)
                 #设置自动变道盲区受阻标志(为了在carrotMan中代码进行加减速处理)
                 if auto_lane_change_trigger and atc_desire_enabled:
-                #if auto_lane_change_trigger or driver_desire_enabled:
-                  if blinker_state == BLINKER_LEFT:
-                    self.leftFrontBlind += 16 #加上16表示自动变道被盲区阻止
-                  else:
-                    self.rightFrontBlind += 16 #加上16表示自动变道被盲区阻止
+                  if self.atc_bsd == BLINKER_NONE:
+                    print("atc lane change bsd blocked")
+                  self.atc_bsd = blinker_state #自动变道被盲区阻止
               #盲区有车时重置变道延时计数器
               self.lane_change_disable_count = lane_change_interval
             elif self.laneChangeNeedTorque > 0:# or self.next_lane_change: # 需要轻推方向盘变道
@@ -1095,6 +1094,7 @@ class DesireHelper:
             self.blinker_val = atc_blinker_state
           print(f"---[{time.strftime('%H:%M:%S')}]Pre:lane_change_state:{LaneChangeState.preLaneChange}->{LaneChangeState.laneChangeStarting},ext_blinker state:{self.blinker_val}")
           self.lane_change_state_prev = LaneChangeState.preLaneChange
+          self.atc_bsd = BLINKER_NONE
 
         if (self.showDebugLog & 4) > 0 or self.lane_change_state_last != self.lane_change_state:
           print(f"---{'[' + time.strftime('%H:%M:%S') + ']' if self.lane_change_state_last != self.lane_change_state else ''}Pre:lane_change_available={lane_change_available},lane_change_trig={auto_lane_change_trigger},"
@@ -1254,6 +1254,7 @@ class DesireHelper:
     else:
       self.blinker = "left" if self.blinker_val == BLINKER_LEFT else "right" if self.blinker_val == BLINKER_RIGHT else "none"
     if self.lane_change_state == LaneChangeState.off:
+      self.atc_bsd = BLINKER_NONE
       if self.carrot_lane_change_count > 0 or self.carrot_blinker_state != BLINKER_NONE:
         print(f"---[{time.strftime('%H:%M:%S')}]LaneChangeState.off,reset carrot_lane_change_count {self.carrot_lane_change_count}->0,"
               f"carrot_blinker_state {self.carrot_blinker_state}->0")

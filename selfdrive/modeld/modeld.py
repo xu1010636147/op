@@ -432,6 +432,7 @@ def main(demo=False):
       modelv2_send.modelV2.meta.blinker = DH.blinker
       modelv2_send.modelV2.meta.leftFrontBlind = int(DH.leftFrontBlind)
       modelv2_send.modelV2.meta.rightFrontBlind = int(DH.rightFrontBlind)
+      modelv2_send.modelV2.meta.atcBsd = int(DH.atc_bsd)
       if DH.event_test_frame > 0:
         modelv2_send.modelV2.meta.laneChangeState = LaneChangeState.preLaneChange
         modelv2_send.modelV2.meta.laneChangeDirection = LaneChangeDirection.left

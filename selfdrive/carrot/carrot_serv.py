@@ -915,8 +915,8 @@ class CarrotServ:
       if check_steer and atc_speedup_enable: #允许自动加减速
         v_ego = sm["carState"].vEgo
         meta = sm["modelV2"].meta
-        atc_left_bsd = True if (meta.leftFrontBlind & 16) else False
-        atc_right_bsd = True if (meta.rightFrontBlind & 16) else False
+        atc_left_bsd = True if (meta.atcBsd == 1) else False
+        atc_right_bsd = True if (meta.atcBsd == 2) else False
         atc_bsd = atc_left_bsd if "left" in atc_type else atc_right_bsd
         left_bsd = True if "left" in atc_type else False
         # 有盲区阻止了自动变道并且存在激光雷达

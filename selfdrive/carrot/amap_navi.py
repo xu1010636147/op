@@ -1331,9 +1331,9 @@ class AmapNaviServ:
 
       #前雷达盲区信号
       if self.shared_data.leftFrontBlind is not None:
-        msg['l_front_blind'] = self.shared_data.leftFrontBlind if self.shared_data.leftFrontBlind < 16 else (self.shared_data.leftFrontBlind - 16)
+        msg['l_front_blind'] = self.shared_data.leftFrontBlind
       if self.shared_data.rightFrontBlind is not None:
-        msg['r_front_blind'] = self.shared_data.rightFrontBlind if self.shared_data.rightFrontBlind < 16 else (self.shared_data.rightFrontBlind - 16)
+        msg['r_front_blind'] = self.shared_data.rightFrontBlind
 
       #雷达和摄像头盲区
       msg['lidar_lblind'] = self.left_blindspot()
@@ -1434,9 +1434,9 @@ class AmapNaviServ:
 
         # 如果字段存在才赋值
         if self.shared_data.leftFrontBlind is None and hasattr(meta, 'leftFrontBlind'):
-          msg['l_front_blind'] = meta.leftFrontBlind if meta.leftFrontBlind < 16 else (meta.leftFrontBlind - 16)
+          msg['l_front_blind'] = meta.leftFrontBlind
         if self.shared_data.rightFrontBlind is None and hasattr(meta, 'rightFrontBlind'):
-          msg['r_front_blind'] = meta.rightFrontBlind if meta.rightFrontBlind < 16 else (meta.rightFrontBlind - 16)
+          msg['r_front_blind'] = meta.rightFrontBlind
 
     #===============巡航状态处理==============
     if self.sm.alive['selfdriveState']:

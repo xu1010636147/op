@@ -955,6 +955,8 @@ class CarrotServ:
               self.atc_speed_delta += delta_v_applied
               atc_speed = np.clip(self.atc_speed_delta + atc_speed, speed_min, speed_max)
               print(f"final atc_speed {atc_speed:.1f} km/h")
+              if self.atc_speed_delta > 0:
+                atc_speed_up = True
               print("======================================")
 
     #清空atc_speed偏差值

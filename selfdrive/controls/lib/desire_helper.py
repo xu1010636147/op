@@ -839,12 +839,14 @@ class DesireHelper:
     if self.carrot_lane_change_count > 0: #些计数为carrorMan发送过来的LANECHANGE触发的变道
       auto_lane_change_blocked = False
       auto_lane_change_trigger = lane_change_available
+      auto_lane_change_trigger_no_bsd = auto_lane_change_trigger
     else:
       self.carrot_blinker_state = BLINKER_NONE #new
       #如果自动转弯要求是左变道，但是用户没有打左转向灯，那么会阻止自动变道
       auto_lane_change_blocked = ((atc_blinker_state == BLINKER_LEFT) and (driver_blinker_state != BLINKER_LEFT) and (self.autoTurnLeft == 0 or self.xroadcate < 0 or self.xroadcate > 1)) #增加可以设置允许左变道
       #auto_lane_change_trigger = not auto_lane_change_blocked and edge_available and (self.lane_available_trigger or edge_availabled or self.lane_appeared) and not side_object_detected
-      auto_lane_change_trigger = self.auto_lane_change_enable and not auto_lane_change_blocked and edge_available and (self.lane_available_trigger or self.lane_appeared) and not side_object_detected
+      auto_lane_change_trigger_no_bsd = self.auto_lane_change_enable and not auto_lane_change_blocked and edge_available and (self.lane_available_trigger or self.lane_appeared)
+      auto_lane_change_trigger = auto_lane_change_trigger_no_bsd and not side_object_detected
       self.desireLog = f"D:{self.lane_width_curr:.1f},{lane_width_side:.1f},{distance_to_road_edge_avg:.1f},{lane_width_diff:.1f},{lane_width_far_diff:.1f},{lane_line_info}={auto_lane_change_trigger},T:{self.atc_turn_cnt},S:{self.lane_change_state},L:{self.auto_lane_change_enable},{auto_lane_change_blocked},E:{lane_available},{edge_available},A:{self.lane_available_trigger},{self.lane_appeared}"
       if (self.showDebugLog & 2) > 0:
         print(f"---xDist:{xDistToTurn},desire:{desire_enabled}({driver_desire_enabled},{atc_desire_enabled}),"
@@ -996,10 +998,12 @@ class DesireHelper:
                 if 0 == (self.frame % int(2 / DT_MDL)):
                   self.lane_change_audio(True, 6, 0)
                 #设置自动变道盲区受阻标志(为了在carrotMan中代码进行加减速处理)
-                if auto_lane_change_trigger and atc_desire_enabled:
-                  if self.atc_bsd == BLINKER_NONE:
-                    print("atc lane change bsd blocked")
-                  self.atc_bsd = blinker_state #自动变道被盲区阻止
+                if auto_lane_change_trigger_no_bsd and atc_desire_enabled:
+                  if ((2 <= lane_count < 10 and self.xroadcate == 1 and blinker_state == BLINKER_RIGHT) or #有应急车道高速/右变道/有2条车道
+                    (1 <= lane_count < 10 and self.xroadcate != 1)): #无应急车道的道路，有1条车道可变道
+                    if self.atc_bsd == BLINKER_NONE:
+                      print("atc lane change bsd blocked")
+                    self.atc_bsd = blinker_state #自动变道被盲区阻止
               #盲区有车时重置变道延时计数器
               self.lane_change_disable_count = lane_change_interval
             elif self.laneChangeNeedTorque > 0:# or self.next_lane_change: # 需要轻推方向盘变道

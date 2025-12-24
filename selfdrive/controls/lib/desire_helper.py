@@ -998,7 +998,10 @@ class DesireHelper:
                 if 0 == (self.frame % int(2 / DT_MDL)):
                   self.lane_change_audio(True, 6, 0)
                 #设置自动变道盲区受阻标志(为了在carrotMan中代码进行加减速处理)
-                if auto_lane_change_trigger_no_bsd and atc_desire_enabled:
+                steer_angle = 0
+                if hasattr(carstate, 'steeringAngleDeg'):
+                  steer_angle = int(abs(carstate.steeringAngleDeg))
+                if auto_lane_change_trigger_no_bsd and atc_desire_enabled and steer_angle < 30:
                   if ((2 <= lane_count < 10 and self.xroadcate == 1 and blinker_state == BLINKER_RIGHT) or #有应急车道高速/右变道/有2条车道
                     (1 <= lane_count < 10 and self.xroadcate != 1)): #无应急车道的道路，有1条车道可变道
                     if self.atc_bsd == BLINKER_NONE:

@@ -721,8 +721,10 @@ class VCruiseCarrot:
             if abs(CS.steeringAngleDeg) > 70:
               pass
             elif not safe_state:
+              v_cruise_kph = max(self.v_ego_kph_set, self._cruise_speed_min)
               self._cruise_control(1, -1, "Cruise on (fcw)")
             elif self.d_rel < self.cruiseOnDist:
+              v_cruise_kph = max(self.v_ego_kph_set, self._cruise_speed_min)
               self._cruise_control(1, 0, "Cruise on (fcw dist)")
             else:
               self._add_log(f"leadCar d={self.d_rel:.1f},v={self.v_rel:.1f},{CS.vEgo:.1f}, {safe_dist:.1f}")

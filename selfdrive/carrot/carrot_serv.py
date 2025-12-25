@@ -932,7 +932,7 @@ class CarrotServ:
               if self.rf_drel is not None and self.rb_drel is not None and self.rf_vrel is not None and self.rb_vrel is not None: #前后均有车
                 delta_v = self.compute_delta_v_for_front_rear(self.rf_drel, self.rf_vrel, self.rb_drel, self.rb_vrel, v_ego)
               elif self.rf_drel is not None and self.rf_vrel is not None: #前方有车，后方无车
-                delta_v = self.compute_delta_v_for_front(self.rf_drel, self.rb_drel, v_ego)
+                delta_v = self.compute_delta_v_for_front(self.rf_drel, self.rf_vrel, v_ego)
               elif self.rb_drel is not None and self.rb_vrel is not None: #前方无车，后方有车
                 delta_v = self.compute_delta_v_for_rear(self.rb_drel, self.rb_vrel, v_ego)
 

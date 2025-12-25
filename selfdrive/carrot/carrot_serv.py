@@ -882,6 +882,7 @@ class CarrotServ:
     atc_speed_org = atc_speed
     atc_speedup_enable = False
     atc_speed_up = False
+    atc_decel = False
     delta_v = None
 
     #导航给出在转弯距离大于开始转弯距离时，进入准备阶段
@@ -911,59 +912,6 @@ class CarrotServ:
               self.atc_speed_decal = atc_speed #保存进匝道减速的目标速度
               self.fork_speed_keep_time = int(fork_speed_keep_time/DT_MDL) #重置保持时间
         # 如果上面的条件都不成立，则atc_type直接就是查表得到的类型，即atc_type = mapping["type"]
-
-      if check_steer and atc_speedup_enable: #允许自动加减速
-        v_ego = sm["carState"].vEgo
-        meta = sm["modelV2"].meta
-        atc_left_bsd = True if (meta.atcBsd == 1) else False
-        atc_right_bsd = True if (meta.atcBsd == 2) else False
-        atc_bsd = atc_left_bsd if "left" in atc_type else atc_right_bsd
-        left_bsd = True if "left" in atc_type else False
-        # 有盲区阻止了自动变道并且存在激光雷达
-        if atc_bsd and (self.lidar_rvalid and self.lidar_lvalid): # or (self.enable_radar_tracks == 1 or self.enable_radar_tracks > 2)
-            if left_bsd: #左变道受阻
-              if self.lf_drel is not None and self.lb_drel is not None and self.lf_vrel is not None and self.lb_vrel is not None: #前后均有车
-                delta_v = self.compute_delta_v_for_front_rear(self.lf_drel, self.lf_vrel, self.lb_drel, self.lb_vrel, v_ego)
-              elif self.lf_drel is not None and self.lf_vrel is not None: #前方有车，后方无车
-                delta_v = self.compute_delta_v_for_front(self.lf_drel, self.lf_vrel, v_ego)
-              elif self.lb_drel is not None and self.lb_vrel is not None: #前方无车，后方有车
-                delta_v = self.compute_delta_v_for_rear(self.lb_drel, self.lb_vrel, v_ego)
-            else: #右变道受阻
-              if self.rf_drel is not None and self.rb_drel is not None and self.rf_vrel is not None and self.rb_vrel is not None: #前后均有车
-                delta_v = self.compute_delta_v_for_front_rear(self.rf_drel, self.rf_vrel, self.rb_drel, self.rb_vrel, v_ego)
-              elif self.rf_drel is not None and self.rf_vrel is not None: #前方有车，后方无车
-                delta_v = self.compute_delta_v_for_front(self.rf_drel, self.rf_vrel, v_ego)
-              elif self.rb_drel is not None and self.rb_vrel is not None: #前方无车，后方有车
-                delta_v = self.compute_delta_v_for_rear(self.rb_drel, self.rb_vrel, v_ego)
-
-            if delta_v is not None:
-              print("======================================")
-              delta_v *=  3.6 #换成km/h
-              print(f"atc_speed delta_v {delta_v:.1f} km/h")
-              # 限制范围
-              speed_max = self.nRoadLimitSpeed * 1.3
-              speed_min = self.nRoadLimitSpeed * 0.6
-              print(f"max speed {speed_max:.1f} km/h, min speed {speed_min:.1f} km/h")
-              # 初始化当前速度状态
-              if self.atc_speed_delta is None:
-                self.atc_speed_delta = 0
-              # 限制每次循环增量
-              max_delta = ACCEL_LIMIT * DT
-              delta_v_applied = np.clip(delta_v, -max_delta, max_delta)
-              print(f"delta_v_applied {delta_v_applied:.1f} km/h")
-              # 累积更新速度并限制
-              self.atc_speed_delta += delta_v_applied
-              atc_speed = np.clip(self.atc_speed_delta + atc_speed, speed_min, speed_max)
-              print(f"final atc_speed {atc_speed:.1f} km/h")
-              if self.atc_speed_delta > 0:
-                atc_speed_up = True
-              print("======================================")
-
-    #清空atc_speed偏差值
-    if check_steer and (not atc_speedup_enable or delta_v is None):
-      if self.atc_speed_delta is not None:
-        self.atc_speed_delta = None
-        print("Clear self.atc_speed_delta")
 
     #速度保持
     if check_steer:
@@ -1011,6 +959,70 @@ class CarrotServ:
       decel = self.autoNaviSpeedDecelRate
       safe_sec = 2.0
       atc_desired = min(atc_desired, self.calculate_current_speed(x_dist_to_turn - atc_dist, atc_speed, safe_sec, decel))
+      if (atc_desired + 5) < atc_speed: # atc自动变道在减速
+        atc_speedup_enable = False
+        atc_decel = True
+    else:
+      atc_speedup_enable = False
+
+    # ==========================================================
+    v_ego = sm["carState"].vEgo
+    meta = sm["modelV2"].meta
+    atc_left_bsd = True if (meta.atcBsd == 1) else False
+    atc_right_bsd = True if (meta.atcBsd == 2) else False
+    atc_left_right_bsd = atc_left_bsd or atc_right_bsd
+
+    driver_left_bsd = True if (meta.atcBsd == 4) else False
+    driver_right_bsd = True if (meta.atcBsd == 5) else False
+    driver_left_right_bsd = driver_left_bsd or driver_right_bsd
+
+    if check_steer and ((atc_speedup_enable and atc_left_right_bsd) or (not atc_speedup_enable and not atc_decel and driver_left_right_bsd)):  # 允许自动加减速
+      left_bsd = (True if "left" in atc_type else False) if atc_left_right_bsd else (True if driver_left_bsd else False)
+      if self.lidar_rvalid and self.lidar_lvalid:  #有激光雷达
+        if left_bsd:  # 左变道受阻
+          if self.lf_drel is not None and self.lb_drel is not None and self.lf_vrel is not None and self.lb_vrel is not None:  # 前后均有车
+            delta_v = self.compute_delta_v_for_front_rear(self.lf_drel, self.lf_vrel, self.lb_drel, self.lb_vrel,v_ego)
+          elif self.lf_drel is not None and self.lf_vrel is not None:  # 前方有车，后方无车
+            delta_v = self.compute_delta_v_for_front(self.lf_drel, self.lf_vrel, v_ego)
+          elif self.lb_drel is not None and self.lb_vrel is not None:  # 前方无车，后方有车
+            delta_v = self.compute_delta_v_for_rear(self.lb_drel, self.lb_vrel, v_ego)
+        else:  # 右变道受阻
+          if self.rf_drel is not None and self.rb_drel is not None and self.rf_vrel is not None and self.rb_vrel is not None:  # 前后均有车
+            delta_v = self.compute_delta_v_for_front_rear(self.rf_drel, self.rf_vrel, self.rb_drel, self.rb_vrel,v_ego)
+          elif self.rf_drel is not None and self.rf_vrel is not None:  # 前方有车，后方无车
+            delta_v = self.compute_delta_v_for_front(self.rf_drel, self.rf_vrel, v_ego)
+          elif self.rb_drel is not None and self.rb_vrel is not None:  # 前方无车，后方有车
+            delta_v = self.compute_delta_v_for_rear(self.rb_drel, self.rb_vrel, v_ego)
+
+        if delta_v is not None:
+          print("======================================")
+          delta_v *= 3.6  # 换成km/h
+          print(f"atc_speed delta_v {delta_v:.1f} km/h")
+          # 限制范围
+          speed_max = self.nRoadLimitSpeed * 1.3
+          speed_min = self.nRoadLimitSpeed * 0.6
+          print(f"max speed {speed_max:.1f} km/h, min speed {speed_min:.1f} km/h")
+          # 初始化当前速度状态
+          if self.atc_speed_delta is None:
+            self.atc_speed_delta = 0
+          # 限制每次循环增量
+          max_delta = ACCEL_LIMIT * DT
+          delta_v_applied = np.clip(delta_v, -max_delta, max_delta)
+          print(f"delta_v_applied {delta_v_applied:.1f} km/h")
+          # 累积更新速度并限制
+          self.atc_speed_delta += delta_v_applied
+          atc_speed = np.clip(self.atc_speed_delta + atc_speed, speed_min, speed_max)
+          print(f"final atc_speed {atc_speed:.1f} km/h")
+          if self.atc_speed_delta > 0:
+            atc_speed_up = True
+          print("======================================")
+      # ==========================================================
+
+    #清空atc_speed偏差值
+    if check_steer and (not atc_speedup_enable or delta_v is None):
+      if self.atc_speed_delta is not None:
+        self.atc_speed_delta = None
+        print("Clear self.atc_speed_delta")
 
     if (self.showDebugLog & 1) > 0 and check_steer:
       debugText = (f"***atc info: type=({x_turn_info}){atc_type_org},{atc_type},desire_speed={atc_desired:.1f},xdist={x_dist_to_turn:.1f},max_xdist={self.xDistToTurnMax:.1f}(cnt:{self.xDistToTurnMaxCnt})," +

@@ -1001,12 +1001,18 @@ class DesireHelper:
                 steer_angle = 0
                 if hasattr(carstate, 'steeringAngleDeg'):
                   steer_angle = int(abs(carstate.steeringAngleDeg))
-                if auto_lane_change_trigger_no_bsd and atc_desire_enabled and steer_angle < 30:
+                if steer_angle < 30 and blinker_state != BLINKER_NONE: #方向盘小于30度
                   if ((2 <= lane_count < 10 and self.xroadcate == 1 and blinker_state == BLINKER_RIGHT) or #有应急车道高速/右变道/有2条车道
-                    (1 <= lane_count < 10 and self.xroadcate != 1)): #无应急车道的道路，有1条车道可变道
-                    if self.atc_bsd == BLINKER_NONE:
-                      print("atc lane change bsd blocked")
-                    self.atc_bsd = blinker_state #自动变道被盲区阻止
+                                                        (1 <= lane_count < 10 and self.xroadcate != 1)): #无应急车道的道路，有1条车道可变道
+                    if atc_desire_enabled: #自动变道
+                      if auto_lane_change_trigger_no_bsd: #符合自动变道的条件
+                        if self.atc_bsd == BLINKER_NONE:
+                          print("atc lane change bsd blocked")
+                        self.atc_bsd = blinker_state #自动变道被盲区阻止
+                    elif driver_desire_enabled: #手动打灯变道
+                      if self.atc_bsd == BLINKER_NONE:
+                        print("driver lane change bsd blocked")
+                      self.atc_bsd = blinker_state + BLINKER_BOTH  #手动变道被盲区阻止
               #盲区有车时重置变道延时计数器
               self.lane_change_disable_count = lane_change_interval
             elif self.laneChangeNeedTorque > 0:# or self.next_lane_change: # 需要轻推方向盘变道

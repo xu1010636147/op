@@ -881,7 +881,7 @@ class CarrotServ:
     atc_type_org = atc_type
     atc_speed_org = atc_speed
     atc_speedup_enable = False
-    atc_speed_up = False
+    atc_speed_up = 0
     atc_decel = False
     delta_v = None
 
@@ -1031,7 +1031,7 @@ class CarrotServ:
           atc_speed = np.clip(self.atc_speed_delta + atc_speed, speed_min, speed_max)
           print(f"final atc_speed {atc_speed:.1f} km/h")
           if self.atc_speed_delta > 0:
-            atc_speed_up = True
+            atc_speed_up = 1 if atc_left_right_bsd else 2
           atc_desired = atc_speed
       # ==========================================================
 
@@ -1227,13 +1227,13 @@ class CarrotServ:
 
     if self.autoTurnControl not in [2, 3]:    # auto turn speed control
       atc_desired = atc_desired_next = 250
-      atc_speed_up = False
+      atc_speed_up = 0
 
     if self.autoTurnControl not in [1,2]:    # auto turn control
       self.atcType = "none"
 
     #临时提高道路限速
-    if atc_speed_up and self.atcType != "none":
+    if (atc_speed_up == 1 and self.atcType != "none") or atc_speed_up == 2:
       limit_speed = max(limit_speed, atc_speed_up)
 
     speed_n_sources = [

@@ -982,21 +982,38 @@ class CarrotServ:
         if left_bsd:  # 左变道受阻
           if self.lf_drel is not None and self.lb_drel is not None and self.lf_vrel is not None and self.lb_vrel is not None:  # 前后均有车
             delta_v = self.compute_delta_v_for_front_rear(self.lf_drel, self.lf_vrel, self.lb_drel, self.lb_vrel,v_ego)
-          elif self.lf_drel is not None and self.lf_vrel is not None:  # 前方有车，后方无车
-            delta_v = self.compute_delta_v_for_front(self.lf_drel, self.lf_vrel, v_ego)
-          elif self.lb_drel is not None and self.lb_vrel is not None:  # 前方无车，后方有车
-            delta_v = self.compute_delta_v_for_rear(self.lb_drel, self.lb_vrel, v_ego)
+            print("======================================")
+            print(f"lf_drel {self.lf_drel*0.001:.1f} m, lf_vrel {self.lf_vrel:.1f} km/h, lb_drel {self.lb_drel*0.001:.1f} m, lb_vrel {self.lb_vrel:.1f} km/h")
+          elif self.lf_drel is not None and self.lf_vrel is not None:  # 前方有车
+            if (v_ego + self.lf_vrel) > 2: #目标为非静止车辆或者非对向车辆
+              delta_v = self.compute_delta_v_for_front(self.lf_drel, self.lf_vrel, v_ego)
+              print("======================================")
+              print(f"lf_drel {self.lf_drel*0.001:.1f} m, lf_vrel {self.lf_vrel:.1f} km/h")
+          elif self.lb_drel is not None and self.lb_vrel is not None:  # 后方有车
+            if (v_ego + self.lb_vrel) > 2:  # 目标为非静止车辆或者非对向车辆
+              delta_v = self.compute_delta_v_for_rear(self.lb_drel, self.lb_vrel, v_ego)
+              print("======================================")
+              print(f"lb_drel {self.lb_drel*0.001:.1f} m, lb_vrel {self.lb_vrel:.1f} km/h")
         else:  # 右变道受阻
           if self.rf_drel is not None and self.rb_drel is not None and self.rf_vrel is not None and self.rb_vrel is not None:  # 前后均有车
             delta_v = self.compute_delta_v_for_front_rear(self.rf_drel, self.rf_vrel, self.rb_drel, self.rb_vrel,v_ego)
+            print("======================================")
+            print(f"rf_drel {self.rf_drel*0.001:.1f} m, rf_vrel {self.rf_vrel:.1f} km/h, rb_drel {self.rb_drel*0.001:.1f} m, rb_vrel {self.rb_vrel:.1f} km/h")
           elif self.rf_drel is not None and self.rf_vrel is not None:  # 前方有车，后方无车
-            delta_v = self.compute_delta_v_for_front(self.rf_drel, self.rf_vrel, v_ego)
+            if (v_ego + self.rf_vrel) > 2:  # 目标为非静止车辆或者非对向车辆
+              delta_v = self.compute_delta_v_for_front(self.rf_drel, self.rf_vrel, v_ego)
+              print("======================================")
+              print(f"rf_drel {self.rf_drel*0.001:.1f} m, rf_vrel {self.rf_vrel:.1f} km/h")
           elif self.rb_drel is not None and self.rb_vrel is not None:  # 前方无车，后方有车
-            delta_v = self.compute_delta_v_for_rear(self.rb_drel, self.rb_vrel, v_ego)
+            if (v_ego + self.rb_vrel) > 2:  # 目标为非静止车辆或者非对向车辆
+              delta_v = self.compute_delta_v_for_rear(self.rb_drel, self.rb_vrel, v_ego)
+              print("======================================")
+              print(f"rb_drel {self.rb_drel*0.001:.1f} m, rb_vrel {self.rb_vrel:.1f} km/h")
 
         if delta_v is not None:
           print("======================================")
           delta_v *= 3.6  # 换成km/h
+          print(f"atc_speed {atc_speed:.1f} km/h, v_ego_kph {v_ego*3.6:.1f} km/h")
           print(f"atc_speed delta_v {delta_v:.1f} km/h")
           # 限制范围
           speed_max = self.nRoadLimitSpeed * 1.3
@@ -1015,11 +1032,11 @@ class CarrotServ:
           print(f"final atc_speed {atc_speed:.1f} km/h")
           if self.atc_speed_delta > 0:
             atc_speed_up = True
-          print("======================================")
+          atc_desired = atc_speed
       # ==========================================================
 
     #清空atc_speed偏差值
-    if check_steer and (not atc_speedup_enable or delta_v is None):
+    if check_steer and (delta_v is None):
       if self.atc_speed_delta is not None:
         self.atc_speed_delta = None
         print("Clear self.atc_speed_delta")

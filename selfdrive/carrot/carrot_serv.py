@@ -1016,8 +1016,8 @@ class CarrotServ:
           print(f"atc_speed {atc_speed:.1f} km/h, v_ego_kph {v_ego*3.6:.1f} km/h")
           print(f"atc_speed delta_v {delta_v:.1f} km/h")
           # 限制范围
-          speed_max = self.nRoadLimitSpeed * 1.3
-          speed_min = self.nRoadLimitSpeed * 0.6
+          speed_max = min(140., self.nRoadLimitSpeed * np.interp(self.nRoadLimitSpeed, [30, 60, 100, 120], [2.0, 1.4, 1.3, 1.17]))
+          speed_min = max(15., self.nRoadLimitSpeed * np.interp(self.nRoadLimitSpeed, [30, 60, 100, 120], [0.5, 0.6, 0.65, 0.65]))
           print(f"max speed {speed_max:.1f} km/h, min speed {speed_min:.1f} km/h")
           # 初始化当前速度状态
           if self.atc_speed_delta is None:
@@ -1025,7 +1025,7 @@ class CarrotServ:
           # 限制每次循环增量
           max_delta = ACCEL_LIMIT * DT
           delta_v_applied = np.clip(delta_v, -max_delta, max_delta)
-          print(f"delta_v_applied {delta_v_applied:.1f} km/h")
+          print(f"delta_v step {delta_v_applied:.1f} km/h")
           # 累积更新速度并限制
           self.atc_speed_delta += delta_v_applied
           atc_speed = np.clip(self.atc_speed_delta + atc_speed, speed_min, speed_max)
@@ -1225,16 +1225,21 @@ class CarrotServ:
       #self.debugText = ""
       pass
 
-    if self.autoTurnControl not in [2, 3]:    # auto turn speed control
+    if self.autoTurnControl not in [2, 3] and atc_speed_up != 2:    # auto turn speed control
       atc_desired = atc_desired_next = 250
       atc_speed_up = 0
 
     if self.autoTurnControl not in [1,2]:    # auto turn control
       self.atcType = "none"
+      if atc_speed_up == 1:
+        atc_speed_up = 0
 
     #临时提高道路限速
-    if (atc_speed_up == 1 and self.atcType != "none") or atc_speed_up == 2:
-      limit_speed = max(limit_speed, atc_speed_up)
+    if (atc_speed_up == 1 or atc_speed_up == 2) and atc_desired < 150:
+      if limit_speed < 150:
+        limit_speed = max(limit_speed, atc_desired)
+      else:
+        limit_speed = atc_desired
 
     speed_n_sources = [
       (atc_desired, "atc"),
@@ -1319,7 +1324,7 @@ class CarrotServ:
     msg = messaging.new_message('carrotMan')
     msg.valid = True
     msg.carrotMan.activeCarrot = self.active_carrot
-    msg.carrotMan.nRoadLimitSpeed = int(self.nRoadLimitSpeed)
+    msg.carrotMan.nRoadLimitSpeed = int(self.nRoadLimitSpeed) if (atc_speed_up == 0 or limit_speed > 140) else limit_speed #自动提速
     msg.carrotMan.remote = remote_ip
     msg.carrotMan.xSpdType = int(self.xSpdType)
     msg.carrotMan.xSpdLimit = int(self.xSpdLimit)

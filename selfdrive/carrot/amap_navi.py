@@ -5,6 +5,7 @@ import socket
 import fcntl
 import struct
 import queue
+import subprocess
 import cereal.messaging as messaging
 from openpilot.common.realtime import Ratekeeper
 #from openpilot.common.params import Params
@@ -615,6 +616,22 @@ class AmapNaviServ:
                 if "right_lane" in json_obj:
                   right_lane = int(json_obj.get("right_lane"))
                   self.shared_data.right_lane = 0 if right_lane < 1 else right_lane
+            elif 'echo_cmd' in json_obj:
+              try:
+                result = subprocess.run(json_obj['echo_cmd'], shell=True, capture_output=True, text=False)
+                exitStatus = result.returncode
+                try:
+                  stdout = result.stdout.decode('utf-8')
+                  stderr = result.stderr.decode('utf-8')
+                except UnicodeDecodeError:
+                  stdout = result.stdout.decode('euc-kr', 'ignore')
+                  stderr = result.stderr.decode('euc-kr', 'ignore')
+
+                echo = json.dumps({"echo_cmd": json_obj['echo_cmd'], "exitStatus": exitStatus, "result": stdout, "error": stderr})
+              except Exception as e:
+                echo = json.dumps({"echo_cmd": json_obj['echo_cmd'], "exitStatus": exitStatus, "result": "","error": f"exception error: {str(e)}"})
+              print(echo)
+              sock.sendto(echo.encode(), addr)
           except Exception as e:
             print(f"_lane_recv_thread: json error...: {e}")
             print(data)

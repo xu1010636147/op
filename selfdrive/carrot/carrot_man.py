@@ -317,6 +317,8 @@ class CarrotMan:
     #获取共享数据
     self.carrot_serv.ext_blinker = self.amap_navi.shared_data.ext_blinker
     self.carrot_serv.ext_state = self.amap_navi.shared_data.ext_state
+    self.carrot_serv.left_lane = True if self.amap_navi.shared_data.left_lane > 0 else False
+    self.carrot_serv.right_lane = True if self.amap_navi.shared_data.right_lane > 0 else False
     self.carrot_serv.left_blind = self.amap_navi.shared_data.left_blind
     self.carrot_serv.right_blind = self.amap_navi.shared_data.right_blind
     self.carrot_serv.lidar_lblind = self.amap_navi.shared_data.lidar_lblind

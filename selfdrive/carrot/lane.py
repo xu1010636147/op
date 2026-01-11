@@ -1,314 +1,368 @@
 #!/usr/bin/env python3
+"""
+OpenPilot 彩色视频流服务器
+正式版本 - 优化性能与颜色校正
+"""
+
 import time
+import threading
 import numpy as np
-from collections import deque
+from flask import Flask, Response, render_template_string
+import cv2
 
-from msgq.visionipc.visionipc_pyx import VisionIpcClient, VisionStreamType
-import cereal.messaging as messaging
-from openpilot.common.transformations.camera import get_view_frame_from_calib_frame, DEVICE_CAMERAS
-from openpilot.common.params import Params
-from openpilot.common.swaglog import cloudlog
+app = Flask(__name__)
 
+# 全局变量
+latest_jpeg = None
+latest_gray = None
+vipc_width = None
+vipc_height = None
+vipc_stride = None
+target_width = 416
+target_height = 416
+JPEG_QUALITY = 50
+gray_img = False
 
-# ==============================================================================
-# 车道线类型检测器类
-# ==============================================================================
+# 请求统计
+req_lock = threading.Lock()
+req_count = 0
+req_window_start = time.time()
+REQ_WINDOW = 2.0   # 统计 2 秒内的请求数
+latest_req_count = 0
+req_frame_time = 0.05
 
-class LaneLineDetector:
-    """车道线实线/虚线检测器"""
+frame_lock = threading.Lock()
+last_snapshot_time = 0
+status_text = "waiting app connect..."
+status_lock = threading.Lock()
 
-    FULL_RES_WIDTH = 1928
-
-    def __init__(self):
-        self.params = Params()
-
-        self._last_params = {
-          "left": None,
-          "right": None,
-          "left_rel": None,
-          "right_rel": None,
+HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Lane Detect</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            margin: 0;
+            background: black;
+            color: #0f0;
+            font-family: monospace;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
         }
-
-        self.left_last_type = -1
-        self.right_last_type = -1
-
-        self.intrinsics = None
-        self.stride = None
-        self.w, self.h = None, None
-        self.left_history = None
-        self.right_history = None
-
-        # ===================== 【新增】横向采样 & presence 参数 =====================
-        self.line_y_threshold = 200        # Y 平面亮度阈值
-        self.lateral_range_m = 0.3         # ±30cm
-        self.lateral_samples = 15          # 【修改】横向采样点数 11->15
-        self.min_x_presence_ratio = 0.7    # 实线阈值
-        self.max_x_absence_ratio = 0.5     # 虚线阈值
-        # ==========================================================================
-
-        self.update_params()
-        cloudlog.info("LaneLineDetector initialized")
-
-    def update_params(self):
-        """从 Params 系统更新可调参数"""
-        try:
-            self.lookahead_start = float(self.params.get("LaneDetectLookaheadStart", encoding='utf8') or "6.0")
-        except Exception:
-            self.lookahead_start = 6.0
-
-        try:
-            self.lookahead_end = float(self.params.get("LaneDetectLookaheadEnd", encoding='utf8') or "30.0")
-        except Exception:
-            self.lookahead_end = 30.0
-
-        try:
-            self.num_points = int(self.params.get("LaneDetectNumPoints", encoding='utf8') or "40")
-        except Exception:
-            self.num_points = 40
-
-        try:
-            self.relative_threshold_low = float(self.params.get("LaneDetectThresholdLow", encoding='utf8') or "0.095")
-        except Exception:
-            self.relative_threshold_low = 0.095
-
-        try:
-            self.relative_threshold_high = float(self.params.get("LaneDetectThresholdHigh", encoding='utf8') or "0.105")
-        except Exception:
-            self.relative_threshold_high = 0.105
-
-        try:
-            self.prob_threshold = float(self.params.get("LaneDetectProbThreshold", encoding='utf8') or "0.3")
-        except Exception:
-            self.prob_threshold = 0.3
-
-        try:
-            new_history_frames = int(self.params.get("LaneDetectHistoryFrames", encoding='utf8') or "5")
-        except Exception:
-            new_history_frames = 5
-
-        self.history_frames = new_history_frames
-
-        if self.left_history is None or self.right_history is None:
-            self.left_history = deque(maxlen=self.history_frames)
-            self.right_history = deque(maxlen=self.history_frames)
-        elif len(self.left_history) != 0 and self.left_history.maxlen != self.history_frames:
-            self.left_history = deque(self.left_history, maxlen=self.history_frames)
-            self.right_history = deque(self.right_history, maxlen=self.history_frames)
-
-    def init_camera(self, sm, vipc_client):
-        if self.intrinsics is not None:
-            return True
-        if not sm.updated['deviceState'] or not sm.updated['roadCameraState']:
-            return False
-        try:
-            device_type = str(sm['deviceState'].deviceType)
-            sensor = str(sm['roadCameraState'].sensor)
-            camera = DEVICE_CAMERAS[(device_type, sensor)]
-
-            self.stride = vipc_client.stride
-            self.w = vipc_client.width
-            self.h = vipc_client.height
-
-            scale = self.w / self.FULL_RES_WIDTH
-            self.intrinsics = camera.fcam.intrinsics * scale
-            self.intrinsics[2, 2] = 1.0
-            cloudlog.info(f"Camera initialized: {self.w}x{self.h}, device={device_type}")
-            return True
-        except Exception as e:
-            cloudlog.error(f"Camera initialization failed: {e}")
-            return False
-
-    # ===================== 【修改】完整 update 函数 =====================
-    def update(self, sm, yuv_buf):
-        result = {
-            'left': -1,
-            'right': -1,
-            'left_rel_std': 0.0,
-            'right_rel_std': 0.0,
-            # 【新增】保证 Presence 字段存在
-            'left_x_presence': 0.0,
-            'right_x_presence': 0.0,
-            'left_max_run': 0,
-            'right_max_run': 0,
+        #text {
+            white-space: pre;
         }
+    </style>
+</head>
+<body>
+<div id="text">waiting app connect...</div>
+<script>
+    const el = document.getElementById("text");
+    function update() {
+        fetch("/status")
+            .then(r => r.text())
+            .then(t => el.textContent = t)
+            .catch(() => {});
+    }
+    update();
+    setInterval(update, 1000);   //每秒刷新一次
+</script>
+</body>
+</html>
+"""
 
-        if not sm.updated['modelV2'] or not sm.updated['liveCalibration']:
-            return result
+@app.route('/')
+def index():
+    return render_template_string(HTML)
 
-        model = sm['modelV2']
-        calib = sm['liveCalibration']
+@app.route("/status")
+def status():
+    with status_lock:
+        return status_text
 
-        try:
-            imgff = np.frombuffer(yuv_buf.data, dtype=np.uint8)
-            y_plane = imgff[: self.stride * self.h]
-            y_data = y_plane.reshape(self.h, self.stride)[:, :self.w]
-        except Exception as e:
-            cloudlog.error(f"YUV extraction failed: {e}")
-            return result
+@app.route("/roadrgb.jpg")
+def roadrgb():
+    """返回最新一帧 JPEG，用于 Android 单帧抓取"""
+    global latest_jpeg, last_snapshot_time, gray_img
+    global req_count, latest_req_count, req_frame_time, req_window_start
+    gray_img = False
+    last_snapshot_time = time.time()
 
-        try:
-            extrinsic_matrix_full = get_view_frame_from_calib_frame(
-                calib.rpyCalib[0],
-                0.0,
-                0.0,
-                0.0
-            )
-        except Exception as e:
-            cloudlog.error(f"Calibration frame conversion failed: {e}")
-            return result
+    with req_lock:
+        now = time.time()
+        if now - req_window_start > REQ_WINDOW:
+            req_window_start = now
+            latest_req_count = req_count
+            if latest_req_count >= 1:
+              req_frame_time = 2.0 / latest_req_count
+              #print(f"request {latest_req_count}, interval {req_frame_time:.2f} s")
+            req_count = 0
+        req_count += 1
 
-        for i, line_idx in enumerate([1, 2]):
-            try:
-                line = model.laneLines[line_idx]
-                line_prob = model.laneLineProbs[line_idx]
-            except IndexError:
-                continue
+    with frame_lock:
+        jpeg = latest_jpeg
+    # 如果没有帧，返回一张黑色占位图
+    if jpeg is None:
+        import numpy as np
+        import cv2
+        placeholder = np.zeros((target_height, target_width, 3), dtype=np.uint8)
+        _, jpeg = cv2.imencode('.jpg', placeholder)
+        jpeg = jpeg.tobytes()
 
-            side_key = 'left' if i == 0 else 'right'
-            current_history = self.left_history if i == 0 else self.right_history
-            last_type = self.left_last_type if i == 0 else self.right_last_type
+    return Response(jpeg, mimetype="image/jpeg")
 
-            if line_prob < self.prob_threshold:
-                current_history.append(None)
-                continue
+@app.route("/roadgray.jpg")
+def roadgray():
+  """返回最新一帧灰度 JPEG，用于 Android 单帧抓取"""
+  global latest_gray, last_snapshot_time, gray_img
+  global req_count, latest_req_count, req_frame_time, req_window_start
+  gray_img = True
+  last_snapshot_time = time.time()
 
-            xs, ys, zs = np.array(line.x), np.array(line.y), np.array(line.z)
-            if len(xs) < 10:
-                current_history.append(None)
-                continue
+  with req_lock:
+    now = time.time()
+    if now - req_window_start > REQ_WINDOW:
+      req_window_start = now
+      latest_req_count = req_count
+      if latest_req_count >= 1:
+        req_frame_time = 2.0 / latest_req_count
+        #print(f"request {latest_req_count}, interval {req_frame_time:.2f} s")
+      req_count = 0
+    req_count += 1
 
-            sample_xs = np.linspace(self.lookahead_start, self.lookahead_end, self.num_points)
-            sample_ys = np.interp(sample_xs, xs, ys)
-            sample_zs = np.interp(sample_xs, xs, zs)
+  with frame_lock:
+    jpeg = latest_gray
 
-            # ===================== 【新增】横向 ±30cm 扫描 + 按 x 聚合 presence =====================
-            y_offsets = np.linspace(-self.lateral_range_m, self.lateral_range_m, self.lateral_samples)
-            per_x_has_line = []
-            all_pixel_values = []
+  if jpeg is None:
+    placeholder = np.zeros((target_height, target_width), dtype=np.uint8)
+    ok, jpeg = cv2.imencode(
+      ".jpg",
+      placeholder,
+      [cv2.IMWRITE_JPEG_QUALITY, JPEG_QUALITY]
+    )
+    jpeg = jpeg.tobytes() if ok else b""
 
-            for k in range(self.num_points):
-                base_x = sample_xs[k]
-                base_y = sample_ys[k]
-                base_z = sample_zs[k]
-                has_line_at_x = False
+  return Response(jpeg, mimetype="image/jpeg")
 
-                for dy in y_offsets:
-                    local_point_homo = np.array([base_x, base_y + dy, base_z, 1.0])
-                    view_point_homo = extrinsic_matrix_full @ local_point_homo
+def y_to_jpeg(buf, w, h, stride, target_w, target_h, quality=70):
+  """
+  快速灰度 JPEG（Y plane）
+  - 整数下采样，低 CPU
+  - 中心裁剪到 target_w × target_h
+  - 避免 cv2.resize
+  """
+  try:
+    # 取 Y plane
+    data = np.frombuffer(buf, dtype=np.uint8)
+    y_plane = data[:h * stride].reshape(h, stride)[:, :w]
 
-                    if view_point_homo[2] <= 0:
-                        continue
+    # 计算缩放比例（覆盖目标尺寸）
+    scale_x = target_w / w
+    scale_y = target_h / h
+    scale = max(scale_x, scale_y)
 
-                    u = int(view_point_homo[0] / view_point_homo[2] * self.intrinsics[0, 0] + self.intrinsics[0, 2])
-                    v = int(view_point_homo[1] / view_point_homo[2] * self.intrinsics[1, 1] + self.intrinsics[1, 2])
+    # 计算整数下采样步长
+    step_x = max(1, int(1 / scale))
+    step_y = max(1, int(1 / scale))
 
-                    if 0 <= u < self.w and 0 <= v < self.h:
-                        y_val = int(y_data[v, u])
-                        all_pixel_values.append(y_val)
-                        if y_val > self.line_y_threshold:
-                            has_line_at_x = True
-                            break
-                per_x_has_line.append(has_line_at_x)
+    # 下采样
+    y_ds = y_plane[0:h:step_y, 0:w:step_x]
+    ds_h, ds_w = y_ds.shape
 
-            valid_x = [v for v in per_x_has_line if v is not None]
+    # 中心裁剪
+    start_x = max(0, (ds_w - target_w) // 2)
+    start_y = max(0, (ds_h - target_h) // 2)
+    y_crop = y_ds[start_y:start_y + target_h, start_x:start_x + target_w]
 
-            if len(valid_x) < self.num_points // 2:
-                cur_type = -1
-            else:
-                x_presence_ratio = np.mean(valid_x)
+    # 确保偶数尺寸（Skia 安全）
+    y_crop = y_crop[:target_h & ~1, :target_w & ~1]
 
-                # 统计最大连续段
-                max_run = 0
-                current_run = 0
-                for v in valid_x:
-                    if v:
-                        current_run += 1
-                        max_run = max(max_run, current_run)
-                    else:
-                        current_run = 0
+    # JPEG 编码
+    ok, jpg = cv2.imencode(
+      ".jpg",
+      y_crop,
+      [cv2.IMWRITE_JPEG_QUALITY, quality]
+    )
+    return jpg.tobytes() if ok else None
 
-                # 判定 + 迟滞
-                if x_presence_ratio > self.min_x_presence_ratio:
-                    cur_type = 1
-                elif x_presence_ratio < self.max_x_absence_ratio:
-                    cur_type = 0
-                else:
-                    cur_type = last_type
+  except Exception as e:
+    print("Y->JPEG fast error:", e)
+    return None
 
-                if cur_type == 1 and max_run < self.num_points * 0.4:
-                    cur_type = last_type
+def convert_yuv_to_bgr(yuv_data, width, height, stride):
+    """YUV NV12 转 BGR (OpenCV默认顺序)"""
+    try:
+        y_size = height * stride
+        y_plane = yuv_data[:y_size].reshape(height, stride)
+        uv_plane = yuv_data[y_size:y_size + (height//2) * stride].reshape(height//2, stride)
 
-            current_history.append(cur_type if cur_type >= 0 else None)
-            if i == 0:
-                self.left_last_type = cur_type
-            else:
-                self.right_last_type = cur_type
+        if stride > width:
+            y_plane = y_plane[:, :width]
+            uv_plane = uv_plane[:, :width]
 
-            # 记录结果
-            result[side_key] = cur_type
-            result[f'{side_key}_rel_std'] = np.std(all_pixel_values) / max(np.mean(all_pixel_values), 1.0)
-            result[f'{side_key}_x_presence'] = np.mean(valid_x) if valid_x else 0.0
-            result[f'{side_key}_max_run'] = max_run if valid_x else 0
+        yuv_nv12 = np.vstack([y_plane, uv_plane])
+        bgr_img = cv2.cvtColor(yuv_nv12, cv2.COLOR_YUV2BGR_NV12)
+        return bgr_img
+    except:
+        return None
 
-        return result
-    # ===================== 【修改结束】update =====================
+def yuv_nv12_to_small_bgr(yuv_data, width, height, stride, target_w, target_h):
+  """
+  用整数下采样先缩小 NV12，再转 BGR
+  """
+  y_size = height * stride
+  y_plane = yuv_data[:y_size].reshape(height, stride)[:, :width]
+  uv_plane = yuv_data[y_size:y_size + (height // 2) * stride].reshape(height // 2, stride)[:, :width]
 
-    def publish_result(self, pm, result):
-        try:
-            if result['left'] != self._last_params["left"]:
-                self.params.put_nonblocking("LaneLineTypeLeft", str(result['left']))
-                self._last_params["left"] = result['left']
+  # 计算下采样倍数，确保大于 target
+  scale_h = height // target_h
+  scale_w = width // target_w
+  scale = max(1, min(scale_h, scale_w))  # 整数倍采样
 
-            if result['right'] != self._last_params["right"]:
-                self.params.put_nonblocking("LaneLineTypeRight", str(result['right']))
-                self._last_params["right"] = result['right']
+  # Y plane 下采样
+  y_small = y_plane[::scale, ::scale]
 
-            left_rel = round(result['left_rel_std'], 4)
-            if left_rel != self._last_params["left_rel"]:
-                self.params.put_nonblocking("LaneLineRelStdLeft", f"{left_rel:.4f}")
-                self._last_params["left_rel"] = left_rel
+  # UV plane 下采样（每两行、两列采样）
+  uv_small = uv_plane[::scale, ::scale]
 
-            right_rel = round(result['right_rel_std'], 4)
-            if right_rel != self._last_params["right_rel"]:
-                self.params.put_nonblocking("LaneLineRelStdRight", f"{right_rel:.4f}")
-                self._last_params["right_rel"] = right_rel
+  # 合并回 NV12 小尺寸
+  nv12_small = np.vstack([y_small, uv_small])
 
-        except Exception as e:
-            cloudlog.warning(f"Failed to publish results to Params: {e}")
+  # 转成 BGR
+  bgr_img = cv2.cvtColor(nv12_small, cv2.COLOR_YUV2BGR_NV12)
 
-# ==============================================================================
-# 主程序 (独立测试)
-# ==============================================================================
+  return bgr_img
+
+def encode_to_jpg(image, target_w, target_h, quality):
+  """
+  固定尺寸 + 低延迟 JPEG
+  """
+  # 固定尺寸 resize（不等比例）
+  if image.shape[1] != target_w or image.shape[0] != target_h:
+    image = cv2.resize(
+      image,
+      (target_w, target_h),
+      interpolation=cv2.INTER_AREA  #更快
+    )
+  # JPEG 编码（去掉 OPTIMIZE）
+  success, jpeg = cv2.imencode(
+    ".jpg",
+    image,
+    [cv2.IMWRITE_JPEG_QUALITY, quality]
+  )
+  return jpeg.tobytes() if success else None
+
+def camera_thread():
+  global latest_jpeg, latest_gray, status_text, gray_img
+  global vipc_width, vipc_height, vipc_stride
+
+  from msgq.visionipc.visionipc_pyx import VisionIpcClient, VisionStreamType
+
+  vipc_client = VisionIpcClient(
+    "camerad",
+    VisionStreamType.VISION_STREAM_ROAD,
+    False  # 非实时，更省 CPU
+  )
+
+  for _ in range(3):
+    if vipc_client.connect(False):
+      break
+    time.sleep(1)
+  else:
+    return
+
+  vipc_width = vipc_client.width
+  vipc_height = vipc_client.height
+  vipc_stride = vipc_client.stride
+
+  last_print = time.time()
+  frame_times = []
+
+  while True:
+    # 没客户端，不干活
+    if time.time() - last_snapshot_time > 2.0:
+      time.sleep(0.1)
+      continue
+
+    yuv_buf = vipc_client.recv()
+    if not yuv_buf:
+      time.sleep(0.05)
+      continue
+
+    start_time = time.time()
+
+    bgr = None
+    if gray_img: #只处理灰度图像
+      jpeg = y_to_jpeg(yuv_buf.data, vipc_width, vipc_height, vipc_stride, target_width, target_height, JPEG_QUALITY)
+      if jpeg is None:
+        time.sleep(0.05)
+        continue
+      with frame_lock:
+        latest_gray = jpeg
+    else:
+      bgr = convert_yuv_to_bgr(yuv_buf.data,vipc_width,vipc_height,vipc_stride) # YUV → BGR（临时）
+      #bgr = yuv_nv12_to_small_bgr(yuv_buf.data, vipc_width, vipc_height, vipc_stride, target_width, target_height)
+      if bgr is None:
+        time.sleep(0.05)
+        continue
+      # BGR → JPEG（唯一输出）
+      jpeg = encode_to_jpg(bgr, target_width, target_height, JPEG_QUALITY)
+      if jpeg is None:
+        time.sleep(0.05)
+        continue
+      with frame_lock:
+        latest_jpeg = jpeg
+
+    # 统计
+    t = time.time() - start_time
+    frame_times.append(t * 1000)
+
+    if time.time() - last_print > 2.0:
+      if frame_times:
+        text = (
+          f"JPEG {target_width}x{target_height} | "
+          f"avg {np.mean(frame_times):.1f} ms | "
+          f"FPS {len(frame_times) / 2:.1f}"
+        )
+        #print(text)
+        with status_lock:
+          status_text = text
+      frame_times.clear()
+      last_print = time.time()
+
+    # 显式释放（帮助 GC）
+    if bgr is not None:
+      del bgr
+
+    #是否需要延时
+    with req_lock:
+      _req_frame_time = req_frame_time
+    sleep_time = _req_frame_time - t if  _req_frame_time > t else 0
+    if sleep_time > 0:
+      time.sleep(sleep_time)
 
 def main():
-    detector = LaneLineDetector()
-    sm = messaging.SubMaster(['modelV2', 'liveCalibration', 'deviceState', 'roadCameraState'])
-    vipc_client = VisionIpcClient("camerad", VisionStreamType.VISION_STREAM_ROAD, True)
+    import logging
+    logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
-    while not vipc_client.connect(False):
-        time.sleep(0.2)
+    print("=" * 60)
+    print("车道线服务程序")
+    print("访问: http://0.0.0.0:8888")
+    print("=" * 60)
 
-    while True:
-        sm.update(0)
-        if detector.init_camera(sm, vipc_client):
-            break
-        time.sleep(0.1)
+    cam_thread = threading.Thread(target=camera_thread, daemon=True)
+    cam_thread.start()
 
-    while True:
-        sm.update(0)
-        yuv_buf = vipc_client.recv()
+    time.sleep(1)
 
-        result = detector.update(sm, yuv_buf)
-        detector.publish_result(None, result)
-
-        left_type = ['虚线', '实线', '不确定/丢失'][result['left'] if result['left'] >= 0 else 2]
-        right_type = ['虚线', '实线', '不确定/丢失'][result['right'] if result['right'] >= 0 else 2]
-
-        print(f"\033[2J\033[H", end="")
-        print(f"=== 车道线识别 (Res: {detector.w}x{detector.h}) ===")
-        print(f"左侧: {left_type}  (AvgRel: {result['left_rel_std']:.3f}, Presence: {result['left_x_presence']:.2f})")
-        print(f"右侧: {right_type}  (AvgRel: {result['right_rel_std']:.3f}, Presence: {result['right_x_presence']:.2f})")
-        print("----------------------------------")
+    from werkzeug.serving import run_simple
+    run_simple('0.0.0.0', 8888, app, threaded=True, processes=1, use_reloader=False)
 
 if __name__ == "__main__":
     main()

@@ -8,6 +8,7 @@ from openpilot.system.hardware import PC, TICI
 from openpilot.system.manager.process import PythonProcess, NativeProcess, DaemonProcess
 
 FLASK_AVAILABLE = importlib.util.find_spec("flask") is not None
+OPENCV_AVAILABLE = importlib.util.find_spec("cv2") is not None
 
 WEBCAM = os.getenv("USE_WEBCAM") is not None
 
@@ -62,6 +63,9 @@ def enable_updated(started: bool, params: Params, CP: car.CarParams) -> bool:
 
 def check_fleet(started, params, CP: car.CarParams) -> bool:
   return FLASK_AVAILABLE
+
+def check_lane(started, params, CP: car.CarParams) -> bool:
+  return FLASK_AVAILABLE and OPENCV_AVAILABLE
 
 def or_(*fns):
   return lambda *args: operator.or_(*(fn(*args) for fn in fns))
@@ -138,6 +142,7 @@ procs = [
   PythonProcess("carrot_man", "selfdrive.carrot.carrot_man", always_run),#, enabled=not PC),
   #PythonProcess("auto_overtake", "selfdrive.carrot.auto_overtake", always_run),#, enabled=not PC),
   #PythonProcess("amap_navi", "selfdrive.carrot.amap_navi", always_run),
+  PythonProcess("lane", "selfdrive.carrot.lane", check_lane and only_onroad),
 ]
 
 managed_processes = {p.name: p for p in procs}

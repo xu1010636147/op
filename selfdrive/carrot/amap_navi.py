@@ -95,6 +95,8 @@ class SharedData:
   def __init__(self):
     #=============共享数据（来自amap_navi）=============
     #盲区信号
+    self.left_lane = 0 #车道线类型
+    self.right_lane = 0
     self.left_blind = False #摄像头盲区信号
     self.right_blind = False
     self.lidar_lblind = False #雷达盲区信号
@@ -182,6 +184,7 @@ class AmapNaviServ:
     self.broadcast_ip = self.navi_get_broadcast_address() #广播地址
     self.broadcast_port = 4210 #广播端口
     self.listen_port = 4211 #监听地址
+    self.lane_port = 4213  # 监听地址
     self.local_ip_address = "0.0.0.0" #本地ip地址
 
     self.clients = {}  # 保存多个客户端
@@ -235,16 +238,16 @@ class AmapNaviServ:
   def public_amap_navi(self):
     msg = messaging.new_message('amapNavi')
     msg.valid = True
-    msg.amapNavi.leftBlind = ((4 if self.shared_data.lidar_car_lblind else 0) +
+    msg.amapNavi.leftBlind = ((8 if self.shared_data.left_lane > 0 else 0) + (4 if self.shared_data.lidar_car_lblind else 0) +
                               (2 if self.shared_data.left_blind else 0) + (1 if self.shared_data.lidar_lblind else 0))
-    msg.amapNavi.rightBlind = ((4 if self.shared_data.lidar_car_rblind else 0) +
+    msg.amapNavi.rightBlind = ((8 if self.shared_data.right_lane > 0 else 0) + (4 if self.shared_data.lidar_car_rblind else 0) +
                                (2 if self.shared_data.right_blind else 0) + (1 if self.shared_data.lidar_rblind else 0))
     self.pm.send('amapNavi', msg)
 
   def left_blindspot(self):
-    return self.shared_data.left_blind or self.shared_data.lidar_lblind
+    return self.shared_data.left_blind or self.shared_data.lidar_lblind or self.shared_data.left_lane > 0
   def right_blindspot(self):
-    return self.shared_data.right_blind or self.shared_data.lidar_rblind
+    return self.shared_data.right_blind or self.shared_data.lidar_rblind or self.shared_data.right_lane > 0
 
   def _capnp_list_to_list(self, capnp_list, max_items=None):
     """将capnp列表转换为Python列表"""
@@ -323,6 +326,7 @@ class AmapNaviServ:
           rf_blind_mask = True
         if self.shared_data.main_rb_xrel is not None and self.shared_data.main_rb_xrel > laneWidthRight*1000.: #控测的目标侧面距离超过路宽，屏蔽盲区标志
           rb_blind_mask = True
+        '''
         if fork_left_right:
           if atc_blinker_state == BLINKER_LEFT:
             if self.shared_data.main_lf_drel is not None and self.shared_data.main_lf_drel > 5000: #左前方大于5米
@@ -334,6 +338,7 @@ class AmapNaviServ:
               rf_blind_mask = True
             if self.shared_data.main_rb_drel is not None and self.shared_data.main_rb_drel < -10000: #右后方大于10米
               rb_blind_mask = True
+        '''
 
       if self.dynamicBlindRange >= 2: #强制动态调整盲宽度
         if not lf_blind_mask:
@@ -446,6 +451,7 @@ class AmapNaviServ:
 
   # =======================================================================================
   def start_navi_comm(self):
+    threading.Thread(target=self._lane_recv_thread, daemon=True).start()
     """启动导航UDP通信线程"""
     threading.Thread(target=self._udp_recv_thread, daemon=True).start()
     # 启动清理客户端线程
@@ -581,6 +587,45 @@ class AmapNaviServ:
       except Exception as e:
         print(f"_data_deal_thread error: {e}")
         time.sleep(1)
+  # ----------------------
+  # LANE 接收线程（修改：初始化 client_active）
+  # ----------------------
+  def _lane_recv_thread(self):
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+      sock.settimeout(10)
+      sock.bind(('0.0.0.0', self.lane_port))
+      print("lane receive thread started...")
+      while True:
+        try:
+          data, addr = sock.recvfrom(4096)
+          ip, port = addr
+
+          if not data:
+            raise ConnectionError("_lane_recv_thread No data received")
+
+          try:
+            json_obj = json.loads(data.decode())
+            # 响应类型
+            if "resp" in json_obj:
+              resp = json_obj.get("resp")
+              if resp == "lane":
+                if "left_lane" in json_obj:
+                  left_lane = int(json_obj.get("left_lane"))
+                  self.shared_data.left_lane = 0 if left_lane < 1 else left_lane
+                if "right_lane" in json_obj:
+                  right_lane = int(json_obj.get("right_lane"))
+                  self.shared_data.right_lane = 0 if right_lane < 1 else right_lane
+          except Exception as e:
+            print(f"_lane_recv_thread: json error...: {e}")
+            print(data)
+
+        except socket.timeout:
+          self.shared_data.left_lane = 0
+          self.shared_data.right_lane = 0
+          continue
+        except Exception as e:
+          print(f"lane recv error: {e}")
+          time.sleep(1)
   # ----------------------
   # UDP 接收线程（修改：初始化 client_active）
   # ----------------------

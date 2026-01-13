@@ -7,10 +7,27 @@ OpenPilot 彩色视频流服务器
 import time
 import threading
 import numpy as np
-from flask import Flask, Response, render_template_string
-import cv2
+#from flask import Flask, Response, render_template_string
+#import cv2
 
-app = Flask(__name__)
+import sys
+
+FLASK_AVAILABLE = True
+OPENCV_AVAILABLE = True
+
+try:
+    from flask import Flask, Response, render_template_string
+except ImportError as e:
+    print("[FATAL] Flask 未安装，无法启动服务")
+    print("请安装: pip install flask")
+    FLASK_AVAILABLE = False
+
+try:
+    import cv2
+except ImportError as e:
+    print("[FATAL] OpenCV(cv2) 未安装，无法启动服务")
+    print("请安装: pip install opencv-python")
+    OPENCV_AVAILABLE = False
 
 # 全局变量
 latest_jpeg = None
@@ -76,79 +93,6 @@ HTML = """
 </body>
 </html>
 """
-
-@app.route('/')
-def index():
-    return render_template_string(HTML)
-
-@app.route("/status")
-def status():
-    with status_lock:
-        return status_text
-
-@app.route("/roadrgb.jpg")
-def roadrgb():
-    """返回最新一帧 JPEG，用于 Android 单帧抓取"""
-    global latest_jpeg, last_snapshot_time, gray_img
-    global req_count, latest_req_count, req_frame_time, req_window_start
-    gray_img = False
-    last_snapshot_time = time.time()
-
-    with req_lock:
-        now = time.time()
-        if now - req_window_start > REQ_WINDOW:
-            req_window_start = now
-            latest_req_count = req_count
-            if latest_req_count >= 1:
-              req_frame_time = 2.0 / latest_req_count
-              #print(f"request {latest_req_count}, interval {req_frame_time:.2f} s")
-            req_count = 0
-        req_count += 1
-
-    with frame_lock:
-        jpeg = latest_jpeg
-    # 如果没有帧，返回一张黑色占位图
-    if jpeg is None:
-        import numpy as np
-        import cv2
-        placeholder = np.zeros((target_height, target_width, 3), dtype=np.uint8)
-        _, jpeg = cv2.imencode('.jpg', placeholder)
-        jpeg = jpeg.tobytes()
-
-    return Response(jpeg, mimetype="image/jpeg")
-
-@app.route("/roadgray.jpg")
-def roadgray():
-  """返回最新一帧灰度 JPEG，用于 Android 单帧抓取"""
-  global latest_gray, last_snapshot_time, gray_img
-  global req_count, latest_req_count, req_frame_time, req_window_start
-  gray_img = True
-  last_snapshot_time = time.time()
-
-  with req_lock:
-    now = time.time()
-    if now - req_window_start > REQ_WINDOW:
-      req_window_start = now
-      latest_req_count = req_count
-      if latest_req_count >= 1:
-        req_frame_time = 2.0 / latest_req_count
-        #print(f"request {latest_req_count}, interval {req_frame_time:.2f} s")
-      req_count = 0
-    req_count += 1
-
-  with frame_lock:
-    jpeg = latest_gray
-
-  if jpeg is None:
-    placeholder = np.zeros((target_height, target_width), dtype=np.uint8)
-    ok, jpeg = cv2.imencode(
-      ".jpg",
-      placeholder,
-      [cv2.IMWRITE_JPEG_QUALITY, JPEG_QUALITY]
-    )
-    jpeg = jpeg.tobytes() if ok else b""
-
-  return Response(jpeg, mimetype="image/jpeg")
 
 def y_to_jpeg(buf, w, h, stride, target_w, target_h, quality=70):
   """
@@ -347,7 +291,96 @@ def camera_thread():
     if sleep_time > 0:
       time.sleep(sleep_time)
 
+
+def ensure_package(max_retry=10, retry_delay=3):
+  """
+  确保 Python 包可用：
+  - import 失败则自动 pip install
+  - 每 10 秒重试一次
+  - 最多重试 10 次
+  - 最终失败返回 None
+  """
+  import subprocess
+  import_name = "flask"
+  pip_name = import_name
+  import_success = False
+
+  for attempt in range(1, max_retry + 1):
+    try:
+      from flask import Flask, Response, render_template_string
+      import_success = True
+      break
+    except ImportError:
+      print(f"[WARN] {import_name} 未安装，尝试安装 {pip_name} ({attempt}/{max_retry})")
+      try:
+        subprocess.run("pip install flask", shell=True, capture_output=True, text=False)
+      except Exception as e:
+        print(f"[ERROR] pip install {pip_name} 失败: {e}")
+
+      if attempt < max_retry:
+        try:
+          from flask import Flask, Response, render_template_string
+          import_success = True
+          break
+        except ImportError:
+          print(f"[INFO] {retry_delay}s 后重试...")
+          time.sleep(retry_delay)
+
+  if not import_success:
+    print(f"[FATAL] {import_name} 安装失败，已重试 {max_retry} 次")
+    return import_success
+
+  import_success = False
+  import_name = "opencv-python"
+  pip_name = import_name
+
+  for attempt in range(1, max_retry + 1):
+    try:
+      import cv2
+      import_success = True
+    except ImportError:
+      print(f"[WARN] {import_name} 未安装，尝试安装 {pip_name} ({attempt}/{max_retry})")
+      try:
+        subprocess.run("pip install opencv-python", shell=True, capture_output=True, text=False)
+      except Exception as e:
+        print(f"[ERROR] pip install {pip_name} 失败: {e}")
+
+      if attempt < max_retry:
+        try:
+          import cv2
+          import_success = True
+          break
+        except ImportError:
+          print(f"[INFO] {retry_delay}s 后重试...")
+          time.sleep(retry_delay)
+
+  if not import_success:
+    print(f"[FATAL] {import_name} 安装失败，已重试 {max_retry} 次")
+  return import_success
+
 def main():
+    while not (FLASK_AVAILABLE and OPENCV_AVAILABLE):
+      print("=" * 60)
+      print("Lane 视频流服务未启动（缺少依赖）")
+      print("=" * 60)
+      result = ensure_package()
+      if result:
+        break
+      while True:
+        try:
+          from flask import Flask, Response, render_template_string
+          break
+        except ImportError:
+          print(f"[ERROR] flask未安装，请手动执行命令pip install flask进行安装")
+        time.sleep(3)
+      while True:
+        try:
+          import cv2
+          break
+        except ImportError:
+          print(f"[ERROR] opencv未安装，请手动执行命令pip install opencv-python进行安装")
+        time.sleep(3)
+
     import logging
     logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
@@ -360,6 +393,83 @@ def main():
     cam_thread.start()
 
     time.sleep(1)
+
+    from flask import Flask, Response, render_template_string
+    import cv2
+    app = Flask(__name__)
+
+    @app.route('/')
+    def index():
+      return render_template_string(HTML)
+
+    @app.route("/status")
+    def status():
+      with status_lock:
+        return status_text
+
+    @app.route("/roadrgb.jpg")
+    def roadrgb():
+      """返回最新一帧 JPEG，用于 Android 单帧抓取"""
+      global latest_jpeg, last_snapshot_time, gray_img
+      global req_count, latest_req_count, req_frame_time, req_window_start
+      gray_img = False
+      last_snapshot_time = time.time()
+
+      with req_lock:
+        now = time.time()
+        if now - req_window_start > REQ_WINDOW:
+          req_window_start = now
+          latest_req_count = req_count
+          if latest_req_count >= 1:
+            req_frame_time = 2.0 / latest_req_count
+            # print(f"request {latest_req_count}, interval {req_frame_time:.2f} s")
+          req_count = 0
+        req_count += 1
+
+      with frame_lock:
+        jpeg = latest_jpeg
+      # 如果没有帧，返回一张黑色占位图
+      if jpeg is None:
+        import numpy as np
+        import cv2
+        placeholder = np.zeros((target_height, target_width, 3), dtype=np.uint8)
+        _, jpeg = cv2.imencode('.jpg', placeholder)
+        jpeg = jpeg.tobytes()
+
+      return Response(jpeg, mimetype="image/jpeg")
+
+    @app.route("/roadgray.jpg")
+    def roadgray():
+      """返回最新一帧灰度 JPEG，用于 Android 单帧抓取"""
+      global latest_gray, last_snapshot_time, gray_img
+      global req_count, latest_req_count, req_frame_time, req_window_start
+      gray_img = True
+      last_snapshot_time = time.time()
+
+      with req_lock:
+        now = time.time()
+        if now - req_window_start > REQ_WINDOW:
+          req_window_start = now
+          latest_req_count = req_count
+          if latest_req_count >= 1:
+            req_frame_time = 2.0 / latest_req_count
+            # print(f"request {latest_req_count}, interval {req_frame_time:.2f} s")
+          req_count = 0
+        req_count += 1
+
+      with frame_lock:
+        jpeg = latest_gray
+
+      if jpeg is None:
+        placeholder = np.zeros((target_height, target_width), dtype=np.uint8)
+        ok, jpeg = cv2.imencode(
+          ".jpg",
+          placeholder,
+          [cv2.IMWRITE_JPEG_QUALITY, JPEG_QUALITY]
+        )
+        jpeg = jpeg.tobytes() if ok else b""
+
+      return Response(jpeg, mimetype="image/jpeg")
 
     from werkzeug.serving import run_simple
     run_simple('0.0.0.0', 8888, app, threaded=True, processes=1, use_reloader=False)

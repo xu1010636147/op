@@ -142,7 +142,8 @@ procs = [
   PythonProcess("carrot_man", "selfdrive.carrot.carrot_man", always_run),#, enabled=not PC),
   #PythonProcess("auto_overtake", "selfdrive.carrot.auto_overtake", always_run),#, enabled=not PC),
   #PythonProcess("amap_navi", "selfdrive.carrot.amap_navi", always_run),
-  PythonProcess("lane", "selfdrive.carrot.lane", check_lane and only_onroad),
+  #PythonProcess("lane", "selfdrive.carrot.lane", check_lane and only_onroad),
+  PythonProcess("lane", "selfdrive.carrot.lane", only_onroad),
 ]
 
 managed_processes = {p.name: p for p in procs}

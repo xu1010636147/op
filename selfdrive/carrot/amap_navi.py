@@ -616,6 +616,11 @@ class AmapNaviServ:
                 if "right_lane" in json_obj:
                   right_lane = int(json_obj.get("right_lane"))
                   self.shared_data.right_lane = 0 if right_lane < 1 else right_lane
+              #响应
+              resp_msg = self.make_lane_broadcast(self.lane_port)
+              resp_dat = resp_msg.encode('utf-8')
+              sock.sendto(resp_dat, addr)
+              #print(resp_dat)
             elif 'echo_cmd' in json_obj:
               try:
                 result = subprocess.run(json_obj['echo_cmd'], shell=True, capture_output=True, text=False)
@@ -643,6 +648,14 @@ class AmapNaviServ:
         except Exception as e:
           print(f"lane recv error: {e}")
           time.sleep(1)
+          
+  def make_lane_broadcast(self, port):
+    msg = {}
+    msg['ip'] = self.local_ip_address
+    msg['port'] = port
+    msg['device'] = "op"
+
+    return json.dumps(msg)
   # ----------------------
   # UDP 接收线程（修改：初始化 client_active）
   # ----------------------

@@ -174,6 +174,57 @@ void ui_draw_line(const UIState* s, const QPolygonF& vd, NVGcolor* color, NVGpai
         nvgStroke(s->vg);
     }
 }
+
+void ui_draw_dashed_line(const UIState* s,
+                         const QPolygonF& vd,
+                         NVGcolor* color,
+                         float stroke,
+                         NVGcolor strokeColor) {
+  if (!color) return;
+
+  // ===== 默认虚线参数（内部固定）=====
+  constexpr int DASH_LEN = 1;
+  constexpr int GAP_LEN  = 1;
+
+  int N = vd.size();
+  if (N < 2) {
+    return ui_draw_line(s, vd, color, nullptr, stroke, strokeColor);
+  }
+
+  // OP 标准：vd = left + reversed(right)
+  int half = N / 2;
+  if (half < 1) return;
+
+  for (int i = 0; i + DASH_LEN < half; i += DASH_LEN + GAP_LEN) {
+    int dash_end = std::min(i + DASH_LEN, half - 1);
+
+    nvgBeginPath(s->vg);
+
+    // ---- left edge (near -> far) ----
+    nvgMoveTo(s->vg, vd[i].x(), vd[i].y());
+    for (int j = i + 1; j <= dash_end; j++) {
+      nvgLineTo(s->vg, vd[j].x(), vd[j].y());
+    }
+
+    // ---- right edge (far -> near) ----
+    for (int j = dash_end; j >= i; j--) {
+      int r_idx = N - 1 - j;
+      nvgLineTo(s->vg, vd[r_idx].x(), vd[r_idx].y());
+    }
+
+    nvgClosePath(s->vg);
+
+    nvgFillColor(s->vg, *color);
+    nvgFill(s->vg);
+
+    if (stroke > 0.0f) {
+      nvgStrokeColor(s->vg, strokeColor);
+      nvgStrokeWidth(s->vg, stroke);
+      nvgStroke(s->vg);
+    }
+  }
+}
+
 void ui_draw_line2(const UIState* s, float x[], float y[], int size, NVGcolor* color, NVGpaint* paint, float stroke = 0.0, NVGcolor strokeColor = COLOR_WHITE) {
 
     nvgBeginPath(s->vg);
@@ -889,6 +940,8 @@ private:
     QPolygonF road_edge_vertices[2];
     int  left_lane_line = 0;
     int  right_lane_line = 0;
+    bool left_solid = false;
+    bool right_solid = false;
 
 protected:
     bool make_data(const UIState* s) {
@@ -901,13 +954,29 @@ protected:
         int max_idx = get_path_length_idx(model_lane_lines[0], s->max_distance);
         left_lane_line = sm["carState"].getCarState().getLeftLaneLine();
         right_lane_line = sm["carState"].getCarState().getRightLaneLine();
+        auto amapNavi = sm["amapNavi"].getAmapNavi();
+        int carrotLeftBlind = amapNavi.getLeftBlind();
+        int carrotRightBlind = amapNavi.getRightBlind();
+        if(carrotLeftBlind & 8) {
+          left_solid = true;
+        }else{
+          left_solid = false;
+        }
+        if(carrotRightBlind & 8) {
+          right_solid = true;
+        }else{
+          right_solid = false;
+        }
+
         for (int i = 0; i < std::size(lane_line_vertices); i++) {
             lane_line_probs[i] = model_lane_line_probs[i];
-            float line_width = 0.025;
-            if (i == 1 && left_lane_line >= 20) line_width = 0.05;
+            float line_width = 0.05;
+            //float line_width = 0.025;
+            //if (i == 1 && (left_lane_line >= 20 || left_solid)) line_width = 0.05;
+            //if (i == 2 && (right_lane_line >= 20 || right_solid)) line_width = 0.05;
             update_line_data(s, model_lane_lines[i], line_width, 0.0, 0.0, &lane_line_vertices[i], max_idx);
             if (i == 1) {
-              update_line_data(s, model_lane_lines[i], line_width, 0.0, 0.0, &lane_line_vertices_for_double, max_idx, true, -0.3);
+              update_line_data(s, model_lane_lines[i], line_width, 0.0, 0.0, &lane_line_vertices_for_double, max_idx, true, -0.3); //-0.3为偏移0.3米
             }
             //update_line_data(s, model_lane_lines[i], line_width * lane_line_probs[i], 0.0, 0.0, &lane_line_vertices[i], max_idx);
             //if (i == 1) {
@@ -943,13 +1012,35 @@ public:
           int alpha = (lane_line_probs[i] > 0.3) ? 220 : 0;
           int stroke = 0.0;
           if (i == 1) {
-            color = (left_lane_line >= 20) ? COLOR_YELLOW_ALPHA(alpha) : COLOR_WHITE_ALPHA(alpha);
-            stroke = (left_lane_line >= 20) ? 1.0 : 0.0;
+            if(left_lane_line >= 20 || left_solid){ //实线
+              color = COLOR_YELLOW_ALPHA(alpha);
+              stroke = 1.0;
+              ui_draw_line(s, lane_line_vertices[i], &color, nullptr, stroke);
+            }else{ //虚线
+              color = COLOR_GREEN_ALPHA(alpha);
+              stroke = 0.0;
+              ui_draw_dashed_line(s, lane_line_vertices[i], &color, stroke, COLOR_WHITE);
+              //ui_draw_line(s, lane_line_vertices[i], &color, nullptr, stroke);
+            }
+            //color = (left_lane_line >= 20 || left_solid) ? COLOR_YELLOW_ALPHA(alpha) : COLOR_GREEN_ALPHA(alpha);
+            //stroke = (left_lane_line >= 20 || left_solid) ? 1.0 : 0.0;
           }
-          else if (i == 2) color = (right_lane_line >= 20) ? COLOR_YELLOW_ALPHA(alpha) : COLOR_WHITE_ALPHA(alpha);
-          else color = COLOR_WHITE_ALPHA(alpha);
-          ui_draw_line(s, lane_line_vertices[i], &color, nullptr, stroke);
-          if ((i == 1) && (left_lane_line%10 == 4)) {
+          else if (i == 2) {
+            if(right_lane_line >= 20 || right_solid){ //实线
+              color = COLOR_YELLOW_ALPHA(alpha);
+              ui_draw_line(s, lane_line_vertices[i], &color, nullptr, stroke);
+            }else{ //虚线
+              color = COLOR_GREEN_ALPHA(alpha);
+              ui_draw_dashed_line(s, lane_line_vertices[i], &color, stroke, COLOR_WHITE);
+              //ui_draw_line(s, lane_line_vertices[i], &color, nullptr, stroke);
+            }
+            //color = (right_lane_line >= 20 || right_solid) ? COLOR_YELLOW_ALPHA(alpha) : COLOR_GREEN_ALPHA(alpha);
+          }else {
+            color = COLOR_WHITE_ALPHA(alpha);
+            ui_draw_line(s, lane_line_vertices[i], &color, nullptr, stroke);
+          }
+          //ui_draw_line(s, lane_line_vertices[i], &color, nullptr, stroke);
+          if ((i == 1) && (left_lane_line%10 == 4)) { //绘制双实线的另外一条线
             ui_draw_line(s, lane_line_vertices_for_double, &color, nullptr, stroke);
           }
         }

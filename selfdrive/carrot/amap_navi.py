@@ -231,6 +231,7 @@ class AmapNaviServ:
     self.model_event_type = 0
     self.sec_count_down = 0
     self.frame = 0
+    self.lane_online = False
 
     threading.Thread(target=self.navi_broadcast_info).start()
     #threading.Thread(target=self.navi_comm_thread).start()
@@ -291,8 +292,8 @@ class AmapNaviServ:
       meta = modelV2.meta
 
       atc_type = carrotMan.atcType
-      laneWidthLeft = round(meta.laneWidthLeft, 1)
-      laneWidthRight = round(meta.laneWidthRight, 1)
+      laneWidthLeft = min(3.5, round(meta.laneWidthLeft, 1))
+      laneWidthRight = min(3.5, round(meta.laneWidthRight, 1))
       #distanceToRoadEdgeLeft = round(meta.distanceToRoadEdgeLeft, 1)
       #distanceToRoadEdgeRight = round(meta.distanceToRoadEdgeRight, 1)
 
@@ -593,7 +594,7 @@ class AmapNaviServ:
   # ----------------------
   def _lane_recv_thread(self):
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-      sock.settimeout(10)
+      sock.settimeout(3)
       sock.bind(('0.0.0.0', self.lane_port))
       print("lane receive thread started...")
       while True:
@@ -610,6 +611,7 @@ class AmapNaviServ:
             if "resp" in json_obj:
               resp = json_obj.get("resp")
               if resp == "lane":
+                self.lane_online = True
                 if "left_lane" in json_obj:
                   left_lane = int(json_obj.get("left_lane"))
                   self.shared_data.left_lane = 0 if left_lane < 1 else left_lane
@@ -644,11 +646,12 @@ class AmapNaviServ:
         except socket.timeout:
           self.shared_data.left_lane = 0
           self.shared_data.right_lane = 0
+          self.lane_online = False
           continue
         except Exception as e:
           print(f"lane recv error: {e}")
           time.sleep(1)
-          
+
   def make_lane_broadcast(self, port):
     msg = {}
     msg['ip'] = self.local_ip_address
@@ -1226,10 +1229,13 @@ class AmapNaviServ:
 
         # 更新状态
         if self.clients:
-          self.shared_data.ext_state = len(self.clients)
+          ext_state = len(self.clients)
         else:
-          self.shared_data.ext_state = 0
+          ext_state = 0
           self.shared_data.ext_blinker = BLINKER_NONE
+        if self.lane_online:
+          ext_state += 1
+        self.shared_data.ext_state = ext_state
 
       time.sleep(0.2)
 

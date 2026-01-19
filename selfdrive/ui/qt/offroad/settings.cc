@@ -897,7 +897,7 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   //startToggles->addItem(new CValueControl("LaneChangeLaneCheck", "变道: 检查车道存在", "(0:否,1:车道,2:+路肩)", 0, 2, 1));
 
   speedToggles = new ListWidget(this);
-  speedToggles->addItem(new CValueControl("AutoCurveSpeedLowerLimit", "弯道: 转弯最低降速限制(30)", "用于限制视觉转弯降速和地图转弯降速的最小速度", 10, 200, 2));
+  speedToggles->addItem(new CValueControl("AutoCurveSpeedLowerLimit", "弯道: 转弯最低降速限制(30)", "用于限制视觉转弯降速和地图转弯降速的最小速度", 0, 200, 1));
   speedToggles->addItem(new CValueControl("AutoCurveSpeedFactor", "弯道: 降速弯道曲率系数(100%)", "模型预测横摆角速度*此系数，系数越大降速越多", 50, 300, 1));
   speedToggles->addItem(new CValueControl("AutoCurveSpeedAggressiveness", "弯道: 降速横向加速度系数(100%)", "目标横向加速度*此系数，系数越小降速越多", 50, 300, 1));
   speedToggles->addItem(new CValueControl("AutoCurveSpeedFactorH", "高速: 降速弯道曲率系数(100%)", "模型预测横摆角速度*此系数，系数越大降速越多", 50, 300, 1));
@@ -914,7 +914,7 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   speedToggles->addItem(new CValueControl("TurnSpeedControlMode", "转弯速度控制模式(1)", "0:关闭, 1:视觉, 2:视觉+路线, 3:路线", 0, 3, 1));
   speedToggles->addItem(new CValueControl("MapTurnSpeedFactor", "地图转弯速度系数(100%)", "在使用地图转弯速度时，实际转弯速度=地图速度*x%，在转弯速度控制模式为2或3时生效", 50, 300, 5));
   speedToggles->addItem(new CValueControl("AutoTurnControl", "ATC: 自动转弯控制(0)", "0:无, 1:变道, 2:变道+减速, 3:减速", 0, 3, 1));
-  speedToggles->addItem(new CValueControl("AutoTurnControlSpeedTurn", "ATC: 转弯速度(20)", "0:无, 转弯速度", 0, 100, 5));
+  speedToggles->addItem(new CValueControl("AutoTurnControlSpeedTurn", "ATC: 转弯速度(20)", "0:无, 转弯速度", 0, 100, 1));
   speedToggles->addItem(new CValueControl("AutoTurnControlTurnEnd", "ATC: 转弯结束时间(6)", "距离=速度*时间", 0, 30, 1));
   speedToggles->addItem(new CValueControl("AutoTurnMapChange", "ATC 自动地图切换(0)", "", 0, 1, 1));
 

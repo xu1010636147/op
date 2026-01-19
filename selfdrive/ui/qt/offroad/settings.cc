@@ -897,7 +897,7 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   //startToggles->addItem(new CValueControl("LaneChangeLaneCheck", "变道: 检查车道存在", "(0:否,1:车道,2:+路肩)", 0, 2, 1));
 
   speedToggles = new ListWidget(this);
-  speedToggles->addItem(new CValueControl("AutoCurveSpeedLowerLimit", "弯道: 转弯最低降速限制(30)", "用于限制视觉转弯降速和地图转弯降速的最小速度", 30, 200, 5));
+  speedToggles->addItem(new CValueControl("AutoCurveSpeedLowerLimit", "弯道: 转弯最低降速限制(30)", "用于限制视觉转弯降速和地图转弯降速的最小速度", 10, 200, 2));
   speedToggles->addItem(new CValueControl("AutoCurveSpeedFactor", "弯道: 降速弯道曲率系数(100%)", "模型预测横摆角速度*此系数，系数越大降速越多", 50, 300, 1));
   speedToggles->addItem(new CValueControl("AutoCurveSpeedAggressiveness", "弯道: 降速横向加速度系数(100%)", "目标横向加速度*此系数，系数越小降速越多", 50, 300, 1));
   speedToggles->addItem(new CValueControl("AutoCurveSpeedFactorH", "高速: 降速弯道曲率系数(100%)", "模型预测横摆角速度*此系数，系数越大降速越多", 50, 300, 1));

@@ -1545,6 +1545,8 @@ class AmapNaviServ:
         msg['l_edge_dist'] = round(meta.distanceToRoadEdgeLeft, 1)
         msg['r_edge_dist'] = round(meta.distanceToRoadEdgeRight, 1)
         msg['atc_state'] = meta.laneChangeState.raw
+        if hasattr(meta, 'laneWidth'):
+          msg['lane_width'] = round(meta.laneWidth, 1)
 
         if self.shared_data.max_curve is None and hasattr(modelV2, 'orientationRate') and len(modelV2.orientationRate.z) > 0:
           orientation_rate_z = self._capnp_list_to_list(modelV2.orientationRate.z)

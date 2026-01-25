@@ -590,6 +590,7 @@ class DesireHelper:
     lane_line_info = carstate.leftLaneLine if blinker_state == BLINKER_LEFT else carstate.rightLaneLine
 
     car_side_blind = False #NEW
+    is_car_blind = False
     if desire_enabled:
       lane_exist_counter = self.lane_exist_left_count.counter if blinker_state == BLINKER_LEFT else self.lane_exist_right_count.counter #左侧或右侧车道存在的时间
       lane_available = self.available_left_lane if blinker_state == BLINKER_LEFT else self.available_right_lane #车道存在标志
@@ -598,12 +599,15 @@ class DesireHelper:
       self.lane_appeared = self.lane_appeared or lane_exist_counter == int(0.2 / DT_MDL) #
       curr_lane_width_diff = self.lane_width_left_curr_diff if blinker_state == BLINKER_LEFT else self.lane_width_right_curr_diff #当前车道宽度和旁边车道宽度的差值
 
-      carrot_left_blind = carrotMan.leftBlind or amapNavi.leftBlind
-      carrot_right_blind = carrotMan.rightBlind or amapNavi.rightBlind
+      carrot_left_blind = carrotMan.leftBlind | amapNavi.leftBlind
+      carrot_right_blind = carrotMan.rightBlind | amapNavi.rightBlind
       car_left_blind = (carrot_left_blind & 0x04) #车身侧面盲区
       car_right_blind = (carrot_right_blind & 0x04) #车身侧面盲区
+      is_left_car = True if (carrot_left_blind & 7) != 0 else False #左侧是否有车
+      is_right_car = True if (carrot_right_blind & 7) != 0 else False # 右侧是否有车
       carrot_blind = carrot_left_blind if blinker_state == BLINKER_LEFT else carrot_right_blind
       car_side_blind = car_left_blind if blinker_state == BLINKER_LEFT else car_right_blind
+      is_car_blind = is_left_car if blinker_state == BLINKER_LEFT else is_right_car #盲区是否为车（非单纯实线阻止的变道）
 
       radar = radarState.leadLeft if blinker_state == BLINKER_LEFT else radarState.leadRight
       side_object_dist = radar.dRel + radar.vLead * 3.0 if radar.status else 255
@@ -1002,7 +1006,7 @@ class DesireHelper:
                 steer_angle = 0
                 if hasattr(carstate, 'steeringAngleDeg'):
                   steer_angle = int(abs(carstate.steeringAngleDeg))
-                if steer_angle < 30 and blinker_state != BLINKER_NONE: #方向盘小于30度
+                if steer_angle < 30 and blinker_state != BLINKER_NONE and is_car_blind: #方向盘小于30度
                   if ((2 <= lane_count < 10 and self.xroadcate == 1 and blinker_state == BLINKER_RIGHT) or #高速右变道有2条车道可用
                       (1 <= lane_count < 10 and (blinker_state == BLINKER_LEFT or self.xroadcate != 1))): #左变道或者非高速，有1条车道可用
                     if atc_desire_enabled: #自动变道

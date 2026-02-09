@@ -897,7 +897,7 @@ class DesireHelper:
         self.turn_direction = TurnDirection.turnLeft if blinker_state == BLINKER_LEFT else TurnDirection.turnRight #转弯方向
         self.lane_change_direction = self.turn_direction #LaneChangeDirection.none
       else: #车身处有障碍物
-        if 0 == (self.frame % int(2 / DT_MDL)):
+        if 0 == (self.frame % int(5 / DT_MDL)) or self.lane_change_state_last != self.lane_change_state:
           self.lane_change_audio(True, 6, 0) # 播报盲区有车
       desire_enabled = False
     elif self.desire_disable_count > 0: # Turn后一段时间内无法变更车道,此变量在check_desire_state函数里计算，如果车辆在转弯，则一直把desire_disable_count设置为2秒的计数值
@@ -1011,7 +1011,8 @@ class DesireHelper:
                 trigger_type = -2
                 trigger_name = "bsd block"
                 # 播报盲区有车
-                if 0 == (self.frame % int(2 / DT_MDL)) and is_car_blind and (not atc_desire_enabled or self.atc_turn_cnt >= 0):
+                if ((0 == (self.frame % int(5 / DT_MDL)) or self.lane_change_state_last != self.lane_change_state)
+                           and is_car_blind and (not atc_desire_enabled or self.atc_turn_cnt >= 0)):
                   self.lane_change_audio(True, 6, 0)
                 #设置自动变道盲区受阻标志(为了在carrotMan中代码进行加减速处理)
                 steer_angle = 0
@@ -1088,7 +1089,8 @@ class DesireHelper:
             else:
               trigger_type = -5
               trigger_name = "no trig"
-              if (self.blindspot_detected_counter > 0 or side_object_detected) and (0 == (self.frame % int(2/DT_MDL))):
+              if ((self.blindspot_detected_counter > 0 or side_object_detected) and
+                   (0 == (self.frame % int(5/DT_MDL)) or self.lane_change_state_last != self.lane_change_state)):
                 self.lane_change_audio(True, 6, 0)  # 播报盲区有车
 
             if self.lane_change_state == LaneChangeState.laneChangeStarting:

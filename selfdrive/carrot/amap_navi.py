@@ -214,6 +214,7 @@ class AmapNaviServ:
     self.disableBlindSpot = False
     self.dynamicBlindRange = 0
     self.dynamicBlindDistance = 0
+    self.atc_flag = False
     self.lf_object_detected_count = 0
     self.lb_object_detected_count = 0
     self.rf_object_detected_count = 0
@@ -291,39 +292,43 @@ class AmapNaviServ:
     rb_blind_mask = False
 
     #动态调整盲区范围
+    carrotMan = self.sm['carrotMan']
+    modelV2 = self.sm['modelV2']
+    meta = modelV2.meta
+
+    atc_type = carrotMan.atcType
+    laneWidthLeft = max(1.2, min(3.5, round(meta.laneWidthLeft, 1)))
+    laneWidthRight = max(1.2, min(3.5, round(meta.laneWidthRight, 1)))
+    #distanceToRoadEdgeLeft = round(meta.distanceToRoadEdgeLeft, 1)
+    #distanceToRoadEdgeRight = round(meta.distanceToRoadEdgeRight, 1)
+
+    atc_blinker_state = BLINKER_NONE
+    turn_left_right = False
+    fork_left_right = False
+    fork_now = False
+    atc_left_right = False
+
+    #判断导航控制类型
+    if atc_type in ["turn left", "turn right"]: #转弯请求
+      atc_blinker_state = BLINKER_LEFT if "left" in atc_type else BLINKER_RIGHT
+      turn_left_right = True
+    elif atc_type in ["fork left", "fork right"]: #变道请求
+      atc_blinker_state = BLINKER_LEFT if "left" in atc_type else BLINKER_RIGHT
+      fork_left_right = True
+    elif atc_type in ["fork left now", "fork right now"]: #立即变道请求
+      atc_blinker_state = BLINKER_LEFT if "left" in atc_type else BLINKER_RIGHT
+      fork_now = True
+      fork_left_right = True
+    elif atc_type in ["atc left", "atc right"]: #提前变道请求
+      atc_blinker_state = BLINKER_LEFT if "left" in atc_type else BLINKER_RIGHT
+      atc_left_right = True
+
+    if fork_left_right or atc_left_right or turn_left_right:
+      self.atc_flag = True
+    else:
+      self.atc_flag = False
+
     if self.dynamicBlindRange >= 1:
-
-      carrotMan = self.sm['carrotMan']
-      modelV2 = self.sm['modelV2']
-      meta = modelV2.meta
-
-      atc_type = carrotMan.atcType
-      laneWidthLeft = max(1.2, min(3.5, round(meta.laneWidthLeft, 1)))
-      laneWidthRight = max(1.2, min(3.5, round(meta.laneWidthRight, 1)))
-      #distanceToRoadEdgeLeft = round(meta.distanceToRoadEdgeLeft, 1)
-      #distanceToRoadEdgeRight = round(meta.distanceToRoadEdgeRight, 1)
-
-      atc_blinker_state = BLINKER_NONE
-      turn_left_right = False
-      fork_left_right = False
-      fork_now = False
-      atc_left_right = False
-
-      #判断导航控制类型
-      if atc_type in ["turn left", "turn right"]: #转弯请求
-        atc_blinker_state = BLINKER_LEFT if "left" in atc_type else BLINKER_RIGHT
-        turn_left_right = True
-      elif atc_type in ["fork left", "fork right"]: #变道请求
-        atc_blinker_state = BLINKER_LEFT if "left" in atc_type else BLINKER_RIGHT
-        fork_left_right = True
-      elif atc_type in ["fork left now", "fork right now"]: #立即变道请求
-        atc_blinker_state = BLINKER_LEFT if "left" in atc_type else BLINKER_RIGHT
-        fork_now = True
-        fork_left_right = True
-      elif atc_type in ["atc left", "atc right"]: #提前变道请求
-        atc_blinker_state = BLINKER_LEFT if "left" in atc_type else BLINKER_RIGHT
-        atc_left_right = True
-
       # 动态限制激光雷达的盲区侧面范围和前后范围
       if (fork_left_right or atc_left_right or turn_left_right) and self.dynamicBlindRange >= 1: #导航时动态调整盲宽度和前后距离
         if self.shared_data.main_lf_xrel is not None and self.shared_data.main_lf_xrel > laneWidthLeft*1000.: #控测的目标侧面距离超过路宽，屏蔽盲区标志
@@ -568,7 +573,7 @@ class AmapNaviServ:
           # ===========================================================================
 
           # 更新雷达盲区状态
-          if 0 == self.dynamicBlindDistance and 0 == self.dynamicBlindRange:
+          if (0 == self.dynamicBlindRange and 0 == self.dynamicBlindDistance) or (1 == self.dynamicBlindRange and not self.atc_flag):
             self.shared_data.lidar_lblind = lidar_lblind
             self.shared_data.lidar_rblind = lidar_rblind
           else:
@@ -840,7 +845,7 @@ class AmapNaviServ:
           lidar_rblind = json_obj.get("lidar_rblind")  # 右盲区信号
 
           #如果不是动态盲区（则立即更新盲区标志）
-          if 0 == self.dynamicBlindRange and 0 == self.dynamicBlindDistance:
+          if (0 == self.dynamicBlindRange and 0 == self.dynamicBlindDistance) or (1 == self.dynamicBlindRange and not self.atc_flag):
             if lidar_lblind is not None and lidar_lblind:
               self.shared_data.lidar_lblind = True
             if lidar_rblind is not None and lidar_rblind:

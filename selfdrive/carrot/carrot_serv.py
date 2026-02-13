@@ -905,7 +905,8 @@ class CarrotServ:
             decel_priority = True
         elif (do_fork_nav_dist > 0) and (x_dist_to_turn <= do_fork_nav_dist): #设置了导航距离控制转弯后，如果距离小于设置值是立即变道
           atc_type += " now"
-        if x_dist_to_turn < do_speed_decal_dist and (0 <= self.roadcate <= 1 or "right" in atc_type): #距离路口的距离小于设定值时要开始减速了，因为到匝道口前nRoadLimitSpeed其实没有变，所以只能用这种方法进行减速
+        #if x_dist_to_turn < do_speed_decal_dist and (0 <= self.roadcate <= 1 or "right" in atc_type): #距离路口的距离小于设定值时要开始减速了，因为到匝道口前nRoadLimitSpeed其实没有变，所以只能用这种方法进行减速
+        if x_dist_to_turn < do_speed_decal_dist and "right" in atc_type: #距离右岔路路口的距离小于设定值时进行减速
           atc_bsd_adjust_enable = False
           if auto_decel_rate > 0 and check_steer: #设置了减速比率
             if atc_speed > decel_speed_min: #只有车速大于最小设定速度时才允许降速

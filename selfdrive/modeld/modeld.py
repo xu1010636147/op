@@ -226,6 +226,62 @@ class ModelState:
 
     return combined_outputs_dict
 
+#new
+# 模型文件夹名称数组
+MODEL_NAMES = [
+  "0-tr16",      # modelid = 0
+  "1-dtr",       # modelid = 1
+  "2-firehose",  # modelid = 2
+  "3-gwm",
+  "4-pp",
+  "5-ds",
+  "6-dsv2",
+  "7-wmi",
+  "8-cd210",
+]
+
+def get_model_paths():
+  params = Params()
+  modelid_bytes = params.get("modelid")  # 获取 modelid 参数
+  default_base = Path(__file__).parent / "models"
+
+  # 解析 modelid
+  if modelid_bytes is None or modelid_bytes == b"":
+    modelid = -1
+  else:
+    try:
+      modelid = int(modelid_bytes.decode('utf8'))
+    except Exception:
+      modelid = -1
+
+  # 根据 modelid 获取模型文件夹名
+  if modelid < 0 or modelid >= len(MODEL_NAMES):
+    base_path = default_base  # 默认模型
+  else:
+    model_name = MODEL_NAMES[modelid]
+    base_path = default_base / model_name
+
+  # 构造四个路径
+  vision_pkl_path = base_path / "driving_vision_tinygrad.pkl"
+  policy_pkl_path = base_path / "driving_policy_tinygrad.pkl"
+  vision_metadata_path = base_path / "driving_vision_metadata.pkl"
+  policy_metadata_path = base_path / "driving_policy_metadata.pkl"
+
+  # 检查文件是否存在，如果不存在回退默认
+  if not (vision_pkl_path.exists() and policy_pkl_path.exists() and
+          vision_metadata_path.exists() and policy_metadata_path.exists()):
+    print(f"[modeld] Model files not found in {base_path}, falling back to default model")
+    vision_pkl_path = default_base / "driving_vision_tinygrad.pkl"
+    policy_pkl_path = default_base / "driving_policy_tinygrad.pkl"
+    vision_metadata_path = default_base / "driving_vision_metadata.pkl"
+    policy_metadata_path = default_base / "driving_policy_metadata.pkl"
+
+  print(f"vision_pkl_path={vision_pkl_path}")
+  print(f"policy_pkl_path={policy_pkl_path}")
+  print(f"vision_metadata_path={vision_metadata_path}")
+  print(f"policy_metadata_path={policy_metadata_path}")
+
+  return vision_pkl_path, policy_pkl_path, vision_metadata_path, policy_metadata_path
 
 def main(demo=False):
   cloudlog.warning("modeld init")

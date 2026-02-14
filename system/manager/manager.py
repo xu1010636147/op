@@ -228,6 +228,7 @@ def get_default_params():
     ("AutoCurveSpeedFactorH", "90"),
     ("AutoCurveSpeedAggressivenessH", "110"),
     ("NewLaneWidthDiff", "8"),
+    ("modelid", "-1"),
     # new
   ]
   return default_params

@@ -285,6 +285,9 @@ def get_model_paths():
 
 def main(demo=False):
   cloudlog.warning("modeld init")
+  
+  #new
+  VISION_PKL_PATH, POLICY_PKL_PATH, VISION_METADATA_PATH, POLICY_METADATA_PATH = get_model_paths()
 
   sentry.set_tag("daemon", PROCESS_NAME)
   cloudlog.bind(daemon=PROCESS_NAME)

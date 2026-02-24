@@ -65,6 +65,9 @@ class LongControl:
     self.readParamCount = 0
     self.stopping_accel = 0
     self.j_lead = 0.0
+    #new
+    self.stopping_decel_rate = 0
+    self.start_accel = 0
 
   def reset(self):
     self.pid.reset()
@@ -81,6 +84,8 @@ class LongControl:
     if self.readParamCount >= 100:
       self.readParamCount = 0
       self.stopping_accel = self.params.get_float("StoppingAccel") * 0.01
+      self.stopping_decel_rate = self.params.get_float("StoppingDecelRate") * 0.01
+      self.start_accel = self.params.get_float("StartAccel") * 0.01
     elif self.readParamCount == 10:
       if len(self.CP.longitudinalTuning.kpBP) == 1 and len(self.CP.longitudinalTuning.kiBP)==1:
         longitudinalTuningKpV = self.params.get_float("LongTuningKpV") * 0.01
@@ -113,11 +118,11 @@ class LongControl:
       stopAccel = self.stopping_accel if self.stopping_accel < 0.0 else self.CP.stopAccel
       if output_accel > stopAccel:
         output_accel = min(output_accel, 0.0)
-        output_accel -= self.CP.stoppingDecelRate * DT_CTRL
+        output_accel -= self.CP.stoppingDecelRate * DT_CTRL if self.stopping_decel_rate <= 0.0 else self.stopping_decel_rate * DT_CTRL #new
       self.reset()
 
     elif self.long_control_state == LongCtrlState.starting:
-      output_accel = self.CP.startAccel
+      output_accel = self.CP.startAccel if self.start_accel <= 0.0 else self.start_accel #new
       self.reset()
 
     else:  # LongCtrlState.pid

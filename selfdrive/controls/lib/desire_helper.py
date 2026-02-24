@@ -406,6 +406,9 @@ class DesireHelper:
     blinker_val = self.blinker_val
 
     amapNavi = self.sm['amapNavi']
+    lineValid = amapNavi.lineValid
+    leftLine = amapNavi.leftLine
+    rightLine = amapNavi.rightLine
     self.xroadcate = carrotMan.roadCate
     #if self.roadType >= 0: #大于0表示用户指定道路类型
     #  self.xroadcate = self.roadType
@@ -773,6 +776,7 @@ class DesireHelper:
     #变道方向对应的车道数
     lane_count = left_lane_count if atc_blinker_state == BLINKER_LEFT else right_lane_count
     lane_cnt_time = self.left_lane_cnt_time if atc_blinker_state == BLINKER_LEFT else self.right_lane_cnt_time
+    line_type = leftLine if atc_blinker_state == BLINKER_LEFT else (rightLine if atc_blinker_state == BLINKER_RIGHT else -1)
 
     #根据车道数量稳定倒计时时间来决定是否要关闭自动变道次数
     if desire_enabled and atc_desire_enabled and atc_left_right and (atc_blinker_state == BLINKER_RIGHT or atc_blinker_state == BLINKER_LEFT): #属于自动提变道类型atc_left或atc_right
@@ -796,17 +800,31 @@ class DesireHelper:
       #判断车道数稳定时间是否已经超过设定的时间（一般为5秒）
       if lane_cnt_time <= ((-1)*self.lane_count_stab_cnt):
         self.reset_atc_turn_cnt_time = max(int(-60 / DT_MDL), self.reset_atc_turn_cnt_time - 1) #增加第2层的靠边检测
-        if self.reset_atc_turn_cnt_time <= ((-1) * self.lane_count_stab_cnt):
-          if self.xroadcate == 1 and atc_blinker_state == BLINKER_RIGHT: #带应急车道的高速公路右变道
-            if lane_count <= 1:   #如果侧面只剩一条应急车道时，关闭自动变道功能
+        if self.xroadcate == 1 and atc_blinker_state == BLINKER_RIGHT: #带应急车道的高速公路右变道
+          if lane_count <= 1: #如果侧面只剩一条应急车道时，关闭自动变道功能
+            if not lineValid: #无车道线检测功能
+              if self.reset_atc_turn_cnt_time <= ((-1) * self.lane_count_stab_cnt):
+                if self.atc_turn_cnt >= 0:
+                  self.lane_change_audio(True, 10, 0)  # 车辆已靠边
+                self.atc_turn_cnt = -1
+            else: #有车道线检测
+              if line_type >= 1: #实线
+                if self.reset_atc_turn_cnt_time <= ((-1) * self.lane_count_stab_cnt):
+                  if self.atc_turn_cnt >= 0:
+                    self.lane_change_audio(True, 10, 0)  # 车辆已靠边
+                  self.atc_turn_cnt = -1
+              else:
+                self.reset_atc_turn_cnt_time = 0
+          else:
+            self.reset_atc_turn_cnt_time = 0
+        else: #不带应急车道的高速公路或者普通公路
+          if lane_count < 1: #如果侧面无任何车道时，关闭自动变道功能
+            if self.reset_atc_turn_cnt_time <= ((-1) * self.lane_count_stab_cnt):
               if self.atc_turn_cnt >= 0:
                 self.lane_change_audio(True, 10, 0)  # 车辆已靠边
               self.atc_turn_cnt = -1
-          else: #不带应急车道的高速公路或者普通公路
-            if lane_count < 1: #如果侧面无任何车道时，关闭自动变道功能
-              if self.atc_turn_cnt >= 0:
-                self.lane_change_audio(True, 10, 0)  # 车辆已靠边
-              self.atc_turn_cnt = -1
+          else:
+            self.reset_atc_turn_cnt_time = 0
       else:
         self.reset_atc_turn_cnt_time = 0
     #else: #不是左右自动变道类型atc_left或atc_right

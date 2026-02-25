@@ -605,6 +605,24 @@
                 uiType: "number",
                 category: "公共参数设置"
             },
+            "DynamicExperimentalSpeed": {
+                chineseName: "实验模式:条件实验模式速度(-5)",
+                defaultValue: -5,
+                description: "当车速小于此速度(km/h)时，将会进入实验模式，=0表示动态实验模式，<0表示关闭",
+                inputRange: [-5, 140],
+                step: 5,
+                uiType: "number",
+                category: "公共参数设置"
+            },
+            "DynamicExperimentalLatA": {
+                chineseName: "实验模式:条件实验模式弯道横向加速度(x0.1m/s^2)",
+                defaultValue: 0,
+                description: "当变道横向加速度大于此值时时，将会进入实验模式，=0表示关闭，>0表示打开",
+                inputRange: [0, 30],
+                step: 1,
+                uiType: "number",
+                category: "公共参数设置"
+            },
             "AutoForkDistOffsetH": {
                 chineseName: "高速提前靠边行驶距离(1000m)",
                 defaultValue: 1000,
@@ -878,24 +896,6 @@
                 description: "在进公路岔路口时前允许把车速降的最低速度，低于此速度时则不再继续降低",
                 inputRange: [0, 100],
                 step: 5,
-                uiType: "number",
-                category: "速度参数"
-            },
-            "DynamicExperimentalSpeed": {
-                chineseName: "实验模式:条件实验模式速度(-5)",
-                defaultValue: -5,
-                description: "当车速小于此速度(km/h)时，将会进入实验模式，=0表示动态实验模式，<0表示关闭",
-                inputRange: [-5, 140],
-                step: 5,
-                uiType: "number",
-                category: "速度参数"
-            },
-            "DynamicExperimentalLatA": {
-                chineseName: "实验模式:条件实验模式弯道横向加速度(x0.1m/s^2)",
-                defaultValue: 0,
-                description: "当变道横向加速度大于此值时时，将会进入实验模式，=0表示关闭，>0表示打开",
-                inputRange: [0, 30],
-                step: 1,
                 uiType: "number",
                 category: "速度参数"
             },

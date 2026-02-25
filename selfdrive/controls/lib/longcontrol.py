@@ -131,5 +131,13 @@ class LongControl:
       output_accel = self.pid.update(error, speed=CS.vEgo,
                                      feedforward=a_target_ff)
 
+      # new 为了停车柔和，限制低速时的减速度
+      if CS.vEgo < 3.0:
+        min_accel = np.interp(CS.vEgo,
+                              [0.0, 1.0, 3.0],
+                              [-0.2, -0.3, -0.8])
+        output_accel = max(output_accel, min_accel)
+      # new
+
     self.last_output_accel = np.clip(output_accel, accel_limits[0], accel_limits[1])
     return self.last_output_accel, a_target_ff, j_target_now

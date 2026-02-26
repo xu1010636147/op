@@ -187,8 +187,6 @@ inline static std::unordered_map<std::string, uint32_t> keys = {
     {"TurnSpeedControlMode", PERSISTENT},
     {"MapTurnSpeedFactor", PERSISTENT},
     {"StoppingAccel", PERSISTENT},
-    {"StartAccel", PERSISTENT},
-    {"StoppingDecelRate", PERSISTENT},
     {"AutoSpeedUptoRoadSpeedLimit", PERSISTENT},
     {"AutoRoadSpeedAdjust", PERSISTENT},
     {"StopDistanceCarrot", PERSISTENT},
@@ -344,5 +342,11 @@ inline static std::unordered_map<std::string, uint32_t> keys = {
     {"NewLaneWidthDiff", PERSISTENT},
     {"AutoOvertakeConfig", PERSISTENT},
     {"modelid", PERSISTENT},
+    {"StartAccel", PERSISTENT},
+    {"StoppingDecelRate", PERSISTENT},
+    {"DecelLimitVEgoMax", PERSISTENT},
+    {"DecelLimitVEgoMin", PERSISTENT},
+    {"DecelLimitAEgoMax", PERSISTENT},
+    {"DecelLimitAEgoMin", PERSISTENT},
     //new
 };

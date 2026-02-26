@@ -89,9 +89,6 @@ def get_default_params():
     ("TurnSpeedControlMode", "2"),
     ("MapTurnSpeedFactor", "100"),
     ("StoppingAccel", "0"),
-    ("StartAccel", "0"),
-    ("StoppingDecelRate", "0"),
-    ("ComfortBrake", "240"),
     ("StopDistanceCarrot", "550"),
     ("JLeadFactor3", "0"),
     ("CruiseButtonMode", "0"),
@@ -232,6 +229,13 @@ def get_default_params():
     ("AutoCurveSpeedAggressivenessH", "110"),
     ("NewLaneWidthDiff", "8"),
     ("modelid", "-1"),
+    ("StartAccel", "0"),
+    ("StoppingDecelRate", "0"),
+    ("ComfortBrake", "240"),
+    ("DecelLimitVEgoMax", "0"),
+    ("DecelLimitVEgoMin", "0"),
+    ("DecelLimitAEgoMax", "0"),
+    ("DecelLimitAEgoMin", "0"),
     # new
   ]
   return default_params

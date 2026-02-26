@@ -762,7 +762,7 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   latLongToggles->addItem(new CValueControl("StopDistanceCarrot", "纵向: 停车距离 (600)cm", "StopDistanceCarrot", 300, 1000, 10));
   latLongToggles->addItem(new CValueControl("DecelLimitVEgoMax", "减速: 限制减速度的最大车速(30)x0.1", "DecelLimitVEgoMax,单位0.1m/s,0表示关闭减速度限制功能", 0, 500, 1));
   latLongToggles->addItem(new CValueControl("DecelLimitAEgoMax", "减速: 限制减速度的最大值(-80)x0.01", "DecelLimitVEgoMax,单位0.01m/s^2,参数为负值", -350, 0, 1));
-  latLongToggles->addItem(new CValueControl("DecelLimitVEgoMax", "减速: 限制减速度的最小车速(10)x0.1", "DecelLimitVEgoMax,单位0.1m/s,0表示关闭减速度限制功能", 0, 300, 1));
+  latLongToggles->addItem(new CValueControl("DecelLimitVEgoMin", "减速: 限制减速度的最小车速(10)x0.1", "DecelLimitVEgoMin,单位0.1m/s", 0, 500, 1));
   latLongToggles->addItem(new CValueControl("DecelLimitAEgoMin", "减速: 限制减速度的最小值(-20)x0.01", "DecelLimitAEgoMin,单位0.01m/s^2,参数为负值", -350, 0, 1));
   latLongToggles->addItem(new CValueControl("StartAccel", "纵向:起步加速度x0.01(80)", "StartAccel,单位0.01m/s^2,0表示使用各车型的默认值", 0, 200, 5));
   latLongToggles->addItem(new CValueControl("JLeadFactor3", "纵向: 加加速度前车因子(0)", "x0.01", 0, 100, 5));

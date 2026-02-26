@@ -68,6 +68,10 @@ class LongControl:
     #new
     self.stopping_decel_rate = 0
     self.start_accel = 0
+    self.decel_limit_v_ego_max = 0
+    self.decel_limit_v_ego_min = 0
+    self.decel_limit_a_ego_max = 0
+    self.decel_limit_a_ego_min = 0
 
   def reset(self):
     self.pid.reset()
@@ -86,6 +90,10 @@ class LongControl:
       self.stopping_accel = self.params.get_float("StoppingAccel") * 0.01
       self.stopping_decel_rate = self.params.get_float("StoppingDecelRate") * 0.01
       self.start_accel = self.params.get_float("StartAccel") * 0.01
+      self.decel_limit_v_ego_max = max(0.0, self.params.get_float("DecelLimitVEgoMax") * 0.1)
+      self.decel_limit_v_ego_min = max(0.0, self.params.get_float("DecelLimitVEgoMin") * 0.1)
+      self.decel_limit_a_ego_max = min(0.0, self.params.get_float("DecelLimitAEgoMax") * 0.01)
+      self.decel_limit_a_ego_min = min(0.0, self.params.get_float("DecelLimitAEgoMin") * 0.01)
     elif self.readParamCount == 10:
       if len(self.CP.longitudinalTuning.kpBP) == 1 and len(self.CP.longitudinalTuning.kiBP)==1:
         longitudinalTuningKpV = self.params.get_float("LongTuningKpV") * 0.01
@@ -132,10 +140,11 @@ class LongControl:
                                      feedforward=a_target_ff)
 
       # new 为了停车柔和，限制低速时的减速度
-      if CS.vEgo < 3.0:
+      if self.decel_limit_v_ego_max > 0 and CS.vEgo < self.decel_limit_v_ego_max:
+        decel_limit_v_ego_min = min(self.decel_limit_v_ego_min, self.decel_limit_v_ego_max)
         min_accel = np.interp(CS.vEgo,
-                              [0.0, 1.0, 3.0],
-                              [-0.2, -0.3, -0.8])
+                              [0.0, decel_limit_v_ego_min, self.decel_limit_v_ego_max],
+                              [self.decel_limit_a_ego_min, self.decel_limit_a_ego_min, self.decel_limit_a_ego_max])
         output_accel = max(output_accel, min_accel)
       # new
 

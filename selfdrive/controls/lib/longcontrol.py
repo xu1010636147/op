@@ -72,9 +72,12 @@ class LongControl:
     self.decel_limit_v_ego_min = 0
     self.decel_limit_a_ego_max = 0
     self.decel_limit_a_ego_min = 0
+    self.a_ego_curr = 0
+    self.a_ego_curr_init = False
 
   def reset(self):
     self.pid.reset()
+    self.a_ego_curr_init = False
 
   def update(self, active, CS, long_plan, accel_limits, t_since_plan, radarState):
 
@@ -140,12 +143,20 @@ class LongControl:
                                      feedforward=a_target_ff)
 
       # new 为了停车柔和，限制低速时的减速度
-      if self.decel_limit_v_ego_max > 0 and CS.vEgo < self.decel_limit_v_ego_max:
-        decel_limit_v_ego_min = min(self.decel_limit_v_ego_min, self.decel_limit_v_ego_max)
-        min_accel = np.interp(CS.vEgo,
-                              [0.0, decel_limit_v_ego_min, self.decel_limit_v_ego_max],
-                              [self.decel_limit_a_ego_min, self.decel_limit_a_ego_min, self.decel_limit_a_ego_max])
-        output_accel = max(output_accel, min_accel)
+      if self.decel_limit_v_ego_max > 0:
+        if CS.vEgo < self.decel_limit_v_ego_max:
+          if not self.a_ego_curr_init:
+            self.a_ego_curr = min(CS.aEgo, self.decel_limit_a_ego_max)
+            self.a_ego_curr_init = True
+          decel_limit_v_ego_min = min(self.decel_limit_v_ego_min, self.decel_limit_v_ego_max)
+          min_accel = np.interp(CS.vEgo,
+                                [0.0, decel_limit_v_ego_min, self.decel_limit_v_ego_max],
+                                [self.decel_limit_a_ego_min, self.decel_limit_a_ego_min, self.a_ego_curr])
+          output_accel = max(output_accel, min_accel)
+        elif CS.vEgo >= (self.decel_limit_v_ego_max + 1.):
+          self.a_ego_curr_init = False
+      else:
+        self.a_ego_curr_init = False
       # new
 
     self.last_output_accel = np.clip(output_accel, accel_limits[0], accel_limits[1])

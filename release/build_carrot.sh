@@ -18,6 +18,7 @@ find . -name 'moc_*' -delete
 find . -name '__pycache__' -delete
 rm -rf .sconsign.dblite Jenkinsfile release/
 rm -rf selfdrive/modeld/models/*.onnx
+rm -rf selfdrive/carrot/*.json
 touch prebuilt
 
 # Add built files to git

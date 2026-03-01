@@ -233,9 +233,9 @@ def get_default_params():
     ("StoppingDecelRate", "0"),
     ("ComfortBrake", "240"),
     ("DecelLimitVEgoMax", "0"),
-    ("DecelLimitVEgoMin", "0"),
-    ("DecelLimitAEgoMax", "0"),
-    ("DecelLimitAEgoMin", "0"),
+    ("DecelLimitVEgoMin", "10"),
+    ("DecelLimitAEgoMax", "-100"),
+    ("DecelLimitAEgoMin", "-25"),
     # new
   ]
   return default_params

@@ -143,7 +143,9 @@ class LongControl:
                                      feedforward=a_target_ff)
 
       # new 为了停车柔和，限制低速时的减速度
-      if self.decel_limit_v_ego_max > 0:
+      leadOne = radarState.leadOne
+      smooth_stop = leadOne.status and leadOne.dRel < 15.0
+      if self.decel_limit_v_ego_max > 0 and smooth_stop:
         if CS.vEgo < self.decel_limit_v_ego_max:
           if not self.a_ego_curr_init:
             self.a_ego_curr = min(CS.aEgo, self.decel_limit_a_ego_max)

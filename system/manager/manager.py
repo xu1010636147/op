@@ -236,6 +236,7 @@ def get_default_params():
     ("DecelLimitVEgoMin", "10"),
     ("DecelLimitAEgoMax", "-100"),
     ("DecelLimitAEgoMin", "-25"),
+    ("GasSmoothTime", "50"),
     # new
   ]
   return default_params

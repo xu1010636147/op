@@ -131,6 +131,9 @@ class CarrotPlanner:
     self.atcType = ""
     self.atc_active = False
 
+    #new
+    self.red_light_dist_offset = 0
+
 
   def _params_update(self):
     self.frame += 1
@@ -173,7 +176,11 @@ class CarrotPlanner:
       self.comfortBrake = self.params.get_float("ComfortBrake") / 100.
 
     elif self.params_count >= 100:
-
+      #new 增加红灯偏移
+      try:
+        self.red_light_dist_offset = self.params.get_float("RedLightDistOffset") / 10.
+      except Exception as e:
+        self.red_light_dist_offset = 0
       self.params_count = 0
 
   def get_carrot_accel(self, v_ego):
@@ -495,6 +502,10 @@ class CarrotPlanner:
     #��ȣ�� �������� self.xState.value
 
     stop_dist =  stop_model_x + self.actual_stop_distance
+    #new 增加红灯停车距离的调节
+    if self.red_light_dist_offset != 0 and not lead_detected or radarstate.leadOne.dRel > 20.:
+      stop_dist = max(0, stop_dist + self.red_light_dist_offset) #增加红灯偏移距离
+    #new
     stop_dist = max(stop_dist, v_ego ** 2 / (self.comfort_brake * 2))
 
     self.v_cruise = v_cruise

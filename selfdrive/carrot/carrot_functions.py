@@ -503,8 +503,16 @@ class CarrotPlanner:
 
     stop_dist =  stop_model_x + self.actual_stop_distance
     #new 增加红灯停车距离的调节
-    if self.red_light_dist_offset != 0 and not lead_detected or radarstate.leadOne.dRel > 20.:
-      stop_dist = max(0, stop_dist + self.red_light_dist_offset) #增加红灯偏移距离
+    if self.red_light_dist_offset != 0:
+      if not lead_detected:
+        offset = self.red_light_dist_offset
+      else:
+        dRel = radarstate.leadOne.dRel
+        start = 15.
+        end = 25.
+        w = np.clip((dRel - start) / (end - start), 0., 1.)
+        offset = self.red_light_dist_offset * w
+      stop_dist = max(0, stop_dist + offset)
     #new
     stop_dist = max(stop_dist, v_ego ** 2 / (self.comfort_brake * 2))
 

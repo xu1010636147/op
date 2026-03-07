@@ -153,7 +153,7 @@ class LongControl:
       leadOne = radarState.leadOne
       smooth_stop = leadOne.status and leadOne.dRel < 15.0
       if self.decel_limit_v_ego_max > 0 and smooth_stop:
-        if CS.vEgo < self.decel_limit_v_ego_max:
+        if CS.vEgo < self.decel_limit_v_ego_max or (self.a_ego_curr_init and (CS.vEgo < (self.decel_limit_v_ego_max + 0.2))):
           if not self.a_ego_curr_init:
             self.a_ego_curr = min(CS.aEgo, self.decel_limit_a_ego_max)
             self.a_ego_curr_init = True
@@ -162,7 +162,7 @@ class LongControl:
                                 [0.0, decel_limit_v_ego_min, self.decel_limit_v_ego_max],
                                 [self.decel_limit_a_ego_min, self.decel_limit_a_ego_min, self.a_ego_curr])
           output_accel = max(output_accel, min_accel)
-        elif CS.vEgo >= (self.decel_limit_v_ego_max + 1.):
+        else:
           self.a_ego_curr_init = False
       else:
         self.a_ego_curr_init = False

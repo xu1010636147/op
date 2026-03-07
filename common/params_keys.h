@@ -349,5 +349,6 @@ inline static std::unordered_map<std::string, uint32_t> keys = {
     {"DecelLimitAEgoMax", PERSISTENT},
     {"DecelLimitAEgoMin", PERSISTENT},
     {"GasSmoothTime", PERSISTENT},
+    {"RedLightDistOffset", PERSISTENT},
     //new
 };

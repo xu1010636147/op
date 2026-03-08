@@ -79,6 +79,7 @@ class LongControl:
     self.gas_release_smooth_cnt = 0
     self.output_accel_filtered = 0.0
     self.output_accel_init = False
+    self.smooth_stop_mode = 0
 
   def reset(self):
     self.pid.reset()
@@ -105,8 +106,10 @@ class LongControl:
         self.decel_limit_a_ego_max = min(0.0, self.params.get_float("DecelLimitAEgoMax") * 0.01)
         self.decel_limit_a_ego_min = min(0.0, self.params.get_float("DecelLimitAEgoMin") * 0.01)
         self.gas_release_smooth_max_cnt = int(self.params.get_float("GasSmoothTime") / DT_CTRL / 10)
+        self.smooth_stop_mode = self.params.get_int("SmoothStopMode")
       except Exception as e:
         self.gas_release_smooth_max_cnt = 5.0 / DT_CTRL
+        self.smooth_stop_mode = 0
     elif self.readParamCount == 10:
       if len(self.CP.longitudinalTuning.kpBP) == 1 and len(self.CP.longitudinalTuning.kiBP)==1:
         longitudinalTuningKpV = self.params.get_float("LongTuningKpV") * 0.01
@@ -153,28 +156,48 @@ class LongControl:
                                      feedforward=a_target_ff)
 
       # new 为了停车柔和，限制低速时的减速度
-      alpha = 0.3  # 平滑系数
-      if not self.output_accel_init:
-        self.output_accel_filtered = output_accel
-        self.output_accel_init = True
-      else:
-        self.output_accel_filtered = alpha * output_accel + (1 - alpha) * self.output_accel_filtered
+      if self.smooth_stop_mode == 2: #模式2
+        alpha = 0.3  # 平滑系数
+        if not self.output_accel_init:
+          self.output_accel_filtered = output_accel
+          self.output_accel_init = True
+        else:
+          self.output_accel_filtered = alpha * output_accel + (1 - alpha) * self.output_accel_filtered
 
-      leadOne = radarState.leadOne
-      smooth_stop = leadOne.status and leadOne.dRel < 15.0
-      if self.decel_limit_v_ego_max > 0 and smooth_stop:
-        if CS.vEgo < self.decel_limit_v_ego_max or (self.a_ego_curr_init and (CS.vEgo < (self.decel_limit_v_ego_max + 0.4))):
-          if not self.a_ego_curr_init:
-            self.a_ego_curr = min(self.output_accel_filtered, self.decel_limit_a_ego_max)
-            self.a_ego_curr_init = True
-          decel_limit_v_ego_min = min(self.decel_limit_v_ego_min, self.decel_limit_v_ego_max)
-          min_accel = np.interp(CS.vEgo,
-                                [0.0, decel_limit_v_ego_min, self.decel_limit_v_ego_max],
-                                [self.decel_limit_a_ego_min, self.decel_limit_a_ego_min, self.a_ego_curr])
-          output_accel = max(output_accel, min_accel)
+        leadOne = radarState.leadOne
+        smooth_stop = leadOne.status and leadOne.dRel < 15.0
+        if self.decel_limit_v_ego_max > 0 and smooth_stop:
+          if CS.vEgo < self.decel_limit_v_ego_max or (self.a_ego_curr_init and (CS.vEgo < (self.decel_limit_v_ego_max + 0.4))):
+            if not self.a_ego_curr_init:
+              self.a_ego_curr = min(self.output_accel_filtered, self.decel_limit_a_ego_max)
+              self.a_ego_curr_init = True
+            decel_limit_v_ego_min = min(self.decel_limit_v_ego_min, self.decel_limit_v_ego_max)
+            min_accel = np.interp(CS.vEgo,
+                                  [0.0, decel_limit_v_ego_min, self.decel_limit_v_ego_max],
+                                  [self.decel_limit_a_ego_min, self.decel_limit_a_ego_min, self.a_ego_curr])
+            output_accel = max(output_accel, min_accel)
+          else:
+            self.a_ego_curr_init = False
         else:
           self.a_ego_curr_init = False
-      else:
+      elif self.smooth_stop_mode == 1: #模式1
+        leadOne = radarState.leadOne
+        smooth_stop = leadOne.status and leadOne.dRel < 15.0
+        if self.decel_limit_v_ego_max > 0 and smooth_stop:
+          if CS.vEgo < self.decel_limit_v_ego_max:
+            if not self.a_ego_curr_init:
+              self.a_ego_curr = min(CS.aEgo, self.decel_limit_a_ego_max)
+              self.a_ego_curr_init = True
+            decel_limit_v_ego_min = min(self.decel_limit_v_ego_min, self.decel_limit_v_ego_max)
+            min_accel = np.interp(CS.vEgo,
+                                  [0.0, decel_limit_v_ego_min, self.decel_limit_v_ego_max],
+                                  [self.decel_limit_a_ego_min, self.decel_limit_a_ego_min, self.a_ego_curr])
+            output_accel = max(output_accel, min_accel)
+          elif CS.vEgo >= (self.decel_limit_v_ego_max + 1.):
+            self.a_ego_curr_init = False
+        else:
+          self.a_ego_curr_init = False
+      else: #关闭平滑停车功能
         self.a_ego_curr_init = False
 
       #限制加速度

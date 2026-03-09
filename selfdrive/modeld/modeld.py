@@ -433,6 +433,7 @@ def main(demo=False):
       modelv2_send.modelV2.meta.laneChangeProb = DH.lane_change_ll_prob
 
       #new
+      modelv2_send.modelV2.meta.laneWidth = float(DH.lane_width_curr)
       modelv2_send.modelV2.meta.eventType = int(DH.event_type + DH.event_type_id*256)
       modelv2_send.modelV2.meta.leftSec = int(DH.dh_left_sec)
       modelv2_send.modelV2.meta.blinker = DH.blinker

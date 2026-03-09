@@ -65,9 +65,26 @@ class LongControl:
     self.readParamCount = 0
     self.stopping_accel = 0
     self.j_lead = 0.0
+    #new
+    self.stopping_decel_rate = 0
+    self.start_accel = 0
+    self.decel_limit_v_ego_max = 0
+    self.decel_limit_v_ego_min = 0
+    self.decel_limit_a_ego_max = 0
+    self.decel_limit_a_ego_min = 0
+    self.a_ego_curr = 0
+    self.a_ego_curr_init = False
+    self.gas_release_smooth_max_cnt = int(5.0 / DT_CTRL)
+    self.gas_release_smooth_max_last = self.gas_release_smooth_max_cnt
+    self.gas_release_smooth_cnt = 0
+    self.output_accel_filtered = 0.0
+    self.output_accel_init = False
+    self.smooth_stop_mode = 0
 
   def reset(self):
     self.pid.reset()
+    self.a_ego_curr_init = False
+    self.output_accel_init = False
 
   def update(self, active, CS, long_plan, accel_limits, t_since_plan, radarState):
 
@@ -81,6 +98,18 @@ class LongControl:
     if self.readParamCount >= 100:
       self.readParamCount = 0
       self.stopping_accel = self.params.get_float("StoppingAccel") * 0.01
+      try:
+        self.stopping_decel_rate = self.params.get_float("StoppingDecelRate") * 0.01
+        self.start_accel = self.params.get_float("StartAccel") * 0.01
+        self.decel_limit_v_ego_max = max(0.0, self.params.get_float("DecelLimitVEgoMax") * 0.1)
+        self.decel_limit_v_ego_min = max(0.0, self.params.get_float("DecelLimitVEgoMin") * 0.1)
+        self.decel_limit_a_ego_max = min(0.0, self.params.get_float("DecelLimitAEgoMax") * 0.01)
+        self.decel_limit_a_ego_min = min(0.0, self.params.get_float("DecelLimitAEgoMin") * 0.01)
+        self.gas_release_smooth_max_cnt = int(self.params.get_float("GasSmoothTime") / DT_CTRL / 10)
+        self.smooth_stop_mode = self.params.get_int("SmoothStopMode")
+      except Exception as e:
+        self.gas_release_smooth_max_cnt = 5.0 / DT_CTRL
+        self.smooth_stop_mode = 0
     elif self.readParamCount == 10:
       if len(self.CP.longitudinalTuning.kpBP) == 1 and len(self.CP.longitudinalTuning.kiBP)==1:
         longitudinalTuningKpV = self.params.get_float("LongTuningKpV") * 0.01
@@ -113,15 +142,11 @@ class LongControl:
       stopAccel = self.stopping_accel if self.stopping_accel < 0.0 else self.CP.stopAccel
       if output_accel > stopAccel:
         output_accel = min(output_accel, 0.0)
-        output_accel -= self.CP.stoppingDecelRate * DT_CTRL
+        output_accel -= self.CP.stoppingDecelRate * DT_CTRL if self.stopping_decel_rate <= 0.0 else self.stopping_decel_rate * DT_CTRL #new
       self.reset()
 
-      # 停车柔和化：低速时限制减速度，防止最后一脚猛刹
-      if CS.vEgo < 1.0:
-        output_accel = max(output_accel, np.interp(CS.vEgo, [0.0, 1.0], [-0.1, -0.8]))
-
     elif self.long_control_state == LongCtrlState.starting:
-      output_accel = self.CP.startAccel
+      output_accel = self.CP.startAccel if self.start_accel <= 0.0 else self.start_accel #new
       self.reset()
 
     else:  # LongCtrlState.pid
@@ -130,10 +155,65 @@ class LongControl:
       output_accel = self.pid.update(error, speed=CS.vEgo,
                                      feedforward=a_target_ff)
 
+      # new 为了停车柔和，限制低速时的减速度
+      if self.smooth_stop_mode == 2: #模式2
+        alpha = 0.3  # 平滑系数
+        if not self.output_accel_init:
+          self.output_accel_filtered = output_accel
+          self.output_accel_init = True
+        else:
+          self.output_accel_filtered = alpha * output_accel + (1 - alpha) * self.output_accel_filtered
+
+        leadOne = radarState.leadOne
+        smooth_stop = leadOne.status and leadOne.dRel < 15.0
+        if self.decel_limit_v_ego_max > 0 and smooth_stop:
+          if CS.vEgo < self.decel_limit_v_ego_max or (self.a_ego_curr_init and (CS.vEgo < (self.decel_limit_v_ego_max + 0.4))):
+            if not self.a_ego_curr_init:
+              self.a_ego_curr = min(self.output_accel_filtered, self.decel_limit_a_ego_max)
+              self.a_ego_curr_init = True
+            decel_limit_v_ego_min = min(self.decel_limit_v_ego_min, self.decel_limit_v_ego_max)
+            min_accel = np.interp(CS.vEgo,
+                                  [0.0, decel_limit_v_ego_min, self.decel_limit_v_ego_max],
+                                  [self.decel_limit_a_ego_min, self.decel_limit_a_ego_min, self.a_ego_curr])
+            output_accel = max(output_accel, min_accel)
+          else:
+            self.a_ego_curr_init = False
+        else:
+          self.a_ego_curr_init = False
+      elif self.smooth_stop_mode == 1: #模式1
+        leadOne = radarState.leadOne
+        smooth_stop = leadOne.status and leadOne.dRel < 15.0
+        if self.decel_limit_v_ego_max > 0 and smooth_stop:
+          if CS.vEgo < self.decel_limit_v_ego_max:
+            if not self.a_ego_curr_init:
+              self.a_ego_curr = min(CS.aEgo, self.decel_limit_a_ego_max)
+              self.a_ego_curr_init = True
+            decel_limit_v_ego_min = min(self.decel_limit_v_ego_min, self.decel_limit_v_ego_max)
+            min_accel = np.interp(CS.vEgo,
+                                  [0.0, decel_limit_v_ego_min, self.decel_limit_v_ego_max],
+                                  [self.decel_limit_a_ego_min, self.decel_limit_a_ego_min, self.a_ego_curr])
+            output_accel = max(output_accel, min_accel)
+          elif CS.vEgo >= (self.decel_limit_v_ego_max + 1.):
+            self.a_ego_curr_init = False
+        else:
+          self.a_ego_curr_init = False
+      else: #关闭平滑停车功能
+        self.a_ego_curr_init = False
+
+      #限制加速度
+      if self.gas_release_smooth_max_cnt > 0:
+        if self.gas_release_smooth_cnt > 0:
+          self.gas_release_smooth_cnt -= 1
+          max_accel = np.interp(self.gas_release_smooth_cnt,
+                                [0, self.gas_release_smooth_max_last],
+                                [accel_limits[1], 0.2])
+          output_accel = min(output_accel, max_accel)
+
+    # 踩下油门的时候重置计数
+    if self.gas_release_smooth_max_cnt > 0 and CS.gasPressed:
+      self.gas_release_smooth_cnt = self.gas_release_smooth_max_cnt
+      self.gas_release_smooth_max_last = self.gas_release_smooth_max_cnt
+    # new
+
     self.last_output_accel = np.clip(output_accel, accel_limits[0], accel_limits[1])
-
-    # 全局再次限制，确保低速刹车不突兀
-    if self.long_control_state == LongCtrlState.stopping and CS.vEgo < 0.5:
-      self.last_output_accel = max(self.last_output_accel, -0.2)
-
     return self.last_output_accel, a_target_ff, j_target_now

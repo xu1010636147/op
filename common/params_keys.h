@@ -344,5 +344,14 @@ inline static std::unordered_map<std::string, uint32_t> keys = {
     {"NewLaneWidthDiff", PERSISTENT},
     {"ComputerType", PERSISTENT},
     {"AutoOvertakeConfig", PERSISTENT},
+    {"StartAccel", PERSISTENT},
+    {"StoppingDecelRate", PERSISTENT},
+    {"DecelLimitVEgoMax", PERSISTENT},
+    {"DecelLimitVEgoMin", PERSISTENT},
+    {"DecelLimitAEgoMax", PERSISTENT},
+    {"DecelLimitAEgoMin", PERSISTENT},
+    {"GasSmoothTime", PERSISTENT},
+    {"RedLightDistOffset", PERSISTENT},
+    {"SmoothStopMode", PERSISTENT},
     //new
 };

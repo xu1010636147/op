@@ -756,9 +756,19 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   latLongToggles->addItem(new CValueControl("LongActuatorDelay", "纵向: 执行器延迟(20)", "LongActuatorDelay", 0, 200, 5));
   latLongToggles->addItem(new CValueControl("VEgoStopping", "纵向: 车辆停止速度(50)", "停止因子VEgoStopping，单位0.1m/s，低于此速度时判定为停车状态", 1, 100, 5));
   latLongToggles->addItem(new CValueControl("RadarReactionFactor", "纵向: 雷达反应因子(100)", "RadarReactionFactor", 0, 200, 10));
-  latLongToggles->addItem(new CValueControl("StoppingAccel", "纵向: 停车时的减速度x0.01(-40)", "StoppingAccel", -100, 0, 5));
-  latLongToggles->addItem(new CValueControl("StopDistanceCarrot", "纵向: 停车距离 (600)cm", "StopDistanceCarrot", 300, 1000, 10));
+  latLongToggles->addItem(new CValueControl("StoppingAccel", "纵向: 停车时的减速度x0.01(-40)", "StoppingAccel,单位0.01m/s^2,0表示使用各车型的默认值", -200, 0, 1));
+  latLongToggles->addItem(new CValueControl("StoppingDecelRate", "纵向: 停车时的减速率x0.01(80)", "StoppingDecelRate,单位0.01m/s^2,0表示使用各车型的默认值", 0, 200, 1));
+  latLongToggles->addItem(new CValueControl("ComfortBrake", "纵向: 舒适制动减速度x0.01(240)", "ComfortBrake,单位0.01m/s^2", 0, 400, 5));
+  latLongToggles->addItem(new CValueControl("StopDistanceCarrot", "纵向: 停车距离 (600)cm", "停车后距离前车的距离，单位为厘米", 300, 1000, 10));
+  latLongToggles->addItem(new CValueControl("RedLightDistOffset", "纵向: 红灯停车偏移(0)dm", "用于调整红灯停止线的距离偏移，如果红灯停车会超出停止线，调为负值，如果离停止线太远，调为正值", -150, 150, 1));
+  latLongToggles->addItem(new CValueControl("DecelLimitVEgoMax", "减速: 限制减速度的最大车速(20)x0.1", "DecelLimitVEgoMax,单位0.1m/s,0表示关闭减速度限制功能", 0, 500, 1));
+  latLongToggles->addItem(new CValueControl("DecelLimitAEgoMax", "减速: 限制减速度的最大值(-100)x0.01", "DecelLimitVEgoMax,单位0.01m/s^2,参数为负值", -350, 0, 1));
+  latLongToggles->addItem(new CValueControl("DecelLimitVEgoMin", "减速: 限制减速度的最小车速(10)x0.1", "DecelLimitVEgoMin,单位0.1m/s", 0, 500, 1));
+  latLongToggles->addItem(new CValueControl("DecelLimitAEgoMin", "减速: 限制减速度的最小值(-25)x0.01", "DecelLimitAEgoMin,单位0.01m/s^2,参数为负值", -350, 0, 1));
+  latLongToggles->addItem(new CValueControl("SmoothStopMode", "纵向: 平滑停车模式(0)", "平滑停车模式，0-不开启，1-模式1，2-模式2", 0, 5, 1));
+  latLongToggles->addItem(new CValueControl("StartAccel", "纵向:起步加速度x0.01(80)", "StartAccel,单位0.01m/s^2,0表示使用各车型的默认值", 0, 200, 5));
   latLongToggles->addItem(new CValueControl("JLeadFactor3", "纵向: 加加速度前车因子(0)", "x0.01", 0, 100, 5));
+  latLongToggles->addItem(new CValueControl("GasSmoothTime", "纵向: 释放油门踏板后平滑加速度的时间(50)x0.1s", "在用户释放油门踏板后，对最大的加速度限制进行平滑", 0, 100, 5));
   latLongToggles->addItem(new CValueControl("CruiseMaxVals0", "加速:0km/h(160)", "指定速度下所需加速度(x0.01m/s^2)", 1, 250, 5));
   latLongToggles->addItem(new CValueControl("CruiseMaxVals1", "加速:10km/h(160)", "指定速度下所需加速度(x0.01m/s^2)", 1, 250, 5));
   latLongToggles->addItem(new CValueControl("CruiseMaxVals2", "加速:40km/h(120)", "指定速度下所需加速度(x0.01m/s^2)", 1, 250, 5));
@@ -900,7 +910,7 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   //startToggles->addItem(new CValueControl("LaneChangeLaneCheck", "变道: 检查车道存在", "(0:否,1:车道,2:+路肩)", 0, 2, 1));
 
   speedToggles = new ListWidget(this);
-  speedToggles->addItem(new CValueControl("AutoCurveSpeedLowerLimit", "弯道: 转弯最低降速限制(30)", "用于限制视觉转弯降速和地图转弯降速的最小速度", 30, 200, 5));
+  speedToggles->addItem(new CValueControl("AutoCurveSpeedLowerLimit", "弯道: 转弯最低降速限制(30)", "用于限制视觉转弯降速和地图转弯降速的最小速度", 0, 200, 1));
   speedToggles->addItem(new CValueControl("AutoCurveSpeedFactor", "弯道: 降速弯道曲率系数(100%)", "模型预测横摆角速度*此系数，系数越大降速越多", 50, 300, 1));
   speedToggles->addItem(new CValueControl("AutoCurveSpeedAggressiveness", "弯道: 降速横向加速度系数(100%)", "目标横向加速度*此系数，系数越小降速越多", 50, 300, 1));
   speedToggles->addItem(new CValueControl("AutoCurveSpeedFactorH", "高速: 降速弯道曲率系数(100%)", "模型预测横摆角速度*此系数，系数越大降速越多", 50, 300, 1));
@@ -917,7 +927,7 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   speedToggles->addItem(new CValueControl("TurnSpeedControlMode", "转弯速度控制模式(1)", "0:关闭, 1:视觉, 2:视觉+路线, 3:路线", 0, 3, 1));
   speedToggles->addItem(new CValueControl("MapTurnSpeedFactor", "地图转弯速度系数(100%)", "在使用地图转弯速度时，实际转弯速度=地图速度*x%，在转弯速度控制模式为2或3时生效", 50, 300, 5));
   speedToggles->addItem(new CValueControl("AutoTurnControl", "ATC: 自动转弯控制(0)", "0:无, 1:变道, 2:变道+减速, 3:减速", 0, 3, 1));
-  speedToggles->addItem(new CValueControl("AutoTurnControlSpeedTurn", "ATC: 转弯速度(20)", "0:无, 转弯速度", 0, 100, 5));
+  speedToggles->addItem(new CValueControl("AutoTurnControlSpeedTurn", "ATC: 转弯速度(20)", "0:无, 转弯速度", 0, 100, 1));
   speedToggles->addItem(new CValueControl("AutoTurnControlTurnEnd", "ATC: 转弯结束时间(6)", "距离=速度*时间", 0, 30, 1));
   speedToggles->addItem(new CValueControl("AutoTurnMapChange", "ATC 自动地图切换(0)", "", 0, 1, 1));
 
@@ -934,7 +944,7 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   navToggles->addItem(new CValueControl("SideRelDistTime", "侧前方有车变道相对距离", "当与侧前方车辆相对距离小于本车速度x时间时不允许变道，单位0.1秒", 0, 50, 1));
   navToggles->addItem(new CValueControl("SidevRelDistTime", "侧前方有车变道等效距离", "侧前方车辆速度x3+相对距离小于本车速度x(时间+3)时，不允许变道，单位0.1秒", 0, 50, 1));
   navToggles->addItem(new CValueControl("SideRadarMinDist", "侧面最小雷达距离(0m)", "在左右两侧的车道上，忽略小于此雷达探测距离的车辆，单位为0.1m", -50, 100, 1));
-  navToggles->addItem(new CValueControl("AutoForkDistOffsetH", "H 提前靠边行驶距离(1000m)", "在距离匝道口多少米时开始变道到最侧面车道，设置为0则不提前变道", 0, 2000, 5));
+  navToggles->addItem(new CValueControl("AutoForkDistOffsetH", "H 提前靠边行驶距离(1000m)", "在距离匝道口多少米时开始变道到最侧面车道，设置为0则不提前变道", 0, 5000, 5));
   navToggles->addItem(new CValueControl("AutoEnTurnNewLaneTimeH", "H 继续变道新车道时间(0s)", "车辆已在最侧边车道，若新车道出现的时间超过设置值后允许再次变道，推荐值20秒，0 关闭", 0, 120, 1));
   navToggles->addItem(new CValueControl("AutoDoForkDecalDistH", "H 进匝道减速距离偏移(50m)", "在距离匝道口多少米时开始减速，软件根据速度计算的距离加上此偏移为实际距离", 0, 500, 5));
   navToggles->addItem(new CValueControl("AutoDoForkBlinkerDistH", "H 进匝道打灯距离偏移(30m)", "在距离匝道口多少米时开始打转身灯准备变道，但不是一定会立即变道，还需要等匝道出现的条件成立，软件根据速度计算的距离加上此偏移为实际距离", 0, 200, 2));
@@ -944,7 +954,7 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   navToggles->addItem(new CValueControl("AutoForkSpeedMinH", "H 进匝道最低速度(60)", "在进匝道口前允许把车速降至的最低速度，低于此速度时则不再继续降低", 0, 100, 5));
   navToggles->addItem(new CValueControl("AutoKeepForkSpeedH", "H 进匝道保持速度时间(0s)", "进了匝道口后保持当前速度行驶的时间，0-关闭", 0, 60, 1));
 
-  navToggles->addItem(new CValueControl("AutoForkDistOffset", "L 提前靠边行驶距离(30m)", "在距离公路分叉口多少米时开始变道到最侧面车道，设置为0则不提前变道", 0, 1000, 5));
+  navToggles->addItem(new CValueControl("AutoForkDistOffset", "L 提前靠边行驶距离(30m)", "在距离公路分叉口多少米时开始变道到最侧面车道，设置为0则不提前变道", 0, 2000, 5));
   navToggles->addItem(new CValueControl("AutoEnTurnNewLaneTime", "L 继续变道新车道时间(0s)", "车辆已在最侧边车道，若新车道出现的时间超过设置值后允许再次变道，推荐值5秒，0 关闭", 0, 120, 1));
   navToggles->addItem(new CValueControl("AutoDoForkDecalDist", "L 进匝道减速距离偏移(20m)", "在距离公路分叉口多少米时开始减速，软件根据速度计算的距离加上此偏移为实际距离", 0, 500, 5));
   navToggles->addItem(new CValueControl("AutoDoForkBlinkerDist", "L 进匝道打灯距离偏移(15m)", "在距离公路分叉口多少米时提前打转向灯准备变道，但不是一定会立即变道，还需要等分叉口出现的条件成立，软件根据速度计算的距离加上此偏移为实际距离", 0, 200, 1));

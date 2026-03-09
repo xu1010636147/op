@@ -1196,6 +1196,7 @@ struct ModelDataV2 {
     leftFrontBlind @20 :Int32;
     rightFrontBlind @21 :Int32;
     atcBsd @22 :Int32;
+    laneWidth @23 :Float32;
 
     # deprecated
     brakeDisengageProbDEPRECATED @2 :Float32;

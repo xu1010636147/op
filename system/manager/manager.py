@@ -229,6 +229,16 @@ def get_default_params():
     ("AutoCurveSpeedAggressivenessH", "110"),
     ("NewLaneWidthDiff", "8"),
     ("ComputerType", "1"),
+    ("StartAccel", "0"),
+    ("StoppingDecelRate", "0"),
+    ("ComfortBrake", "240"),
+    ("DecelLimitVEgoMax", "20"),
+    ("DecelLimitVEgoMin", "10"),
+    ("DecelLimitAEgoMax", "-100"),
+    ("DecelLimitAEgoMin", "-25"),
+    ("GasSmoothTime", "50"),
+    ("RedLightDistOffset", "0"),
+    ("SmoothStopMode", "0"),
     # new
   ]
   return default_params

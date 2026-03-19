@@ -156,6 +156,14 @@ class UnifiedParams:
             "SideRelDistTime": 10,
             "SidevRelDistTime": 10,
             "SideRadarMinDist": 0,
+
+            "LidarBsdDelayTime": 10,
+            "LidarFrontVDistTime": 10,
+            "LidarFrontVRelDistTime": 30,
+            "LidarBehindVDistTime": 10,
+            "LidarBehindVRelDistTime": 30,
+            "LaneLineDelayTime": 10,
+
             "AutoTurnInNotRoadEdge": 1,
             "ContinuousLaneChange": 1,
             "ContinuousLaneChangeCnt": 4,

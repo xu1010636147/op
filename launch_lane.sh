@@ -1,7 +1,7 @@
 #!/bin/bash
-cd /data/openpilot/camera/ && 
-source op_yolo_venv/bin/activate && 
-cd /data/openpilot/camera && 
-export PYTHONPATH=/data/openpilot
+cd /home/xuqi/openpilot &&
+source op_yolo_venv/bin/activate &&
+cd /home/xuqi/openpilot &&
+export PYTHONPATH=/home/xuqi/openpilot
 python3 lane.py
 

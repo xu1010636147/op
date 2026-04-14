@@ -105,3 +105,10 @@ Pipfile
 .history
 .ionide
 .vs
+
+# Sensitive files
+id_rsa
+id_rsa.pub
+
+# Backup files
+*.bak

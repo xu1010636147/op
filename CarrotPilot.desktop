@@ -2,7 +2,7 @@
 Name=Carrotpilot
 GenericName=Carrotpilot
 Comment=openpilot is an operating system for robotics
-Exec=gnome-terminal -e "bash -c '/home/op/launch_pc_jy62.sh;$SHELL'"
+Exec=gnome-terminal -e "bash -c '/home/xuqi/openpilot/launch_pc_jy62.sh;$SHELL'"
 Terminal=false
 Type=Application
-Icon=/home/op/logo.ico
+Icon=/home/xuqi/openpilot/logo.ico

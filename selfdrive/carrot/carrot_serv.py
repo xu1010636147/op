@@ -1491,7 +1491,10 @@ class CarrotServ:
     msg.carrotMan.szSdiDescr = self._get_sdi_descr(-1 if self.nSdiType == 0 and self.nSdiDist == 0 else self.nSdiType)
 
     #coords_str = ";".join([f"{x},{y}" for x, y in coords])
-    coords_str = ";".join([f"{x:.2f},{y:.2f},{d:.2f}" for (x, y), d in zip(coords, distances, strict=False)])
+    # 限制路径点数量，防止 capnp text blob 过大 (max ~2000 chars)
+    max_points = 100
+    coords_subset = list(zip(coords, distances, strict=False))[:max_points]
+    coords_str = ";".join([f"{x:.2f},{y:.2f},{d:.2f}" for (x, y), d in coords_subset])
     msg.carrotMan.naviPaths = coords_str
 
     msg.carrotMan.leftSec = int(self.carrot_left_sec)

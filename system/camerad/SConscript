@@ -1,11 +1,24 @@
-Import('env', 'arch', 'messaging', 'common', 'gpucommon', 'visionipc')
+Import('env', 'arch', 'messaging', 'common', 'gpucommon')
 
-libs = [common, 'OpenCL', messaging, visionipc, gpucommon]
+libs = ['pthread', common, messaging, gpucommon]
 
 if arch != "Darwin":
-  camera_obj = env.Object(['cameras/camera_qcom2.cc', 'cameras/camera_common.cc', 'cameras/spectra.cc',
-                           'cameras/cdm.cc', 'sensors/ar0231.cc', 'sensors/ox03c10.cc', 'sensors/os04c10.cc'])
-  env.Program('camerad', ['main.cc', camera_obj], LIBS=libs)
+  Import('visionipc')
+  libs.append(visionipc)
+  libs.append('OpenCL')
 
-if GetOption("extras") and arch == "x86_64":
-  env.Program('test/test_ae_gray', ['test/test_ae_gray.cc', camera_obj], LIBS=libs)
+  if arch == "larch64":
+    # QCOM2 平台
+    camera_obj = env.Object(['cameras/camera_qcom2.cc', 'cameras/camera_common.cc', 'cameras/spectra.cc',
+                             'cameras/cdm.cc', 'sensors/ar0231.cc', 'sensors/ox03c10.cc', 'sensors/os04c10.cc'])
+    env.Program('camerad', ['main.cc', camera_obj], LIBS=libs + ['yuv', 'jpeg'])
+
+  if arch == "x86_64":
+    # PC 平台 - 使用 MIPI/USB 摄像头驱动 (camerad_thread.cc 内部用 #ifndef QCOM2 控制)
+    camera_obj = env.Object(['cameras/camera_common.cc',
+                             'cameras/mipi/camera_mipi.cc', 'cameras/mipi/mipi_utils.cc',
+                             'cameras/usb/camera_usb.cc'])
+    env.Program('camerad', ['main.cc', 'camerad_thread.cc', camera_obj], LIBS=libs + ['yuv', 'jpeg'])
+
+    if GetOption("extras"):
+      env.Program('test/test_ae_gray', ['test/test_ae_gray.cc', camera_obj], LIBS=libs + ['yuv', 'jpeg'])

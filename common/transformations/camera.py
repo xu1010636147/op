@@ -46,10 +46,13 @@ class DeviceCameraConfig:
       if not isinstance(getattr(self, cam), _NoneCameraConfig):
         yield cam, getattr(self, cam)
 
-_ar_ox_fisheye = CameraConfig(1928, 1208, 567.0)  # focal length probably wrong? magnification is not consistent across frame
-_os_fisheye = CameraConfig(2688 // 2, 1520 // 2, 567.0 / 4 * 3)
-_ar_ox_config = DeviceCameraConfig(CameraConfig(1928, 1208, 2648.0), _ar_ox_fisheye, _ar_ox_fisheye)
-_os_config = DeviceCameraConfig(CameraConfig(2688 // 2, 1520 // 2, 1522.0 * 3 / 4), _os_fisheye, _os_fisheye)
+# HF500 摄像头参数
+# 道路: HF500_8mm (45°无畸变)   → fcam
+# 广角: HF500_1.8mm (170°鱼眼) → ecam (equidistant model)
+_ar_ox_fisheye = CameraConfig(1920, 1080, 647.0)   # 1.8mm 170° 鱼眼
+_os_fisheye = CameraConfig(1920, 1080, 647.0)       # 同
+_ar_ox_config = DeviceCameraConfig(CameraConfig(1920, 1080, 2318.0), _ar_ox_fisheye, _ar_ox_fisheye)
+_os_config = DeviceCameraConfig(CameraConfig(1920, 1080, 2318.0), _os_fisheye, _os_fisheye)
 _neo_config = DeviceCameraConfig(CameraConfig(1164, 874, 910.0), CameraConfig(816, 612, 650.0), _NoneCameraConfig())
 
 DEVICE_CAMERAS = {

@@ -8,7 +8,7 @@ source .venv/bin/activate &&
 # ========================================
 
 # --- 通用设置 ---
-export USE_WEBCAM=0                           # 0=MIPI摄像头
+export USE_WEBCAM=1                           # 1=USB摄像头 (HF500系列)
 export CAMERAD_DEBUG=1                        # 调试日志
 
 # --- 道路摄像头: HF500_8mm (45°, 无畸变) ---
@@ -33,9 +33,9 @@ export WIDE_CAM=1                            # /dev/video1 (代码中用 WIDE_CA
 echo "=============================="
 echo " C A M E R A D   S T A R T"
 echo "=============================="
-echo "模式:      MIPI 摄像头"
+echo "模式:      USB 摄像头"
 echo "ROAD:      HF500_8mm  (45°)"
-echo "WIDE:      HF500_1.8mm (170°)  ← 新增"
+echo "WIDE:      HF500_1.8mm (170°)"
 echo "=============================="
 
 exec ./system/camerad/camerad

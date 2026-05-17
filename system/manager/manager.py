@@ -147,7 +147,7 @@ def get_default_params():
     ("AutoLaneChangeMinSpeed", "0"),
     ("LaneChangeDelay", "0"),
     ("LaneChangeBsd", "0"),
-    ("MaxAngleFrames", "85"),
+    ("MaxAngleFrames", "89"),
     ("LateralTorqueCustom", "1"),
     ("LateralTorqueAccelFactor", "3000"),
     ("LateralTorqueFriction", "100"),
@@ -167,7 +167,7 @@ def get_default_params():
     ("CustomSteerDeltaUpLC", "0"),
     ("CustomSteerDeltaDownLC", "0"),
     ("SpeedFromPCM", "2"),
-    ("SteerActuatorDelay", "20"),
+    ("SteerActuatorDelay", "30"),
     ("MaxTimeOffroadMin", "60"),
     ("DisableDM", "1"),
     ("EnableConnect", "0"),
@@ -180,7 +180,7 @@ def get_default_params():
     ("SoftwareMenu", "1"),
     ("CustomSteerOffset", "0"),
     ("SteerAngleOffset", "0"),
-    ("CustomSR", "145"),
+    ("CustomSR", "165"),
     ("SteerRatioRate", "100"),
     ("NNFF", "0"),
     ("NNFFLite", "0"),
@@ -228,7 +228,7 @@ def get_default_params():
     ("AutoCurveSpeedFactorH", "90"),
     ("AutoCurveSpeedAggressivenessH", "110"),
     ("NewLaneWidthDiff", "8"),
-    ("ComputerType", "1"),
+    ("modelid", "-1"),
     ("StartAccel", "0"),
     ("StoppingDecelRate", "0"),
     ("ComfortBrake", "240"),
@@ -411,23 +411,16 @@ def manager_thread() -> None:
     if shutdown:
       break
 
-
 def main() -> None:
   manager_init()
-
-  # 获取 openpilot 根目录
-  OPENPILOT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-  supported_path = Params().get_param_path()
-
-  brands = ["hyundai", "gm", "toyota", "mazda", "tesla", "honda", "volkswagen"]
-  for brand in brands:
-    values_py = os.path.join(OPENPILOT_ROOT, "opendbc", "car", brand, "values.py")
-    output_file = os.path.join(supported_path, f"SupportedCars_{brand}" if brand != "hyundai" else "SupportedCars")
-    if os.path.isfile(values_py):
-      os.system(f"python {values_py} > {output_file}")
-    else:
-      print(f"WARNING: {values_py} not found, skipping.")
-
+  print(f"python ../../opendbc/car/hyundai/values.py > {Params().get_param_path()}/SupportedCars")
+  os.system(f"python ../../opendbc/car/hyundai/values.py > {Params().get_param_path()}/SupportedCars")
+  os.system(f"python ../../opendbc/car/gm/values.py > {Params().get_param_path()}/SupportedCars_gm")
+  os.system(f"python ../../opendbc/car/toyota/values.py > {Params().get_param_path()}/SupportedCars_toyota")
+  os.system(f"python ../../opendbc/car/mazda/values.py > {Params().get_param_path()}/SupportedCars_mazda")
+  os.system(f"python ../../opendbc/car/tesla/values.py > {Params().get_param_path()}/SupportedCars_tesla")
+  os.system(f"python ../../opendbc/car/honda/values.py > {Params().get_param_path()}/SupportedCars_honda")
+  os.system(f"python ../../opendbc/car/volkswagen/values.py > {Params().get_param_path()}/SupportedCars_volkswagen")
   if os.getenv("PREPAREONLY") is not None:
     return
 
@@ -452,6 +445,7 @@ def main() -> None:
   elif params.get_bool("DoShutdown"):
     cloudlog.warning("shutdown")
     HARDWARE.shutdown()
+
 
 if __name__ == "__main__":
   unblock_stdout()

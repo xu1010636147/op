@@ -88,12 +88,8 @@ class ParamsLearner:
       self.steering_angle = msg.steeringAngleDeg
       self.speed = msg.vEgo
 
-      #new
-      MAX_STRAIGHT_YAW_RATE = 0.05  # rad/s, 约2.8°/s，可根据实际调整
-      straight_road = abs(self.yaw_rate) < MAX_STRAIGHT_YAW_RATE
-      #new
       in_linear_region = abs(self.steering_angle) < 45
-      self.active = self.speed > MIN_ACTIVE_SPEED and in_linear_region and straight_road
+      self.active = self.speed > MIN_ACTIVE_SPEED and in_linear_region
 
       if self.active:
         self.kf.predict_and_observe(t, ObservationKind.STEER_ANGLE, np.array([[math.radians(msg.steeringAngleDeg)]]))
@@ -194,7 +190,7 @@ def main():
         lat = location.positionGeodetic.value[0]
         lon = location.positionGeodetic.value[1]
         params_memory.put("LastGPSPosition", json.dumps({"latitude": lat, "longitude": lon, "bearing": bearing}))
-
+        
       x = learner.kf.x
       P = np.sqrt(learner.kf.P.diagonal())
       if not all(map(math.isfinite, x)):

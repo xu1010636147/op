@@ -523,27 +523,28 @@
                 category: "公共参数设置"
             },
             "DynamicBlindRange": {
-                chineseName: "动态盲区范围",
+                chineseName: "动态盲区宽度",
                 defaultValue: 0,
-                description: "盲区的宽度和前后距离是否动态调整",
-                inputRange: [0, 1],
+                description: "盲区的侧面宽度是否动态调整",
+                inputRange: [0, 2],
                 uiType: "select",
                 options: [
-                    { value: 0, text: "盲区范围固定" },
-                    { value: 1, text: "导航时动态调整盲区范围" },
-                    { value: 2, text: "动态调整盲区范围" }
+                    { value: 0, text: "盲区宽度固定" },
+                    { value: 1, text: "导航时动态调整盲区宽度" },
+                    { value: 2, text: "动态调整盲区宽度" }
                 ],
                 category: "公共参数设置"
             },
             "DynamicBlindDistance": {
-                chineseName: "动态前后车变道距离",
+                chineseName: "动态盲区距离",
                 defaultValue: 0,
                 description: "是否通过前后车的速度和时间计算允许变道的距离",
-                inputRange: [0, 1],
+                inputRange: [0, 2],
                 uiType: "select",
                 options: [
-                    { value: 0, text: "固定的前后车变道距离" },
-                    { value: 1, text: "根据前后车速度动态调整变道距离" }
+                    { value: 0, text: "固定的盲区距离" },
+                    { value: 1, text: "导航变道时动态盲区距离" },
+                    { value: 2, text: "车速时距动态盲区距离" }
                 ],
                 category: "公共参数设置"
             },
@@ -560,34 +561,34 @@
                 category: "公共参数设置"
             },
             "BsdDelayTime": {
-                chineseName: "后盲区有车延时(20x0.1s)",
+                chineseName: "原车雷达后盲区有车延时(x0.1s)",
                 defaultValue: 20,
-                description: "当后盲区有车信号消失后，经过延时的秒数后允许变道",
+                description: "当原车雷达后盲区有车信号消失后，经过延时的秒数后允许变道",
                 inputRange: [0, 100],
                 step: 1,
                 uiType: "number",
                 category: "公共参数设置"
             },
             "SideBsdDelayTime": {
-                chineseName: "侧前方有车延时(20x0.1s)",
+                chineseName: "原车雷达侧前方有车延时(x0.1s)",
                 defaultValue: 20,
-                description: "当侧前方有车信号消失后，经过延时的秒数后允许变道",
+                description: "当原车雷达侧前方有车信号消失后，经过延时的秒数后允许变道",
                 inputRange: [0, 100],
                 step: 1,
                 uiType: "number",
                 category: "公共参数设置"
             },
             "SideRelDistTime": {
-                chineseName: "侧前方有车变道相对距离",
+                chineseName: "原车雷达侧前方有车变道绝对速度时距(x0.1s)",
                 defaultValue: 10,
-                description: "当与侧前方车辆相对距离小于本车速度x时间时不允许变道，单位0.1秒",
+                description: "当与原车雷达侧前方车辆的距离大于'本车速度x时间'时允许变道，单位0.1秒",
                 inputRange: [0, 50],
                 step: 1,
                 uiType: "number",
                 category: "公共参数设置"
             },
             "SidevRelDistTime": {
-                chineseName: "侧前方有车变道等效距离",
+                chineseName: "原车雷达侧前方有车允许变道相对速度时距(x0.1s)",
                 defaultValue: 10,
                 description: "侧前方车辆速度x3+相对距离小于本车速度x(时间+3)时，不允许变道，单位0.1秒",
                 inputRange: [0, 50],
@@ -596,10 +597,82 @@
                 category: "公共参数设置"
             },
             "SideRadarMinDist": {
-                chineseName: "侧面最小雷达距离(0m)",
+                chineseName: "原车雷达侧前方最小距离过滤(0m)",
                 defaultValue: 0,
-                description: "在左右两侧的车道上，忽略小于此雷达探测距离的车辆，单位为0.1m",
+                description: "在原车雷达探测左右车道侧前方车辆时，小于设定距离的目标会被忽略，单位为0.1m",
                 inputRange: [-50, 100],
+                step: 1,
+                uiType: "number",
+                category: "公共参数设置"
+            },
+            "LidarBsdDelayTime": {
+                chineseName: "激光雷达侧面车道有车延时(x0.1s)",
+                defaultValue: 20,
+                description: "当激光雷达探测侧面车道有车信号消失后，经过延时的秒数后允许变道",
+                inputRange: [0, 100],
+                step: 1,
+                uiType: "number",
+                category: "公共参数设置"
+            },
+            "LidarFrontVDistTime": {
+                chineseName: "激光雷达侧前方有车允许变道绝对速度时距(x0.1s)",
+                defaultValue: 10,
+                description: "当与激光雷达侧前方车辆的距离大于'本车速度x时间'时允许变道，单位0.1秒;如果设置为负值，表示绝对距离(单位为0.1m)，如-100，表示绝对距离大于10米时允许变道",
+                inputRange: [-500, 50],
+                step: 1,
+                uiType: "number",
+                category: "公共参数设置"
+            },
+            "LidarFrontVRelDistTime": {
+                chineseName: "激光雷达侧前方有车允许变道相对速度时距(x0.1s)",
+                defaultValue: 30,
+                description: "当'本车相对于侧前方车辆的速度差x时间'小于两车距离时，允许变道，单位0.1秒",
+                inputRange: [0, 200],
+                step: 1,
+                uiType: "number",
+                category: "公共参数设置"
+            },
+            "LidarBehindVDistTime": {
+                chineseName: "激光雷达侧后方有车允许变道的绝对速度时距(x0.1s)",
+                defaultValue: 10,
+                description: "当与激光雷达侧后方车辆的距离大于'对方速度x时间'时允许变道，单位0.1秒;如果设置为负值，表示绝对距离(单位为0.1m)，如-100，表示绝对距离大于10米时允许变道",
+                inputRange: [-500, 50],
+                step: 1,
+                uiType: "number",
+                category: "公共参数设置"
+            },
+            "LidarBehindVRelDistTime": {
+                chineseName: "激光雷达侧后方有车允许变道的相对速度时距(x0.1s)",
+                defaultValue: 30,
+                description: "当'侧后方车辆的相对于本车的速度差x时间'小于两车距离时，允许变道，单位0.1秒",
+                inputRange: [0, 200],
+                step: 1,
+                uiType: "number",
+                category: "公共参数设置"
+            },
+            "LaneLineDelayTime": {
+                chineseName: "实线阻止变道延时(x0.1s)",
+                defaultValue: 20,
+                description: "当实线信号消失后，经过延时的秒数后允许变道",
+                inputRange: [0, 100],
+                step: 1,
+                uiType: "number",
+                category: "公共参数设置"
+            },
+            "DynamicExperimentalSpeed": {
+                chineseName: "实验模式:条件实验模式速度(-5)",
+                defaultValue: -5,
+                description: "当车速小于此速度(km/h)时，将会进入实验模式，=0表示动态实验模式，<0表示关闭",
+                inputRange: [-5, 140],
+                step: 5,
+                uiType: "number",
+                category: "公共参数设置"
+            },
+            "DynamicExperimentalLatA": {
+                chineseName: "实验模式:条件实验模式弯道横向加速度(x0.1m/s^2)",
+                defaultValue: 0,
+                description: "当变道横向加速度大于此值时时，将会进入实验模式，=0表示关闭，>0表示打开",
+                inputRange: [0, 30],
                 step: 1,
                 uiType: "number",
                 category: "公共参数设置"
@@ -608,7 +681,7 @@
                 chineseName: "高速提前靠边行驶距离(1000m)",
                 defaultValue: 1000,
                 description: "在距离匝道口多少米时开始变道到最侧面车道，设置0则不提前变道",
-                inputRange: [0, 2000],
+                inputRange: [0, 5000],
                 step: 5,
                 uiType: "number",
                 category: "高速公路参数"
@@ -653,7 +726,7 @@
                 chineseName: "普通公路:提前靠边行驶距离(30m)",
                 defaultValue: 30,
                 description: "在距离公路岔路口多少米时开始变道到最佳面车道，设置0则不提前变道",
-                inputRange: [0, 1000],
+                inputRange: [0, 2000],
                 step: 5,
                 uiType: "number",
                 category: "普通公路参数"
@@ -877,24 +950,6 @@
                 description: "在进公路岔路口时前允许把车速降的最低速度，低于此速度时则不再继续降低",
                 inputRange: [0, 100],
                 step: 5,
-                uiType: "number",
-                category: "速度参数"
-            },
-            "DynamicExperimentalSpeed": {
-                chineseName: "实验模式:条件实验模式速度(-5)",
-                defaultValue: -5,
-                description: "当车速小于此速度(km/h)时，将会进入实验模式，=0表示动态实验模式，<0表示关闭",
-                inputRange: [-5, 140],
-                step: 5,
-                uiType: "number",
-                category: "速度参数"
-            },
-            "DynamicExperimentalLatA": {
-                chineseName: "实验模式:条件实验模式弯道横向加速度(x0.1m/s^2)",
-                defaultValue: 0,
-                description: "当变道横向加速度大于此值时时，将会进入实验模式，=0表示关闭，>0表示打开",
-                inputRange: [0, 30],
-                step: 1,
                 uiType: "number",
                 category: "速度参数"
             },

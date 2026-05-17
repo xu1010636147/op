@@ -65,9 +65,7 @@ function install_ubuntu_common_requirements() {
     libqt5svg5-dev \
     libqt5serialbus5-dev  \
     libqt5x11extras5-dev \
-    libqt5opengl5-dev \
-    libopencv-dev \
-    libturbojpeg-dev
+    libqt5opengl5-dev
 }
 
 # Install Ubuntu 24.04 LTS packages
@@ -113,8 +111,6 @@ EOF
 
     # Setup panda udev rules
     $SUDO tee /etc/udev/rules.d/11-panda.rules > /dev/null <<EOF
-# 确保规则加载后立即触发
-ACTION=="add", SUBSYSTEM=="usb", RUN+="/bin/sh -c 'udevadm control --reload-rules && udevadm trigger'"
 SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="df11", MODE="0666"
 SUBSYSTEM=="usb", ATTRS{idVendor}=="3801", ATTRS{idProduct}=="ddcc", MODE="0666"
 SUBSYSTEM=="usb", ATTRS{idVendor}=="3801", ATTRS{idProduct}=="ddee", MODE="0666"

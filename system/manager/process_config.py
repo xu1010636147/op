@@ -8,10 +8,9 @@ from openpilot.system.hardware import PC, TICI
 from openpilot.system.manager.process import PythonProcess, NativeProcess, DaemonProcess
 
 FLASK_AVAILABLE = importlib.util.find_spec("flask") is not None
+OPENCV_AVAILABLE = importlib.util.find_spec("cv2") is not None
 
 WEBCAM = os.getenv("USE_WEBCAM") is not None
-USBCAM = os.getenv("USE_USBCAM") is not None
-JY62 = int(os.getenv("JY62","0"))
 
 def driverview(started: bool, params: Params, CP: car.CarParams) -> bool:
   return started or params.get_bool("IsDriverViewEnabled")
@@ -65,6 +64,9 @@ def enable_updated(started: bool, params: Params, CP: car.CarParams) -> bool:
 def check_fleet(started, params, CP: car.CarParams) -> bool:
   return FLASK_AVAILABLE
 
+def check_lane(started, params, CP: car.CarParams) -> bool:
+  return FLASK_AVAILABLE and OPENCV_AVAILABLE
+
 def or_(*fns):
   return lambda *args: operator.or_(*(fn(*args) for fn in fns))
 
@@ -80,18 +82,16 @@ def enable_connect(started, params, CP: car.CarParams) -> bool:
 procs = [
   DaemonProcess("manage_athenad", "system.athena.manage_athenad", "AthenadPid"),
 
-  NativeProcess("loggerd", "system/loggerd", ["./loggerd"], logging),
-  NativeProcess("encoderd", "system/loggerd", ["./encoderd"], only_onroad, enabled=not PC),
+  #NativeProcess("loggerd", "system/loggerd", ["./loggerd"], logging),
+  NativeProcess("encoderd", "system/loggerd", ["./encoderd"], only_onroad),
   NativeProcess("stream_encoderd", "system/loggerd", ["./encoderd", "--stream"], notcar),
   PythonProcess("logmessaged", "system.logmessaged", always_run),
 
-  #NativeProcess("usbcamerad", "camera", ["./usb_camera"], driverview, enabled=USBCAM),
-  NativeProcess("usbcamerad", "tools/webcam", ["./camerad"], driverview, enabled=USBCAM),
-  NativeProcess("camerad", "system/camerad", ["./camerad"], driverview, enabled=not USBCAM and not WEBCAM),
+  NativeProcess("camerad", "system/camerad", ["./camerad"], driverview, enabled=not WEBCAM),
   PythonProcess("webcamerad", "tools.webcam.camerad", driverview, enabled=WEBCAM),
   NativeProcess("logcatd", "system/logcatd", ["./logcatd"], only_onroad),
   NativeProcess("proclogd", "system/proclogd", ["./proclogd"], only_onroad),
-  PythonProcess("micd", "system.micd", iscar, enabled=not PC),
+  PythonProcess("micd", "system.micd", iscar),
   PythonProcess("timed", "system.timed", always_run, enabled=not PC),
 
   # TODO: Make python process once TG allows opening QCOM from child pro
@@ -102,13 +102,9 @@ procs = [
   #NativeProcess("mapsd", "selfdrive/navd", ["./mapsd"], always_run),
   #PythonProcess("navmodeld", "selfdrive.modeld.navmodeld", only_onroad),
   NativeProcess("sensord", "system/sensord", ["./sensord"], only_onroad, enabled=not PC),
-  #使用支持jy62的sendord时开启同时打开sensord_jy62,屏蔽带有jy62参数的locationd进程，不然会串口占用冲突
-  NativeProcess("sensord_jy62", "system/sensord", ["./sensord_jy62"], only_onroad, enabled=(PC and JY62==1)),
-  NativeProcess("locationd", "selfdrive/locationd", ["./locationd"], only_onroad, enabled=(PC and JY62!=2)),
   NativeProcess("ui", "selfdrive/ui", ["./ui"], always_run, watchdog_max_dt=(5 if not PC else None)),
   PythonProcess("soundd", "selfdrive.ui.soundd", only_onroad),
-  #下面这个带参数的locationd，不要和sensord_jy62进程同时开启
-  NativeProcess("locationd_jy62", "selfdrive/locationd", ["./locationd_jy62", "--type=jy62", "--device=/dev/ttyUSB0", "--baud=115200"], only_onroad, enabled=(PC and JY62==2)),
+  NativeProcess("locationd", "selfdrive/locationd", ["./locationd"], only_onroad),
   #PythonProcess("locationd", "selfdrive.locationd.locationd", only_onroad),
   NativeProcess("_pandad", "selfdrive/pandad", ["./pandad"], always_run, enabled=False),
   PythonProcess("calibrationd", "selfdrive.locationd.calibrationd", only_onroad),
@@ -144,16 +140,10 @@ procs = [
   #PythonProcess("fleet_manager", "selfdrive.frogpilot.fleetmanager.fleet_manager", check_fleet, enabled=not PC),
   PythonProcess("fleet_manager", "selfdrive.frogpilot.fleetmanager.fleet_manager", check_fleet),
   PythonProcess("carrot_man", "selfdrive.carrot.carrot_man", always_run),#, enabled=not PC),
+  #PythonProcess("auto_overtake", "selfdrive.carrot.auto_overtake", always_run),#, enabled=not PC),
+  #PythonProcess("amap_navi", "selfdrive.carrot.amap_navi", always_run),
+  #PythonProcess("lane", "selfdrive.carrot.lane", check_lane and only_onroad),
   PythonProcess("lane", "selfdrive.carrot.lane", only_onroad),
 ]
-
-#if Params().get_int("ComputerType") == 1:
-#  procs += [
-#    NativeProcess("c3cam_8845", "camera", ["./c3cam_8845"], always_run, enabled=PC),
-#  ]
-#elif Params().get_int("ComputerType") == 2:
-#  procs += [
-#    NativeProcess("c3cam", "camera", ["./c3cam"], always_run, enabled=PC),
-#  ]
 
 managed_processes = {p.name: p for p in procs}

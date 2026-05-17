@@ -16,8 +16,6 @@ dependencies = [
   "sympy",        # rednose + friends
   "crcmod",       # cars + qcomgpsd
   "tqdm",         # cars (fw_versions.py) on start + many one-off uses
-  "xattr",
-  "flask",
 
   # hardwared
   "smbus2", # configuring amp

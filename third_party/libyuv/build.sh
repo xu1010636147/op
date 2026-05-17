@@ -21,7 +21,7 @@ cd libyuv
 git checkout 4a14cb2e81235ecd656e799aecaaf139db8ce4a2
 
 # build
-cmake . -DCMAKE_CXX_FLAGS="-DHAVE_JPEG" -DCMAKE_C_FLAGS="-DHAVE_JPEG"
+cmake .
 make -j$(nproc)
 
 INSTALL_DIR="$DIR/$ARCHNAME"

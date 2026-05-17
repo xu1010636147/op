@@ -11,8 +11,6 @@
 #ifndef INCLUDE_LIBYUV_CONVERT_H_
 #define INCLUDE_LIBYUV_CONVERT_H_
 
-#define HAVE_JPEG
-
 #include "libyuv/basic_types.h"
 
 #include "libyuv/rotate.h"  // For enum RotationMode.

@@ -28,8 +28,6 @@ REPLAY = "REPLAY" in os.environ
 SIMULATION = "SIMULATION" in os.environ
 TESTING_CLOSET = "TESTING_CLOSET" in os.environ
 LONGITUDINAL_PERSONALITY_MAP = {v: k for k, v in log.LongitudinalPersonality.schema.enumerants.items()}
-DRIVER_CAM = os.getenv("DRIVER_CAM") is not None
-JY62 = os.getenv("JY62") is not None
 
 ThermalStatus = log.DeviceState.ThermalStatus
 State = log.SelfdriveState.OpenpilotState
@@ -65,24 +63,19 @@ class SelfdriveD:
 
     self.gps_location_service = get_gps_location_service(self.params)
     self.gps_packets = [self.gps_location_service]
-    if JY62:
-      self.sensor_packets = ["accelerometer", "gyroscope"]
-    else:
-      self.sensor_packets = []
-    self.camera_packets = ["roadCameraState"]
+    self.sensor_packets = ["accelerometer", "gyroscope"]
+    self.camera_packets = ["roadCameraState", "driverCameraState", "wideRoadCameraState"]
 
     self.disable_dm = self.params.get_int("DisableDM")
 
     # TODO: de-couple selfdrived with card/conflate on carState without introducing controls mismatches
     self.car_state_sock = messaging.sub_sock('carState', timeout=20)
 
-    # ignore = self.sensor_packets + self.gps_packets + ['alertDebug', "accelerometer", "gyroscope", "driverMonitoringState"]
-    ignore = self.sensor_packets + self.gps_packets + ["alertDebug", "dmonitoringmodeld", "dmonitoringd", 'driverMonitoringState','liveLocationKalman','liveParameters','liveTorqueParameters','driverAssistance']
-    if SIMULATION:
-      ignore += ['driverCameraState', 'managerState']
+    ignore = self.sensor_packets + self.gps_packets + ['alertDebug']
+    if True:
+      ignore += ['driverCameraState', 'managerState', 'driverMonitoringState']
     elif self.disable_dm > 0:
-      if "driverCameraState" in self.camera_packets:
-        self.camera_packets.remove("driverCameraState")
+      self.camera_packets.remove("driverCameraState")
     ignore += ['driverMonitoringState']
 
     if REPLAY:
@@ -196,7 +189,7 @@ class SelfdriveD:
       car_events = self.car_events.update(CS, self.CS_prev, self.sm['carControl']).to_msg()
       self.events.add_from_msg(car_events)
 
-      if self.CP.notCar and DRIVER_CAM:
+      if self.CP.notCar:
         # wait for everything to init first
         if self.sm.frame > int(5. / DT_CTRL) and self.initialized:
           # body always wants to enable
@@ -439,10 +432,7 @@ class SelfdriveD:
 
     # conservative HW alert. if the data or frequency are off, locationd will throw an error
     if any((self.sm.frame - self.sm.recv_frame[s])*DT_CTRL > 10. for s in self.sensor_packets):
-      if JY62:
-        self.events.add(EventName.sensorDataInvalid)
-      else:
-        pass#self.events.add(EventName.sensorDataInvalid)
+      pass#self.events.add(EventName.sensorDataInvalid)
 
     if not REPLAY:
       # Check for mismatch between openpilot and car's PCM

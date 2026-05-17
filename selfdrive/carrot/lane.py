@@ -363,23 +363,23 @@ def main():
       print("=" * 60)
       print("Lane 视频流服务未启动（缺少依赖）")
       print("=" * 60)
-      result = ensure_package()
-      if result:
-        break
+      #result = ensure_package()
+      #if result:
+      #  break
       while True:
         try:
           from flask import Flask, Response, render_template_string
           break
         except ImportError:
           print(f"[ERROR] flask未安装，请手动执行命令pip install flask进行安装")
-        time.sleep(3)
+        time.sleep(30)
       while True:
         try:
           import cv2
           break
         except ImportError:
           print(f"[ERROR] opencv未安装，请手动执行命令pip install opencv-python进行安装")
-        time.sleep(3)
+        time.sleep(30)
 
     import logging
     logging.getLogger('werkzeug').setLevel(logging.ERROR)

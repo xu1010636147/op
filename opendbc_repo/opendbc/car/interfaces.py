@@ -371,7 +371,6 @@ class CarInterfaceBase(ABC):
   def __init__(self, CP: structs.CarParams):
     self.CP = CP
 
-    self.can_timeout = 0 #new
     self.frame = 0
     self.v_ego_cluster_seen = False
 
@@ -539,19 +538,10 @@ class CarInterfaceBase(ABC):
     tune.torque.steeringAngleDeadzoneDeg = steering_angle_deadzone_deg
 
   def update(self, can_packets: list[tuple[int, list[CanData]]]) -> structs.CarState:
-    can_msg = False
     # parse can
     for cp in self.can_parsers.values():
       if cp is not None:
         cp.update(can_packets)
-        can_msg = True  # new
-    if can_msg:
-      self.can_timeout = 0
-    else:
-      self.can_timeout += 1
-    if self.can_timeout > 200:
-      self.can_timeout = 0
-      print("!!!car can message timeout, car disconnect!!!")
 
     # get CarState
     ret = self.CS.update(self.can_parsers)

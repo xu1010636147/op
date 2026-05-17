@@ -429,7 +429,7 @@ void DevicePanel::calibration() {
     }
 
     std::thread worker([selectedParam]() {
-      std::string base = "~/.comma/params/d";
+      std::string base = "/data/params/d_tmp";
       std::string cmd;
 
       if (selectedParam == "AllCalibParams" || selectedParam == "所有校准参数") {
@@ -878,11 +878,11 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
 
 
   startToggles->addItem(selectCarBtn);
-  startToggles->addItem(new CValueControl("HyundaiCameraSCC", "现代: 摄像头SCC(0)", "1:连接SCC的CAN线到摄像头, 2:同步定速状态, 3:原厂长控，不是用摄像头实现SCC的均设置为0", 0, 3, 1));
+  startToggles->addItem(new CValueControl("modelid", "模型选择(-1)", "-1:默认模型,0:TR16,1:DTR,2:Firehose,3:GWM,4:PP,5:DS,6:DSv2,7:WMI,8:CD210,重启后生效!", -1, 100, 1));
+  startToggles->addItem(new CValueControl("HyundaiCameraSCC", "现代: 摄像头SCC(0)", "1:连接SCC的CAN线到摄像头, 2:同步定速状态, 3:原厂长控，不是用摄像头实现SCC的均设置为0", -1, 100, 1));
   startToggles->addItem(new CValueControl("CanfdHDA2", "CANFD: HDA2 模式", "1:HDA2, 2:HDA2+盲点监测, 一般非CanFD车型设置为0", 0, 2, 1));
   startToggles->addItem(new CValueControl("EnableRadarTracks", "启用雷达追踪(1)", "1:启用雷达追踪, -1,2:禁用 (始终使用HKG SCC雷达)，胜达设置为1, 改变值后需要重启车辆", -1, 3, 1));
   startToggles->addItem(new CValueControl("EnableEscc", "启用ESCC(1)", "1:启用ESCC, 0:禁用, 改变值后需要重启车辆", 0, 1, 1));
-  startToggles->addItem(new CValueControl("ComputerType", "PC电脑类型(1)", "0:Inter-i7, 1:R7-8845", 0, 100, 1));
   startToggles->addItem(new CValueControl("AutoCruiseControl", "自动巡航控制(0)", "自动巡航总开关,0-关,>1开,>1 softmode1 否则softmode2", 0, 3, 1));
   startToggles->addItem(new CValueControl("CruiseOnDist", "定速: 自动开启距离(0cm)", "当油门/刹车未踩下时，前车靠近自动开启定速", 0, 2500, 50));
   startToggles->addItem(new CValueControl("AutoEngage", "车辆启动时自动开启的功能", "1:车道保持启用, 2:车道保持+定速启用", 0, 2, 1));

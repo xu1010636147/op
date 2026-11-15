@@ -1,257 +1,372 @@
+
+#!/usr/bin/env python3
 import numpy as np
-import math
-import time
 from opendbc.can.packer import CANPacker
-from opendbc.car import Bus, apply_driver_steer_torque_limits, structs
+from opendbc.car import Bus, apply_driver_steer_torque_limits, apply_std_steer_angle_limits, structs
+from opendbc.car.common.conversions import Conversions as CV
 from opendbc.car.interfaces import CarControllerBase
 from opendbc.car.byd import bydcan
-from opendbc.car.byd.values import CarControllerParams
+from opendbc.car.byd.values import (
+  BydFlags, CarControllerParams, PLATFORM_SONG_PLUS_DMI, TORQUE_LAT_CAR,
+)
+from opendbc.car.byd.bydparams import get_bool, get_int
 
-VisualAlert = structs.CarControl.HUDControl.VisualAlert
-ButtonType = structs.CarState.ButtonEvent.Type
 LongCtrlState = structs.CarControl.Actuators.LongControlState
+
+ACC_STEP = 2
+PARAM_STEP = 500
+PCM_STEP = 5
+STEER_STEP = 2
+BYD_ACC_BUTTON_RELEASE = 0
+BYD_ACC_BUTTON_DECEL = 1
+BYD_ACC_BUTTON_ACCEL = 3
+AUTO_STOCK_ACC_MIN_KPH = 30.0
+AUTO_STOCK_ACC_MAX_KPH = 160.0
+AUTO_STOCK_ACC_BUTTON_STEP_KPH = 5.0
+AUTO_STOCK_ACC_MARGIN_KPH = 1.0
+AUTO_STOCK_ACC_MAX_PULSES = 30
+AUTO_GAS_SYNC_MARGIN_KPH = 1.0
+AUTO_GAS_SYNC_MAX_PULSES = 3
+AUTO_GAS_SYNC_HOLD_FRAMES = 40
+
+
+class BydJerk:
+  def __init__(self):
+    self.jerk = 0.0
+    self.jerk_u = 0.0
+    self.jerk_l = 0.0
+    self.cb_upper = 0.0
+    self.cb_lower = 0.0
+
+  def make_jerk(self, CS, accel, actuators):
+    jerk_u = 6.0
+    cb_upper = 0.6
+    cb_lower = -0.6
+    jerk_l = -5.0
+    if actuators.longControlState == LongCtrlState.off:
+      self.jerk_u = jerk_u
+      self.jerk_l = jerk_l
+      self.cb_upper = 0.0
+      self.cb_lower = 0.0
+    else:
+      self.jerk_u = np.clip(accel * jerk_u / 2.5, cb_upper, jerk_u)
+      self.jerk_l = np.clip(accel * jerk_l / -3.5, jerk_l, cb_lower)
+      self.cb_upper = np.clip(0.09 + accel * 0.03, 0, 0.15)
+      self.cb_lower = np.clip(0.08 + accel * 0.02, 0, 0.15)
+
+
+# Mirrors the Seal angle limits in opendbc/safety/safety/safety_byd.h
+class AngleSteeringLimits:
+  STEER_ANGLE_MAX = 640
+  ANGLE_RATE_LIMIT_UP = ([0., 5., 15.], [5., 0.8, 0.15])
+  ANGLE_RATE_LIMIT_DOWN = ([0., 5., 15.], [5., 3.5, 0.4])
+
 
 class CarController(CarControllerBase):
   def __init__(self, dbc_names, CP):
     super().__init__(dbc_names, CP)
-
     self.packer = CANPacker(dbc_names[Bus.pt])
-    from cereal import messaging
-    self.sm = messaging.SubMaster(['radarState', 'modelV2', 'longitudinalPlan'])
-    self.frame = 0
-    self.last_steer_frame = 0
+    self.packer_obj = CANPacker("gm_global_a_object")
+    self.params = CarControllerParams(CP)
+    self.CP = CP
+    self.modified_stock_long = get_bool("BydModifiedStockLong")
+    self.auto_gas_sync_speed = get_bool("AutoGasSyncSpeed")
+    self.speed_from_pcm = get_int("SpeedFromPCM")
+    self.use_ext_radar = get_bool("EnableExtRadar")
+    self.last_param_frame = 0
     self.last_acc_frame = 0
-
+    self.last_steer_frame = 0
+    self.last_pcm_frame = 0
     self.apply_torque_last = 0
-
+    self.apply_angle_last = 0.0
     self.mpc_lkas_counter = 0
     self.mpc_acc_counter = 0
     self.eps_fake318_counter = 0
-
-    self.lkas_req_prepare = 0
-    self.lkas_active = 0
-    self.lat_safeoff = 0
-
+    self.mpc_pcm_counter = 0
+    self.lkas_temp_override_seal = False
+    self.lkas_req_prepare = False
+    self.lkas_active = False
+    self.lkas_max_torque = 0
+    self.lat_safeoff = False
     self.steer_softstart_limit = 0
-    self.steerRateLimActive = False
-    self.steerRateLim = 1.0
-
     self.first_start = True
-    self.rfss = 0 # resume from stand still
-    self.sss = 0 #stand still state
-
+    self.rfss = 0
+    self.sss = 0
+    self.byd_jerk = BydJerk()
+    self.auto_stock_acc_target_kph = 0.0
+    self.auto_stock_acc_restore_kph = 0.0
+    self.auto_stock_acc_pulses = 0
+    self.auto_stock_acc_release_frames = 0
+    self.auto_stock_acc_direction = 0
+    self.auto_gas_sync_gas_frames = 0
+    self.auto_gas_sync_target_kph = 0.0
+    self.auto_gas_sync_pulses = 0
+    self.auto_gas_sync_release_frames = 0
     self.apply_accel_last = 0
+    self.use_torque_lat = self.CP.carFingerprint in TORQUE_LAT_CAR
+    self.send_fake_1e2 = self.CP.carFingerprint in PLATFORM_SONG_PLUS_DMI
+    self.keep_lkas_passive = False
+    self.angle_driver_override_release = bool(self.CP.flags & BydFlags.ANGLE_DRIVER_OVERRIDE_RELEASE)
+
+  @staticmethod
+  def _round_stock_acc_speed(speed_kph, direction):
+    speed_kph = np.clip(speed_kph, AUTO_STOCK_ACC_MIN_KPH, AUTO_STOCK_ACC_MAX_KPH)
+    if direction < 0:
+      return np.floor(speed_kph / AUTO_STOCK_ACC_BUTTON_STEP_KPH) * AUTO_STOCK_ACC_BUTTON_STEP_KPH
+    return np.ceil(speed_kph / AUTO_STOCK_ACC_BUTTON_STEP_KPH) * AUTO_STOCK_ACC_BUTTON_STEP_KPH
+
+  def _reset_auto_stock_acc_target(self, keep_restore=False):
+    self.auto_stock_acc_target_kph = 0.0
+    self.auto_stock_acc_pulses = 0
+    self.auto_stock_acc_release_frames = 0
+    self.auto_stock_acc_direction = 0
+    if not keep_restore:
+      self.auto_stock_acc_restore_kph = 0.0
+
+  def _auto_stock_acc_available(self, CC, CS, require_modified_stock_long=False):
+    if require_modified_stock_long and not self.modified_stock_long:
+      return False
+
+    return (
+      self.CP.pcmCruise
+      and self.speed_from_pcm == 1
+      and self.auto_gas_sync_speed
+      and CC.enabled
+      and CS.out.cruiseState.enabled
+    )
+
+  def _update_auto_stock_acc_target(self, CC, CS, hud_control):
+    if not self._auto_stock_acc_available(CC, CS, require_modified_stock_long=True):
+      self._reset_auto_stock_acc_target()
+      return
+
+    if not CS.lowCruiseActive and (CS.out.brakePressed or CS.out.standstill):
+      self._reset_auto_stock_acc_target()
+      return
+
+    if CS.out.gasPressed:
+      self._reset_auto_stock_acc_target()
+      return
+
+    current_kph = CS.out.cruiseState.speed * CV.MS_TO_KPH
+    set_kph = hud_control.setSpeed * CV.MS_TO_KPH
+    if current_kph <= 0 or set_kph <= 0:
+      self._reset_auto_stock_acc_target()
+      return
+
+    down_target = self._round_stock_acc_speed(set_kph, -1)
+    if down_target < current_kph - AUTO_STOCK_ACC_MARGIN_KPH:
+      restore_target = self._round_stock_acc_speed(current_kph, 1)
+      if self.auto_stock_acc_restore_kph <= 0 or restore_target > self.auto_stock_acc_restore_kph:
+        self.auto_stock_acc_restore_kph = restore_target
+
+      target_changed = abs(self.auto_stock_acc_target_kph - down_target) > AUTO_STOCK_ACC_MARGIN_KPH
+      if self.auto_stock_acc_direction != -1 or target_changed:
+        self.auto_stock_acc_target_kph = down_target
+        self.auto_stock_acc_pulses = 0
+        self.auto_stock_acc_release_frames = 0
+        self.auto_stock_acc_direction = -1
+      return
+
+    if self.auto_stock_acc_direction < 0:
+      if current_kph <= self.auto_stock_acc_target_kph + AUTO_STOCK_ACC_MARGIN_KPH:
+        self._reset_auto_stock_acc_target(keep_restore=True)
+
+      if self.auto_stock_acc_restore_kph > 0:
+        if current_kph >= self.auto_stock_acc_restore_kph - AUTO_STOCK_ACC_MARGIN_KPH:
+          self._reset_auto_stock_acc_target()
+          return
+
+        if set_kph > current_kph + AUTO_STOCK_ACC_MARGIN_KPH:
+          up_target = min(self.auto_stock_acc_restore_kph, self._round_stock_acc_speed(set_kph, 1))
+          if up_target <= current_kph + AUTO_STOCK_ACC_MARGIN_KPH:
+            return
+
+          target_changed = abs(self.auto_stock_acc_target_kph - up_target) > AUTO_STOCK_ACC_MARGIN_KPH
+          if self.auto_stock_acc_direction != 1 or target_changed:
+            self.auto_stock_acc_target_kph = up_target
+            self.auto_stock_acc_pulses = 0
+            self.auto_stock_acc_release_frames = 0
+            self.auto_stock_acc_direction = 1
+      return
+
+  def _get_auto_stock_acc_button(self, CS):
+    if self.auto_stock_acc_target_kph <= 0 or self.auto_stock_acc_direction == 0:
+      return BYD_ACC_BUTTON_RELEASE
+    if CS.esc_pcm.get("sig_ymtlod", 0) != 0 or CS.esc_pcm.get("sig_ssvpvb", 0) != 0:
+      self._reset_auto_stock_acc_target()
+      return BYD_ACC_BUTTON_RELEASE
+
+    current_kph = CS.out.cruiseState.speed * CV.MS_TO_KPH
+    if self.auto_stock_acc_direction < 0:
+      if current_kph <= self.auto_stock_acc_target_kph + AUTO_STOCK_ACC_MARGIN_KPH:
+        self._reset_auto_stock_acc_target(keep_restore=True)
+        return BYD_ACC_BUTTON_RELEASE
+      button = BYD_ACC_BUTTON_DECEL
+    else:
+      if current_kph >= self.auto_stock_acc_target_kph - AUTO_STOCK_ACC_MARGIN_KPH:
+        keep_restore = self.auto_stock_acc_restore_kph > self.auto_stock_acc_target_kph + AUTO_STOCK_ACC_MARGIN_KPH
+        self._reset_auto_stock_acc_target(keep_restore=keep_restore)
+        return BYD_ACC_BUTTON_RELEASE
+      button = BYD_ACC_BUTTON_ACCEL
+
+    if self.auto_stock_acc_pulses >= AUTO_STOCK_ACC_MAX_PULSES:
+      self._reset_auto_stock_acc_target()
+      return BYD_ACC_BUTTON_RELEASE
+    if self.auto_stock_acc_release_frames > 0:
+      self.auto_stock_acc_release_frames -= 1
+      return BYD_ACC_BUTTON_RELEASE
+
+    self.auto_stock_acc_pulses += 1
+    self.auto_stock_acc_release_frames = 1
+    return button
+
+  def _reset_auto_gas_sync(self):
+    self.auto_gas_sync_gas_frames = 0
+    self.auto_gas_sync_target_kph = 0.0
+    self.auto_gas_sync_pulses = 0
+    self.auto_gas_sync_release_frames = 0
+
+  def _update_auto_gas_sync_target(self, CC, CS):
+    if not self._auto_stock_acc_available(CC, CS):
+      self._reset_auto_gas_sync()
+      return
+
+    if not CS.lowCruiseActive and (CS.out.brakePressed or CS.out.standstill):
+      self._reset_auto_gas_sync()
+      return
+
+    if not CS.out.gasPressed:
+      self._reset_auto_gas_sync()
+      return
+
+    self.auto_gas_sync_gas_frames += 1
+    if self.auto_gas_sync_gas_frames <= AUTO_GAS_SYNC_HOLD_FRAMES:
+      return
+
+    current_kph = CS.out.cruiseState.speed * CV.MS_TO_KPH
+    ego_kph = max(CS.out.vEgoCluster, CS.out.vEgoRaw, CS.out.vEgo) * CV.MS_TO_KPH
+    if current_kph <= 0 or ego_kph <= current_kph + AUTO_GAS_SYNC_MARGIN_KPH:
+      return
+
+    target_kph = min(ego_kph, AUTO_STOCK_ACC_MAX_KPH)
+    if target_kph > self.auto_gas_sync_target_kph + AUTO_GAS_SYNC_MARGIN_KPH:
+      self.auto_gas_sync_target_kph = target_kph
+      self.auto_gas_sync_pulses = 0
+      self.auto_gas_sync_release_frames = 0
+
+  def _get_auto_gas_sync_button(self, CS):
+    if self.auto_gas_sync_target_kph <= 0:
+      return BYD_ACC_BUTTON_RELEASE
+
+    if not CS.out.gasPressed:
+      self._reset_auto_gas_sync()
+      return BYD_ACC_BUTTON_RELEASE
+
+    if CS.esc_pcm.get("sig_ymtlod", 0) != 0 or CS.esc_pcm.get("sig_ssvpvb", 0) != 0:
+      self._reset_auto_gas_sync()
+      return BYD_ACC_BUTTON_RELEASE
+
+    current_kph = CS.out.cruiseState.speed * CV.MS_TO_KPH
+    if current_kph >= self.auto_gas_sync_target_kph - AUTO_GAS_SYNC_MARGIN_KPH:
+      self._reset_auto_gas_sync()
+      return BYD_ACC_BUTTON_RELEASE
+
+    if self.auto_gas_sync_pulses >= AUTO_GAS_SYNC_MAX_PULSES:
+      self._reset_auto_gas_sync()
+      return BYD_ACC_BUTTON_RELEASE
+
+    if self.auto_gas_sync_release_frames > 0:
+      self.auto_gas_sync_release_frames -= 1
+      return BYD_ACC_BUTTON_RELEASE
+
+    self.auto_gas_sync_pulses += 1
+    self.auto_gas_sync_release_frames = 1
+    return BYD_ACC_BUTTON_DECEL
 
   def update(self, CC, CS, now_nanos):
+    actuators = CC.actuators
+    hud_control = CC.hudControl
     can_sends = []
 
-    # 横向控制部分 - 保持原有逻辑
-    if (self.frame - self.last_steer_frame) >= CarControllerParams.STEER_STEP:
-      if self.first_start:
-        self.mpc_lkas_counter = int(CS.acc_mpc_state_counter + 1) & 0xF
-        self.mpc_acc_counter = int(CS.acc_cmd_counter + 1) & 0xF
-        self.eps_fake318_counter = int(CS.eps_state_counter + 1) & 0xF
-        self.first_start = False
+    if self.frame - self.last_param_frame >= PARAM_STEP:
+      self.modified_stock_long = get_bool("BydModifiedStockLong")
+      self.auto_gas_sync_speed = get_bool("AutoGasSyncSpeed")
+      self.speed_from_pcm = get_int("SpeedFromPCM")
+      self.use_ext_radar = get_bool("EnableExtRadar")
+      self.last_param_frame = self.frame
 
+    lat_active = CC.latActive
+    long_active = CC.longActive
+
+    new_actuators = actuators.as_builder()
+    apply_accel = float(np.clip(actuators.accel, CarControllerParams.ACCEL_MIN, CarControllerParams.ACCEL_MAX))
+    self.byd_jerk.make_jerk(CS, apply_accel, actuators)
+    self._update_auto_gas_sync_target(CC, CS)
+    self._update_auto_stock_acc_target(CC, CS, hud_control)
+
+    if self.use_torque_lat:
+      apply_torque = int(round(actuators.torque * self.params.STEER_MAX))
+      apply_torque = apply_driver_steer_torque_limits(apply_torque, self.apply_torque_last, CS.out.steeringTorque, self.params)
+      if not lat_active:
+        apply_torque = 0
+      self.apply_torque_last = apply_torque
+      new_actuators.torque = apply_torque / self.params.STEER_MAX
+    else:
+      requested_angle = actuators.steeringAngleDeg
+      requested_angle = apply_std_steer_angle_limits(requested_angle, self.apply_angle_last, CS.out.vEgoRaw,
+                                                       CS.out.steeringAngleDeg, lat_active, AngleSteeringLimits)
+      if not lat_active:
+        requested_angle = CS.out.steeringAngleDeg
+      self.apply_angle_last = requested_angle
+      new_actuators.steeringAngleDeg = requested_angle
       apply_torque = 0
 
-      if CC.latActive:
-        if self.lkas_active:
-          steer_desire = CC.actuators.torque
-
-          if CarControllerParams.USE_STEERING_SPEED_LIMITER:
-            rate_limit = np.interp(CS.out.aEgo, [8.3, 27.8], [132, 64])
-            delta_rate = CS.steeringRateDegAbs - rate_limit
-
-            if delta_rate < 0:
-              self.steerRateLim -= 0.005 * delta_rate
-              if delta_rate < -0.05:
-                self.steerRateLimActive = False
-              if self.steerRateLim > 1.0:
-                self.steerRateLim = 1.0
-                self.steerRateLimActive = False
-            else:
-              if self.steerRateLimActive:
-                self.steerRateLim -= 0.005 * delta_rate
-              else:
-                self.steerRateLim = steer_desire
-                self.steerRateLimActive = True
-              if self.steerRateLim < 0:
-                self.steerRateLim = 0
-
-            new_steer_pu = np.clip(steer_desire, -self.steerRateLim, self.steerRateLim)
-          else:
-            new_steer_pu = steer_desire
-
-          new_steer = int(round(new_steer_pu * CarControllerParams.STEER_MAX))
-
-          if self.steer_softstart_limit < CarControllerParams.STEER_MAX:
-            self.steer_softstart_limit = self.steer_softstart_limit + CarControllerParams.STEER_SOFTSTART_STEP
-            new_steer = np.clip(new_steer, -self.steer_softstart_limit, self.steer_softstart_limit)
-
-          apply_torque = apply_driver_steer_torque_limits(new_steer, self.apply_torque_last,
-                                                          CS.out.steeringTorque, CarControllerParams)
-        else:
-          if CS.lkas_prepared:
-            self.lkas_active = 1.0
-            self.steerRateLimActive = False
-            self.steerRateLim = 1.0
-            self.lkas_req_prepare = 0
-            self.steer_softstart_limit = 0
-            self.lat_safeoff = 1
-          else:
-            self.lkas_req_prepare = 1
-
-      elif self.lat_safeoff:
-        if self.apply_torque_last == 0:
-          self.lat_safeoff = 0
-        apply_torque = apply_driver_steer_torque_limits(0, self.apply_torque_last,
-                                                          CS.out.steeringTorque, CarControllerParams)
+    if self.frame % STEER_STEP == 0:
+      if self.use_torque_lat:
+        can_sends.append(bydcan.create_steering_control(
+          self.packer, self.CP, CS.cam_lkas, apply_torque, self.lkas_req_prepare,
+          lat_active, hud_control, self.keep_lkas_passive, self.mpc_lkas_counter,
+        ))
       else:
-        self.lkas_req_prepare = 0
-        self.steerRateLimActive = False
-        self.steerRateLim = 1.0
-        self.lkas_active = 0
-        self.steer_softstart_limit = 0
+        max_torque = CarControllerParams.ANGLE_MAX_TORQUE
+        can_sends.append(bydcan.create_angle_control(
+          self.packer, self.CP, CS.cam_lkas_seal, self.apply_angle_last,
+          max_torque, lat_active, self.lkas_req_prepare, self.mpc_lkas_counter,
+        ))
+      self.mpc_lkas_counter = (self.mpc_lkas_counter + 1) % 16
 
-      self.apply_torque_last = apply_torque
-
-      self.mpc_lkas_counter = int(self.mpc_lkas_counter + 1) & 0xF
-      self.eps_fake318_counter = int(self.eps_fake318_counter + 1) & 0xF
-      self.last_steer_frame = self.frame
-
-      can_sends.append(bydcan.create_steering_control(self.packer, self.CP, CS.cam_lkas,
-          self.apply_torque_last, self.lkas_req_prepare, self.lkas_active, CC.hudControl, self.mpc_lkas_counter))
-
-      can_sends.append(bydcan.create_fake_318(self.packer, self.CP, CS.esc_eps,
-                                              CS.mpc_laks_output, CS.mpc_laks_reqprepare, CS.esp_lkas_CruiseActivated,
-                                              True, self.eps_fake318_counter))
-
-    # 纵向控制部分 - 信任MPC输出，只做安全限制
-    if (self.frame + 1 - self.last_acc_frame) >= CarControllerParams.ACC_STEP:
-      # 更新雷达数据
-      self.sm.update(0)
-
-      mpc_target_accel = CC.actuators.accel
-
-      if CC.longActive:
-        stopping = CC.actuators.longControlState == LongCtrlState.stopping
-        starting = CC.actuators.longControlState == LongCtrlState.starting
-        running = CC.actuators.longControlState == LongCtrlState.pid
-
-        # 获取基本数据用于日志记录（不用于控制逻辑）
-        lead_distance = getattr(CS, 'mrr_leading_dist', 199)
-        v_ego = CS.out.vEgo
-
-        # 获取雷达融合数据用于日志
-        lead_speed = 0.0
-        relative_speed = 0.0
-        fusion_distance = 199
-        data_source = "no_radar"
-
-        if hasattr(self, 'sm') and self.sm.alive['radarState']:
-            lead_one = self.sm['radarState'].leadOne
-            if lead_one.status:
-                lead_speed = lead_one.vLead if not math.isnan(lead_one.vLead) else 0.0
-                relative_speed = lead_one.vRel if not math.isnan(lead_one.vRel) else 0.0
-                fusion_distance = lead_one.dRel
-                data_source = "radar"
-            else:
-                data_source = "no_lead"
-
-        # 车辆特定的安全限制和平滑处理
-        # 信任MPC的计算，只对极端情况进行安全限制
-        if mpc_target_accel < 0:
-            # 基于融合数据的动态制动缩放
-            if fusion_distance < 199:
-                # 距离因子：针对快速接近场景优化
-                if relative_speed < -2.0 and fusion_distance < v_ego * 1.5:
-                    # 快速接近时，增强制动响应
-                    distance_factor = 1.0  # 不缩放制动
-                    speed_factor = 1.2     # 增强制动
-                else:
-                    # 正常情况的缩放
-                    distance_factor = np.interp(fusion_distance, [5.0, 30.0], [0.8, 0.4])
-                    if relative_speed < -1.0:
-                        speed_factor = 1.0
-                    elif relative_speed < 0:
-                        speed_factor = 0.7
-                    else:
-                        speed_factor = 0.5
-
-                # 速度因子：相对速度越大（接近前车），制动缩放越大
-                if relative_speed < -1.0:  # 快速接近前车
-                    speed_factor = 1.0
-                elif relative_speed < 0:   # 缓慢接近前车
-                    speed_factor = 0.7
-                else:                      # 远离前车或速度匹配
-                    speed_factor = 0.5
-
-                # 综合缩放因子
-                brake_scale = distance_factor * speed_factor
-                brake_scale = np.clip(brake_scale, 0.3, 0.8)
-            else:
-                # 无前车时大幅减少制动
-                brake_scale = 0.3
-
-            scaled_accel = mpc_target_accel * brake_scale
-        else:
-            # 加速指令直接使用
-            scaled_accel = mpc_target_accel
-
-        # 平滑处理 - 防止加速度突变
-        if hasattr(self, 'last_final_accel'):
-            # 检测MPC的极端跳跃
-            if hasattr(self, 'last_mpc_accel'):
-                mpc_change = abs(mpc_target_accel - self.last_mpc_accel)
-                accel_change_limit = 0.1 if mpc_change > 2.0 else 0.2
-            else:
-                accel_change_limit = 0.25
-
-            accel_diff = scaled_accel - self.last_final_accel
-            if abs(accel_diff) > accel_change_limit:
-                scaled_accel = self.last_final_accel + np.sign(accel_diff) * accel_change_limit
-
-        self.last_mpc_accel = mpc_target_accel
-        final_accel = np.clip(scaled_accel, -2.5, 1.0)  # 合理的加速度限制
-        self.last_final_accel = final_accel
-
-        # 停车状态逻辑
-        if stopping and final_accel < -0.1:
-          self.rfss = 0
-          self.sss = CS.out.standstill
-        elif starting and final_accel > 0.1 and CS.out.vEgo < 0.8:
-          self.rfss = CS.out.standstill
-          self.sss = 0
-        elif running:
-          self.rfss = 0
-          self.sss = 0
+    if self.frame % ACC_STEP == 0:
+      if self.modified_stock_long:
+        can_sends.append(bydcan.acc_cmd_modified_stock_long(
+          self.packer, self.CP, CS.cam_acc, CS.adas_set_dist, CS.mrr_leading_dist,
+          long_active, self.mpc_acc_counter,
+        ))
       else:
-        final_accel = 0
-        scaled_accel = 0
-        lead_speed = 0.0
-        relative_speed = 0.0
-        lead_distance = 199
-        fusion_distance = 199
-        data_source = "no_lead"
-        self.sss = 0
-        self.rfss = 0
+        can_sends.append(bydcan.acc_cmd(
+          self.packer, self.CP, CS.cam_acc, self.byd_jerk, apply_accel,
+          self.rfss, self.sss, long_active, 3 if long_active else 0, self.mpc_acc_counter,
+        ))
+      self.mpc_acc_counter = (self.mpc_acc_counter + 1) % 16
 
-      self.mpc_acc_counter = int(self.mpc_acc_counter + 1) & 0xF
+    if self.frame % PCM_STEP == 0 and CS.esc_pcm:
+      updown_cmd = self._get_auto_stock_acc_button(CS)
+      if updown_cmd == BYD_ACC_BUTTON_RELEASE:
+        updown_cmd = self._get_auto_gas_sync_button(CS)
 
-      # 发送控制命令
-      can_sends.append(bydcan.acc_cmd(self.packer, self.CP, CS.cam_acc,
-                                     getattr(CS, 'mrr_leading_dist', 199),
-                                     final_accel, self.rfss, self.sss, CC.longActive,))
+      can_sends.append(bydcan.create_mpc_pcm_button(
+        self.packer, CS.esc_pcm, CS.lowCruiseActive and CS.out.cruiseState.enabled,
+        self.mpc_pcm_counter, updown_cmd,
+      ))
+      self.mpc_pcm_counter = (self.mpc_pcm_counter + 1) % 16
 
-      self.apply_accel_last = final_accel
-      self.last_acc_frame = self.frame + 1
+    if self.frame % 2 == 0:
+      can_sends.append(bydcan.create_adas_hud(
+        self.packer, CS.cam_adas, CS.lowCruiseSetSpeedDisplay or 0, bool(CS.lowCruiseActive),
+        CS.acc_hud_adas_counter,
+      ))
 
-    new_actuators = CC.actuators.as_builder()
-    new_actuators.torque = self.apply_torque_last / CarControllerParams.STEER_MAX
-    new_actuators.torqueOutputCan = self.apply_torque_last
-    new_actuators.accel = float(self.apply_accel_last)
-    new_actuators.steeringAngleDeg = float(CS.out.steeringAngleDeg)
-
+    new_actuators.accel = apply_accel
+    self.apply_accel_last = apply_accel
     self.frame += 1
     return new_actuators, can_sends

@@ -20,8 +20,8 @@ class CarControllerParams:
     # stock comma's
     #([0, 9, 16, 25], [1.4, 0.6, 0.4, 0.1]),
     #([0, 9, 16, 25], [1.4, 0.7, 0.5, 0.1]),
-    ([0, 9, 16, 25], [1.4, 1.2, 0.8, 0.2]),
-    ([0, 9, 16, 25], [2.0, 1.6, 1.0, 0.35]),
+    ([0, 9, 16, 25], [1.8, 1.6, 1.3, 0.8]),
+    ([0, 9, 16, 25], [2.4, 2.0, 1.6, 1.0]),
     #([0, 9, 16, 25], [1.6, 1.0, 0.6, 0.15]),
     #([0, 9, 16, 25], [2.0, 1.2, 0.8, 0.28]),
     # sunny's
@@ -408,7 +408,8 @@ class CAR(Platforms):
       HyundaiCarDocs("Hyundai IONIQ 5 PE (NE1)", car_parts=CarParts.common([CarHarness.hyundai_q])),
       HyundaiCarDocs("Hyundai Ioniq 5 PE (with HDA II) 2024", "Highway Driving Assist II", car_parts=CarParts.common([CarHarness.hyundai_q])),
     ],
-    CarSpecs(mass=2012, wheelbase=3.0, steerRatio=14.26, tireStiffnessFactor=0.65),
+    #CarSpecs(mass=2012, wheelbase=3.0, steerRatio=14.26, tireStiffnessFactor=0.65),
+    CarSpecs(mass=2012, wheelbase=3.0, steerRatio=14.26, tireStiffnessFactor=1.0),
     flags=HyundaiFlags.EV | HyundaiFlags.ANGLE_CONTROL,
   )
   HYUNDAI_IONIQ_5_N = HyundaiCanFDPlatformConfig(
@@ -574,7 +575,7 @@ class CAR(Platforms):
   # TODO: may support adjacent years. may have a non-zero minimum steering speed
   KIA_OPTIMA_H = HyundaiPlatformConfig(
     [HyundaiCarDocs("Kia Optima Hybrid 2017", "Advanced Smart Cruise Control", car_parts=CarParts.common([CarHarness.hyundai_c]))],
-    CarSpecs(mass=3558 * CV.LB_TO_KG, wheelbase=2.8, steerRatio=13.75, tireStiffnessFactor=0.5),
+    CarSpecs(mass=3758 * CV.LB_TO_KG, wheelbase=2.8, steerRatio=13.75, tireStiffnessFactor=0.5),
     flags=HyundaiFlags.HYBRID | HyundaiFlags.LEGACY,
   )
   KIA_OPTIMA_H_G4_FL = HyundaiPlatformConfig(

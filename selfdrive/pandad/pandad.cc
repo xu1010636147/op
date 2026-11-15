@@ -479,7 +479,7 @@ void pandad_run(std::vector<Panda *> &pandas) {
     if (rk.frame() % 5 == 0) {
       //new
       uint64_t now_ms = millis_since_boot();
-      if (now_ms - last_param_check_ms >= 1000) {  // Ã¿Ãë
+      if (now_ms - last_param_check_ms >= 1000) {  // Ã¿ï¿½ï¿½
         disable_dm = params.getBool("DisableDM");
         last_param_check_ms = now_ms;
         if(disable_dm){

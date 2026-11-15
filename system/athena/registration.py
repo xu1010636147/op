@@ -16,8 +16,12 @@ from openpilot.common.swaglog import cloudlog
 
 UNREGISTERED_DONGLE_ID = "UnregisteredDevice"
 
+DUMMY_IMEI1 = '865420071781912'
+DUMMY_IMEI2 = '865420071781904'
+
+
 def is_registered_device() -> bool:
-  dongle = Params().get("DongleId", encoding='utf-8')
+  dongle = Params().get("DongleId")
   return dongle not in (None, UNREGISTERED_DONGLE_ID)
 
 
@@ -67,8 +71,11 @@ def register(show_spinner=False) -> str | None:
         cloudlog.exception("Error getting imei, trying again...")
         time.sleep(1)
 
-      if time.monotonic() - start_time > 60 and show_spinner:
+      if time.monotonic() - start_time > 30 and show_spinner:
         spinner.update(f"registering device - serial: {serial}, IMEI: ({imei1}, {imei2})")
+        imei1 = DUMMY_IMEI1
+        imei2 = DUMMY_IMEI2
+        break
 
     backoff = 0
     start_time = time.monotonic()
@@ -90,6 +97,11 @@ def register(show_spinner=False) -> str | None:
         cloudlog.exception("failed to authenticate")
         backoff = min(backoff + 1, 15)
         time.sleep(backoff)
+
+      if time.monotonic() - start_time > 14:
+        cloudlog.error("pilotauth timed out; continuing as UNREGISTERED")
+        dongle_id = UNREGISTERED_DONGLE_ID
+        break
 
       if time.monotonic() - start_time > 60 and show_spinner:
         spinner.update(f"registering device - serial: {serial}, IMEI: ({imei1}, {imei2})")

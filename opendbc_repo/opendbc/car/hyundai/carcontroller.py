@@ -7,6 +7,7 @@ from opendbc.car.hyundai.carstate import CarState
 from opendbc.car.hyundai.hyundaicanfd import CanBus
 from opendbc.car.hyundai.values import HyundaiFlags, HyundaiFlagsSP, Buttons, CarControllerParams, CAR, CAN_GEARS, HyundaiExtFlags
 from opendbc.car.interfaces import CarControllerBase
+from opendbc.car.vehicle_model import VehicleModel
 
 VisualAlert = structs.CarControl.HUDControl.VisualAlert
 LongCtrlState = structs.CarControl.Actuators.LongControlState
@@ -53,7 +54,58 @@ def process_hud_alert(enabled, fingerprint, hud_control):
 
   return sys_warning, sys_state, left_lane_warning, right_lane_warning
 
+def rate_limit(x, x_last, lo, hi):
+  return float(np.clip(x, x_last + lo, x_last + hi))
 
+def apply_steer_angle_limits_physics(desired_sw_deg: float,
+                                     last_sw_deg: float,
+                                     v_ego: float,
+                                     steering_sw_deg: float,
+                                     lat_active: bool,
+                                     wheelbase_m: float,
+                                     steer_ratio: float,
+                                     steer_sw_max_deg: float) -> float:
+  max_lat_accel = 5.0   # m/s^2
+  max_lat_jerk  = 4.0   # m/s^3
+  max_sw_rate_deg_per_tick = 2.0   # ★ EPS 보호용 상한
+
+  v = max(float(v_ego), 1.0)
+
+  target_sw = float(np.clip(desired_sw_deg, -steer_sw_max_deg, steer_sw_max_deg))
+
+  target_rw = target_sw / steer_ratio
+  last_rw   = float(last_sw_deg) / steer_ratio
+
+  # --- accel limit ---
+  rw_max_rad = np.arctan((max_lat_accel * wheelbase_m) / (v * v))
+  rw_max = float(np.degrees(rw_max_rad))
+
+  # --- jerk -> rate limit ---
+  sec2 = 1.2
+  max_drw_dt = (max_lat_jerk * wheelbase_m) / (v * v * sec2)     # rad/s
+  max_drw_per_tick = max_drw_dt * DT_CTRL                        # rad/tick
+  max_drw_per_tick_deg = float(np.degrees(max_drw_per_tick))
+
+  max_drw_per_tick_deg = min(
+    max_drw_per_tick_deg,
+    max_sw_rate_deg_per_tick / steer_ratio
+  )
+  err = abs(target_sw - last_sw_deg)
+  if err > 20.0:
+    max_drw_per_tick_deg *= 0.5
+  
+  # --- rate limit ---
+  cmd_rw = rate_limit(target_rw, last_rw, -max_drw_per_tick_deg, max_drw_per_tick_deg)
+
+  # --- accel clip ---
+  cmd_rw = float(np.clip(cmd_rw, -rw_max, rw_max))
+
+  if not lat_active:
+    cmd_rw = float(steering_sw_deg) / steer_ratio
+
+  cmd_sw = cmd_rw * steer_ratio
+  return float(np.clip(cmd_sw, -steer_sw_max_deg, steer_sw_max_deg))
+  
 class CarController(CarControllerBase):
   def __init__(self, dbc_names, CP):
     super().__init__(dbc_names, CP)
@@ -87,7 +139,7 @@ class CarController(CarControllerBase):
 
     self.apply_angle_last = 0
     self.lkas_max_torque = 0
-    self.angle_max_torque = 240
+    self.angle_max_torque = 250
 
     self.canfd_debug = 0
     self.MainMode_ACC_trigger = 0
@@ -144,6 +196,7 @@ class CarController(CarControllerBase):
 
       self.canfd_debug = params.get_int("CanfdDebug")
       self.camera_scc_params = params.get_int("HyundaiCameraSCC")
+      self.enable_corner_radar = params.get_int("EnableCornerRadar")
 
     actuators = CC.actuators
     hud_control = CC.hudControl
@@ -169,16 +222,24 @@ class CarController(CarControllerBase):
     apply_angle = apply_std_steer_angle_limits(actuators.steeringAngleDeg, self.apply_angle_last, CS.out.vEgoRaw,
                                                CS.out.steeringAngleDeg, CC.latActive, self.params.ANGLE_LIMITS)
 
-    if abs(apply_angle - self.apply_angle_last) > 0.1:
-      alpha = min(0.1 + 0.9 * CS.out.vEgoRaw / (30.0 * CV.KPH_TO_MS), 1.0)
-      apply_angle = self.apply_angle_last * (1 - alpha) + apply_angle * alpha
+    apply_angle = apply_steer_angle_limits_physics(
+      actuators.steeringAngleDeg,
+      self.apply_angle_last,
+      CS.out.vEgoRaw,
+      CS.out.steeringAngleDeg,
+      CC.latActive,
+      self.CP.wheelbase,
+      self.CP.steerRatio,
+      self.params.ANGLE_LIMITS.STEER_ANGLE_MAX
+    )
 
+    
     if angle_control:
       apply_steer_req = CC.latActive
 
     if CS.out.steeringPressed:
-      self.apply_angle_last = actuators.steeringAngleDeg
-      self.lkas_max_torque = self.lkas_max_torque = max(self.lkas_max_torque - 20, 25)
+      #self.apply_angle_last = CS.out.steeringAngleDeg
+      self.lkas_max_torque = max(self.lkas_max_torque - 20, 25)
     else:
       if hud_control.modelDesire in [1,2]:  # 3 4为变道，1 2为转弯，0表示没有请求
         base_max_torque = self.angle_max_torque
@@ -302,7 +363,7 @@ class CarController(CarControllerBase):
         self.hyundai_jerk.check_carrot_cruise(CC, CS, hud_control, stopping, accel, actuators.aTarget)
 
         if True: #not camera_scc:
-          can_sends.extend(hyundaicanfd.create_ccnc_messages(self.CP, self.packer, self.CAN, self.frame, CC, CS, hud_control, apply_angle, left_lane_warning, right_lane_warning, self.canfd_debug, self.MainMode_ACC_trigger, self.LFA_trigger))
+          can_sends.extend(hyundaicanfd.create_ccnc_messages(self.CP, self.packer, self.CAN, self.frame, CC, CS, hud_control, apply_angle, left_lane_warning, right_lane_warning, self.enable_corner_radar))
           if hda2:
             can_sends.extend(hyundaicanfd.create_adrv_messages(self.CP, self.packer, self.CAN, self.frame))
           else:
@@ -335,15 +396,17 @@ class CarController(CarControllerBase):
       if self.CP.carFingerprint in CAN_GEARS["send_mdps12"]:  # send mdps12 to LKAS to prevent LKAS error
         can_sends.append(hyundaican.create_mdps12(self.packer, self.frame, CS.mdps12))
 
+      casper_opt = self.CP.carFingerprint in (CAR.HYUNDAI_CASPER_EV)
       if self.frame % 2 == 0 and self.CP.openpilotLongitudinalControl:
         self.hyundai_jerk.make_jerk(self.CP, CS, accel, actuators, hud_control)
         self.hyundai_jerk.check_carrot_cruise(CC, CS, hud_control, stopping, accel, actuators.aTarget)
         #jerk = 3.0 if actuators.longControlState == LongCtrlState.pid else 1.0
         use_fca = self.CP.flags & HyundaiFlags.USE_FCA.value
         if camera_scc:
+          
           can_sends.extend(hyundaican.create_acc_commands_scc(self.packer, CC.enabled, accel, self.hyundai_jerk, int(self.frame / 2),
                                                           hud_control, set_speed_in_units, stopping,
-                                                          CC.cruiseControl.override, use_fca, CS, self.soft_hold_mode))
+                                                          CC.cruiseControl.override, casper_opt, CS, self.soft_hold_mode))
         else:
           can_sends.extend(hyundaican.create_acc_commands(self.packer, CC.enabled, accel, self.hyundai_jerk, int(self.frame / 2),
                                                 hud_control, set_speed_in_units, stopping,
@@ -358,7 +421,10 @@ class CarController(CarControllerBase):
       if self.frame % 20 == 0 and self.CP.openpilotLongitudinalControl:
         if camera_scc:
           if CS.scc13 is not None:
-            can_sends.append(hyundaican.create_acc_opt_copy(CS, self.packer))
+            if casper_opt:
+              #can_sends.append(hyundaican.create_acc_opt_copy(CS, self.packer))
+              pass
+          pass
         else:
           can_sends.extend(hyundaican.create_acc_opt(self.packer, self.CP, escc))
 

@@ -197,8 +197,10 @@ static void hyundai_rx_hook(const CANPacket_t *to_push) {
 
 uint32_t last_ts_lkas11_from_op = 0;
 uint32_t last_ts_scc12_from_op = 0;
+uint32_t last_ts_scc13_from_op = 0;
 uint32_t last_ts_mdps12_from_op = 0;
 uint32_t last_ts_fca11_from_op = 0;
+uint32_t last_ts_fca12_from_op = 0;
 
 static bool hyundai_tx_hook(const CANPacket_t *to_send) {
   const TorqueSteeringLimits HYUNDAI_STEERING_LIMITS = HYUNDAI_LIMITS(512, 10, 10);
@@ -209,7 +211,7 @@ static bool hyundai_tx_hook(const CANPacket_t *to_send) {
   int addr = GET_ADDR(to_send);
 
   // FCA11: Block any potential actuation
-  if (addr == 0x38D) {
+  if (false && addr == 0x38D) {
     int CR_VSM_DecCmd = GET_BYTE(to_send, 1);
     bool FCA_CmdAct = GET_BIT(to_send, 20U);
     bool CF_VSM_DecCmdAct = GET_BIT(to_send, 31U);
@@ -276,14 +278,19 @@ static bool hyundai_tx_hook(const CANPacket_t *to_send) {
       tx = false;
     }
   }
+  uint32_t now = microsecond_timer_get();
   if(addr == 832)
-    last_ts_lkas11_from_op = (tx == 0 ? 0 : microsecond_timer_get());
+    last_ts_lkas11_from_op = (tx == 0 ? 0 : now);
   else if(addr == 1057)
-    last_ts_scc12_from_op = (tx == 0 ? 0 : microsecond_timer_get());
+    last_ts_scc12_from_op = (tx == 0 ? 0 : now);
   else if(addr == 593)
-    last_ts_mdps12_from_op = (tx == 0 ? 0 : microsecond_timer_get());
-  else if(addr == 909)
-    last_ts_fca11_from_op = (tx == 0 ? 0 : microsecond_timer_get());
+    last_ts_mdps12_from_op = (tx == 0 ? 0 : now);
+  else if (addr == 909)
+    last_ts_fca11_from_op = (tx == 0 ? 0 : now);
+  else if (addr == 1155)
+    last_ts_fca12_from_op = (tx == 0 ? 0 : now);
+  else if(addr == 1290)
+    last_ts_scc13_from_op = (tx == 0 ? 0 : now);
 
   return tx;
 }
@@ -308,10 +315,12 @@ static int hyundai_fwd_hook(int bus_num, int addr) {
   if (bus_num == 2) {
     bool is_lkas_msg = addr == 832;
     bool is_lfahda_msg = addr == 1157;
-    bool is_scc_msg = addr == 1056 || addr == 1057 || addr == 1290 || addr == 905;
-    bool is_fca_msg = addr == 909 || addr == 1155;
+    bool is_scc_msg = addr == 1056 || addr == 1057 || addr == 905;
+    bool is_scc13_msg = addr == 1290;
+    bool is_fca11_msg = addr == 909;
+    bool is_fca12_msg = addr == 1155;
 
-    bool block_msg = is_lkas_msg || is_lfahda_msg || is_scc_msg; //|| is_fca_msg;
+    bool block_msg = is_lkas_msg || is_lfahda_msg || is_scc_msg || is_scc13_msg || is_fca11_msg || is_fca12_msg;
     if (!block_msg) {
       bus_fwd = 0;
     }
@@ -321,12 +330,20 @@ static int hyundai_fwd_hook(int bus_num, int addr) {
           bus_fwd = 0;
         }
       }
-      else if(is_scc_msg) {
-        if(now - last_ts_scc12_from_op >= 400000)
+      else if (is_scc_msg) {
+        if (now - last_ts_scc12_from_op >= 400000)
           bus_fwd = 0;
       }
-      else if(is_fca_msg) {
-        if(now - last_ts_fca11_from_op >= 400000)
+      else if (is_scc13_msg) {
+        if (now - last_ts_scc13_from_op >= 800000)
+          bus_fwd = 0;
+      }
+      else if (is_fca11_msg) {
+        if (now - last_ts_fca11_from_op >= 400000)
+          bus_fwd = 0;
+      }
+      else if (is_fca12_msg) {
+        if (now - last_ts_fca12_from_op >= 400000)
           bus_fwd = 0;
       }
     }

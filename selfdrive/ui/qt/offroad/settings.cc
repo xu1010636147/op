@@ -221,7 +221,7 @@ DevicePanel::DevicePanel(SettingsWindow *parent) : ListWidget(parent) {
         "if git status -uno | grep -q \"Your branch is behind\"; then "
         "git pull && reboot; "
         "else "
-        "echo \"Already up to date.\"; "
+        "echo 'Already up to date.'; "
         "fi'";
 
       if (!QProcess::startDetached(cmd)) {

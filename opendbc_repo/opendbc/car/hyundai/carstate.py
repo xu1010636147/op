@@ -120,7 +120,7 @@ class CarState(CarStateBase):
     #self.lf_lateral = 0
     #self.rf_lateral = 0
 
-    fingerprints_str = Params().get("FingerPrints", encoding='utf-8')
+    fingerprints_str = Params().get("FingerPrints")
     fingerprints = ast.literal_eval(fingerprints_str)
     #print("fingerprints =", fingerprints)
     ecu_disabled = False
@@ -128,7 +128,7 @@ class CarState(CarStateBase):
       ecu_disabled = True
 
     if ecu_disabled:
-      self.SCC11 = self.SCC12 = self.SCC13 = self.SCC14 = False
+      self.SCC11 = self.SCC12 = self.SCC13 = self.SCC14 = self.FCA11 = False
     else:
       bus_cruise = 2 if self.CP.flags & HyundaiFlags.CAMERA_SCC else 0
       self.SCC11 = True if 1056 in fingerprints[bus_cruise] else False
@@ -186,6 +186,12 @@ class CarState(CarStateBase):
     elif self.controls_ready_count == 100:
       print("cp_cam.seen_addresses =", cp_cam.seen_addresses)
       print("cp.seen_addresses =", cp.seen_addresses)
+      if 909 in cp_cam.seen_addresses:
+        self.FCA11 = True
+        self.FCA11_bus = Bus.cam
+      elif 909 in cp.seen_addresses:
+        self.FCA11 = True
+        self.FCA11_bus = Bus.pt
       if cp_alt is not None:
         print("cp_alt.seen_addresses =", cp_alt.seen_addresses)
 
@@ -394,6 +400,7 @@ class CarState(CarStateBase):
     self.scc12 = cp_cruise.vl["SCC12"] if self.SCC12 else None
     self.scc13 = cp_cruise.vl["SCC13"] if self.SCC13 else None
     self.scc14 = cp_cruise.vl["SCC14"] if self.SCC14 else None
+    self.fca11 = can_parsers[self.FCA11_bus].vl["FCA11"] if self.FCA11 else None
     cluSpeed = cp.vl["CLU11"]["CF_Clu_Vanz"]
     decimal = cp.vl["CLU11"]["CF_Clu_VanzDecimal"]
     if 0. < decimal < 0.5:
@@ -477,7 +484,14 @@ class CarState(CarStateBase):
     ret.brakeLights = ret.brakePressed or cp.vl["TCS"]["BrakeLight"] == 1
 
     ret.steeringRateDeg = cp.vl["STEERING_SENSORS"]["STEERING_RATE"]
-    ret.steeringAngleDeg = cp.vl["STEERING_SENSORS"]["STEERING_ANGLE"] * -1
+
+    # steering angle deg값이 이상함. mdps값이 더 신뢰가 가는듯.. torque steering 차량도 확인해야함.
+    #ret.steeringAngleDeg = cp.vl["STEERING_SENSORS"]["STEERING_ANGLE"] * -1
+    if self.CP.flags & HyundaiFlags.ANGLE_CONTROL:
+      ret.steeringAngleDeg = cp.vl["MDPS"]["STEERING_ANGLE_2"] * -1
+    else:
+      ret.steeringAngleDeg = cp.vl["STEERING_SENSORS"]["STEERING_ANGLE"] * -1
+    
     ret.steeringTorque = cp.vl["MDPS"]["STEERING_COL_TORQUE"]
     ret.steeringTorqueEps = cp.vl["MDPS"]["STEERING_OUT_TORQUE"]
     ret.steeringPressed = self.update_steering_pressed(abs(ret.steeringTorque) > self.params.STEER_THRESHOLD, 5)
@@ -560,8 +574,19 @@ class CarState(CarStateBase):
         if not corner:
           ret.leftLongDist = self.adrv_info_1ea["LF_DETECT_DISTANCE"]
           ret.rightLongDist = self.adrv_info_1ea["RF_DETECT_DISTANCE"]
+          self.lr_distance = self.adrv_info_1ea["LR_DETECT_DISTANCE"]
+          self.rr_distance = self.adrv_info_1ea["RR_DETECT_DISTANCE"]
           ret.leftLatDist = self.adrv_info_1ea["LF_DETECT_LATERAL"]
           ret.rightLatDist = self.adrv_info_1ea["RF_DETECT_LATERAL"]
+          corner = True
+      if corner:
+        left_block = True if 0 < ret.leftLongDist < 7.0 or 0 < self.lr_distance < 7.0 else False
+        right_block = True if 0 < ret.rightLongDist < 7.0 or 0 < self.rr_distance < 7.0 else False
+        if left_block:
+          ret.leftBlindspot = True
+        if right_block:
+          ret.rightBlindspot = True
+        
       self.adrv_info_160 = cp_cam.vl["ADRV_0x160"] if self.ADRV_0x160 else None
 
       self.hda_info_4a3 = cp.vl["HDA_INFO_4A3"] if self.HDA_INFO_4A3 else None
@@ -593,7 +618,7 @@ class CarState(CarStateBase):
       if lane_info is not None:
         left_lane_prob = lane_info["LEFT_LANE_PROB"]
         right_lane_prob = lane_info["RIGHT_LANE_PROB"]
-        left_lane_type = lane_info["LEFT_LANE_TYPE"] # 0: dashed, 1: solid, 4: double solid, solid+dashed, 5:dashed + solid
+        left_lane_type = lane_info["LEFT_LANE_TYPE"] # 0: dashed, 1: solid, 2: undecided, 3: road edge, 4: DLM Inner Solid, 5: DLM InnerDashed, 6:DLM Inner Undecided, 7: Botts Dots, 8: Barrier
         right_lane_type = lane_info["RIGHT_LANE_TYPE"]
         left_lane_color = lane_info["LEFT_LANE_COLOR"]
         right_lane_color = lane_info["RIGHT_LANE_COLOR"]

@@ -29,8 +29,9 @@ ALLOW_THROTTLE_THRESHOLD = 0.5
 MIN_ALLOW_THROTTLE_SPEED = 2.5
 
 # Lookup table for turns
-_A_TOTAL_MAX_V = [1.7, 3.2]
+_A_TOTAL_MAX_V = [2.4, 4.8] #[1.7, 3.2]
 _A_TOTAL_MAX_BP = [20., 40.]
+LAT_WEIGHT = 0.7
 
 
 def get_max_accel(v_ego):
@@ -40,7 +41,7 @@ def get_coast_accel(pitch):
   return np.sin(pitch) * -5.65 - 0.3  # fitted from data using xx/projects/allow_throttle/compute_coast_accel.py
 
 
-def limit_accel_in_turns(v_ego, angle_steers, a_target, CP):
+def limit_accel_in_turns_org(v_ego, angle_steers, a_target, CP):
   """
   This function returns a limited long acceleration allowed, depending on the existing lateral acceleration
   this should avoid accelerating when losing the target in turns
@@ -51,11 +52,42 @@ def limit_accel_in_turns(v_ego, angle_steers, a_target, CP):
   if v_ego > 20 or (v_ego > 25 and steer_abs < 3.0):
     return a_target
   a_total_max = np.interp(v_ego, _A_TOTAL_MAX_BP, _A_TOTAL_MAX_V)
-  a_y = v_ego ** 2 * angle_steers * CV.DEG_TO_RAD / (CP.steerRatio * CP.wheelbase)
+  a_y = v_ego ** 2 * angle_steers * CV.DEG_TO_RAD / (CP.steerRatio * CP.wheelbase) * LAT_WEIGHT
   a_x_allowed = math.sqrt(max(a_total_max ** 2 - a_y ** 2, 0.))
 
   return [a_target[0], min(a_target[1], a_x_allowed)]
 
+def limit_accel_in_turns(v_ego, curvature, a_target, a_lat_max,
+                         safety_ratio=0.70,   # 0.60~0.85 (작을수록 더 얌전)
+                         min_v=0.1):
+  """
+  v_ego    : m/s
+  curvature: 1/m  (sign 포함)
+  a_target : [a_min, a_max] (m/s^2)
+  a_lat_max: 허용 최대 횡가속 (m/s^2)
+
+  safety_ratio:
+    a_lat_max에 소프트 마진을 주는 비율.
+    예) a_lat_max=4, safety_ratio=0.7 -> 실사용 한계 2.8로 계산.
+
+  return   : [a_min, 제한된 a_max]
+  """
+  if v_ego < min_v or a_lat_max <= 0.0:
+    return a_target
+
+  a_lat_eff = abs(a_lat_max) * float(safety_ratio)
+
+  # 횡가속
+  a_y_abs = abs((v_ego * v_ego) * curvature)
+
+  # 남은 종가속 여유 (원형 경계)
+  if a_y_abs >= a_lat_eff:
+    a_x_allowed = 0.0
+  else:
+    a_x_allowed = math.sqrt(a_lat_eff * a_lat_eff - a_y_abs * a_y_abs)
+
+  # a_target = [min, max] 중 max만 제한
+  return [a_target[0], min(a_target[1], a_x_allowed)]
 
 class LongitudinalPlanner(LongitudinalPlannerSP): #new
   def __init__(self, CP, init_v=0.0, init_a=0.0, dt=DT_MDL):
@@ -242,7 +274,9 @@ class LongitudinalPlanner(LongitudinalPlannerSP): #new
       #accel_limits = [A_CRUISE_MIN, get_max_accel(v_ego)]
       accel_limits = [A_CRUISE_MIN, carrot.get_carrot_accel(v_ego)]
       steer_angle_without_offset = sm['carState'].steeringAngleDeg - sm['liveParameters'].angleOffsetDeg
-      accel_limits_turns = limit_accel_in_turns(v_ego, steer_angle_without_offset, accel_limits, self.CP)
+      #accel_limits_turns = limit_accel_in_turns(v_ego, steer_angle_without_offset, accel_limits, self.CP)
+      a_lat_max = 3.0
+      accel_limits_turns = limit_accel_in_turns(v_ego, sm['controlsState'].desiredCurvature, accel_limits, a_lat_max)
     else:
       accel_limits = [ACCEL_MIN, ACCEL_MAX]
       accel_limits_turns = [ACCEL_MIN, ACCEL_MAX]
@@ -275,7 +309,7 @@ class LongitudinalPlanner(LongitudinalPlannerSP): #new
     accel_limits_turns[0] = min(accel_limits_turns[0], self.a_desired + 0.05)
     accel_limits_turns[1] = max(accel_limits_turns[1], self.a_desired - 0.05)
 
-    self.mpc.set_weights(prev_accel_constraint, personality=sm['selfdriveState'].personality, jerk_factor = carrot.jerk_factor_apply)
+    self.mpc.set_weights(prev_accel_constraint, personality=sm['selfdriveState'].personality, jerk_factor = carrot.jerk_factor_apply, a_change_cost_starting = carrot.aChangeCostStarting)
     self.mpc.set_accel_limits(accel_limits_turns[0], accel_limits_turns[1])
     self.mpc.set_cur_state(self.v_desired_filter.x, self.a_desired)
     self.mpc.update(carrot, reset_state, sm['radarState'], v_cruise, x, v, a, j, personality=sm['selfdriveState'].personality)

@@ -120,7 +120,7 @@ class Soundd:
     self.carrot_count_down = 0
     self.desire_count_down = 0
 
-    self.lang = self.params.get('LanguageSetting', encoding='utf8')
+    self.lang = self.params.get('LanguageSetting')
     self.load_sounds()
 
     self.current_alert = AudibleAlert.none
@@ -141,6 +141,8 @@ class Soundd:
 
       if self.lang == "main_ko":
         wavefile = wave.open(BASEDIR + "/selfdrive/assets/sounds/" + filename, 'r')
+      elif self.lang == "main_zh-CHS":
+        wavefile = wave.open(BASEDIR + "/selfdrive/assets/sounds_chs/" + filename, 'r')
       else:
         wavefile = wave.open(BASEDIR + "/selfdrive/assets/sounds_eng/" + filename, 'r')
 

@@ -98,6 +98,8 @@ void UIState::updateStatus() {
 }
 
 UIState::UIState(QObject *parent) : QObject(parent) {
+  ublox_avaliable = Params().getBool("UbloxAvailable");
+  auto gps_service = (ublox_avaliable) ? "gpsLocationExternal" : "gpsLocation";
   sm = std::make_unique<SubMaster>(std::vector<const char*>{
     "modelV2", "controlsState", "liveCalibration", "radarState", "deviceState",
     "pandaStates", "carParams", "driverMonitoringState", "carState", "driverStateV2",

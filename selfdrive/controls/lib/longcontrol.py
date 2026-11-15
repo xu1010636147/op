@@ -81,6 +81,10 @@ class LongControl:
     self.output_accel_init = False
     self.smooth_stop_mode = 0
 
+    self.use_accel_pid = False
+    if CP.brand == "toyota":
+      self.use_accel_pid = True
+
   def reset(self):
     self.pid.reset()
     self.a_ego_curr_init = False
@@ -150,8 +154,10 @@ class LongControl:
       self.reset()
 
     else:  # LongCtrlState.pid
-      #error = a_target_now - CS.aEgo
-      error = v_target_now - CS.vEgo
+      if self.use_accel_pid:
+        error = a_target_ff - CS.aEgo
+      else:
+        error = v_target_now - CS.vEgo
       output_accel = self.pid.update(error, speed=CS.vEgo,
                                      feedforward=a_target_ff)
 

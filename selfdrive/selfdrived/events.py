@@ -254,7 +254,7 @@ def calibration_incomplete_alert(CP: car.CarParams, CS: car.CarState, sm: messag
 
 
 def torque_nn_load_alert(CP: car.CarParams, CS: car.CarState, sm: messaging.SubMaster, metric: bool, soft_disable_time: int, personality) -> Alert:
-  model_name = Params().get("NNFFModelName", encoding='utf-8')
+  model_name = Params().get("NNFFModelName")
   if model_name == "":
     return Alert(
       "NNFF 扭矩控制器不可用",

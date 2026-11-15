@@ -247,6 +247,7 @@ class VCruiseCarrot:
       self.autoGasSyncSpeed = self.params.get_bool("AutoGasSyncSpeed") * unit_factor
       self.autoSpeedUptoRoadSpeedLimit = self.params.get_float("AutoSpeedUptoRoadSpeedLimit") * 0.01
       self.autoRoadSpeedAdjust = self.params.get_float("AutoRoadSpeedAdjust") * 0.01
+      self.smartSpeedControl = self.params.get_int("CarrotSmartSpeedControl")
 
       useLaneLineSpeed = self.params.get_int("UseLaneLineSpeed") * unit_factor
       if self.useLaneLineSpeed != useLaneLineSpeed:
@@ -342,7 +343,7 @@ class VCruiseCarrot:
           self.v_cruise_kph = np.clip(v_cruise_kph, 30, self._cruise_speed_max)
           self.v_cruise_cluster_kph = self.v_cruise_kph
     else:
-      self.v_cruise_kph = max(20, self.v_ego_kph_set) #V_CRUISE_UNSET
+      self.v_cruise_kph = np.clip(v_cruise_kph, self._cruise_speed_min, self._cruise_speed_max) #max(20, self.v_ego_kph_set) #V_CRUISE_UNSET
       self.v_cruise_cluster_kph = self.v_cruise_kph #V_CRUISE_UNSET
       if self.cruise_state_available_last: # 최초 한번이라도 cruiseState.available이 True였다면
         self._lat_enabled = False
@@ -441,6 +442,24 @@ class VCruiseCarrot:
     return button_kph, button_type, self.long_pressed
 
   def _carrot_command(self, v_cruise_kph, button_type, long_pressed):
+    if button_type != 0:
+      self.params_memory.put_int_nonblocking("CarrotSpeed", 0)
+      carrot_speed = 0
+    else:
+      carrot_speed = self.params_memory.get_int("CarrotSpeed")
+    if carrot_speed != 0:
+      if carrot_speed > 0:
+        if self.smartSpeedControl in [1,3]:
+          v_cruise_kph = max(carrot_speed, v_cruise_kph)
+      else:
+        if self.smartSpeedControl == 3:
+          v_cruise_kph = -carrot_speed
+        #elif self.smartSpeedControl == 1:
+        #  v_cruise_kph = max(-carrot_speed, v_cruise_kph)
+        elif self.smartSpeedControl == 2:
+          v_cruise_kph = min(-carrot_speed, v_cruise_kph)
+      #self.params_memory.put_int_nonblocking("CarrotSpeed", 0)
+      self._add_log(f"Carrot speed set to {v_cruise_kph}")
     if self.carrot_cmd_index_last != self.carrot_cmd_index:
       self.carrot_cmd_index_last = self.carrot_cmd_index
       #print(f"Carrot command(cruise.py): {self.carrot_cmd} {self.carrot_arg}")
@@ -497,7 +516,7 @@ class VCruiseCarrot:
         if self._soft_hold_active > 0:
           self._soft_hold_active = 0
         elif self._cruise_ready or not CC.enabled or CS.cruiseState.standstill or self.carrot_cruise_active:
-          if self._cruise_button_mode in [2, 3]:
+          if False: #self._cruise_button_mode in [2, 3]:
             road_limit_kph = self.nRoadLimitSpeed * self.autoSpeedUptoRoadSpeedLimit
             if road_limit_kph > 1.0:
               v_cruise_kph = max(v_cruise_kph, road_limit_kph)
@@ -585,9 +604,12 @@ class VCruiseCarrot:
         self._add_log("Lateral " + "enabled" if self._lat_enabled else "disabled")
 
     if self._paddle_mode > 0 and button_type in [ButtonType.paddleLeft, ButtonType.paddleRight]:  # paddle button
-      self._cruise_control(-2, -1, "Cruise off & Ready (paddle)")
-      if self._paddle_mode == 2:
-        self._paddle_decel_active = True
+      if self._paddle_mode == 3:
+        self.carrot_cruise_active = True
+      else:
+        self._cruise_control(-2, -1, "Cruise off & Ready (paddle)")
+        if self._paddle_mode == 2:
+          self._paddle_decel_active = True
     elif self._paddle_decel_active:
       if not CC.enabled:
         self._cruise_control(1, -1, "Cruise on (paddle decel)")
@@ -638,7 +660,7 @@ class VCruiseCarrot:
         v_cruise_kph = self.nRoadLimitSpeed + self.autoRoadSpeedLimitOffset
     elif self.nRoadLimitSpeed < self.nRoadLimitSpeed_last and self.autoRoadSpeedAdjust > 0:
       new_road_limit_kph = self.nRoadLimitSpeed * self.autoRoadSpeedAdjust + v_cruise_kph * (1 - self.autoRoadSpeedAdjust)
-      self._add_log(f"AutoSpeed change {v_cruise_kph} -> {new_road_limit_kph}")
+      self._add_log(f"AutoSpeed change {v_cruise_kph} -> {new_road_limit_kph:.1f}")
       v_cruise_kph = min(v_cruise_kph, new_road_limit_kph)
     self.road_limit_kph = road_limit_kph
     self.nRoadLimitSpeed_last = self.nRoadLimitSpeed

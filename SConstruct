@@ -3,14 +3,12 @@ import subprocess
 import sys
 import sysconfig
 import platform
+import shlex
 import numpy as np
 
 import SCons.Errors
 
 SCons.Warnings.warningAsException(True)
-
-# pending upstream fix - https://github.com/SCons/scons/issues/4461
-#SetOption('warn', 'all')
 
 TICI = os.path.isfile('/TICI')
 AGNOS = TICI
@@ -330,12 +328,9 @@ Export('env', 'qt_env', 'arch', 'real_arch')
 
 # Build common module
 SConscript(['common/SConscript'])
-Import('_common', '_gpucommon')
-
+Import('_common')
 common = [_common, 'json11', 'zmq']
-gpucommon = [_gpucommon]
-
-Export('common', 'gpucommon')
+Export('common')
 
 # Build messaging (cereal + msgq + socketmaster + their dependencies)
 # Enable swaglog include in submodules
@@ -368,7 +363,6 @@ SConscript([
 ])
 if arch != "Darwin":
   SConscript([
-    'system/sensord/SConscript',
     'system/logcatd/SConscript',
   ])
 

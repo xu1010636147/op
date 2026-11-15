@@ -29,7 +29,7 @@ SIMULATION = "SIMULATION" in os.environ
 TESTING_CLOSET = "TESTING_CLOSET" in os.environ
 LONGITUDINAL_PERSONALITY_MAP = {v: k for k, v in log.LongitudinalPersonality.schema.enumerants.items()}
 DRIVER_CAM = os.getenv("DRIVER_CAM") is not None
-JY62 = os.getenv("JY62") is not None
+USB_IMU = os.getenv("USB_IMU") is not None
 
 ThermalStatus = log.DeviceState.ThermalStatus
 State = log.SelfdriveState.OpenpilotState
@@ -65,7 +65,7 @@ class SelfdriveD:
 
     self.gps_location_service = get_gps_location_service(self.params)
     self.gps_packets = [self.gps_location_service]
-    if JY62:
+    if USB_IMU:
       self.sensor_packets = ["accelerometer", "gyroscope"]
     else:
       self.sensor_packets = []
@@ -439,10 +439,8 @@ class SelfdriveD:
 
     # conservative HW alert. if the data or frequency are off, locationd will throw an error
     if any((self.sm.frame - self.sm.recv_frame[s])*DT_CTRL > 10. for s in self.sensor_packets):
-      if JY62:
+      if USB_IMU:
         self.events.add(EventName.sensorDataInvalid)
-      else:
-        pass#self.events.add(EventName.sensorDataInvalid)
 
     if not REPLAY:
       # Check for mismatch between openpilot and car's PCM

@@ -11,7 +11,8 @@ FLASK_AVAILABLE = importlib.util.find_spec("flask") is not None
 
 WEBCAM = os.getenv("USE_WEBCAM") is not None
 USBCAM = os.getenv("USE_USBCAM") is not None
-JY62 = int(os.getenv("JY62","0"))
+# PC 平台的外接 IMU（ESP32-S3 + LSM6DS3，走 USB 串口）。设备路径由驱动内部读 USB_IMU_DEV
+USB_IMU = os.getenv("USB_IMU") is not None
 
 def driverview(started: bool, params: Params, CP: car.CarParams) -> bool:
   return started or params.get_bool("IsDriverViewEnabled")
@@ -102,13 +103,12 @@ procs = [
   #NativeProcess("mapsd", "selfdrive/navd", ["./mapsd"], always_run),
   #PythonProcess("navmodeld", "selfdrive.modeld.navmodeld", only_onroad),
   NativeProcess("sensord", "system/sensord", ["./sensord"], only_onroad, enabled=not PC),
-  #使用支持jy62的sendord时开启同时打开sensord_jy62,屏蔽带有jy62参数的locationd进程，不然会串口占用冲突
-  NativeProcess("sensord_jy62", "system/sensord", ["./sensord_jy62"], only_onroad, enabled=(PC and JY62==1)),
-  NativeProcess("locationd", "selfdrive/locationd", ["./locationd"], only_onroad, enabled=(PC and JY62!=2)),
+  NativeProcess("locationd", "selfdrive/locationd", ["./locationd"], only_onroad, enabled=PC),
   NativeProcess("ui", "selfdrive/ui", ["./ui"], always_run, watchdog_max_dt=(5 if not PC else None)),
   PythonProcess("soundd", "selfdrive.ui.soundd", only_onroad),
-  #下面这个带参数的locationd，不要和sensord_jy62进程同时开启
-  NativeProcess("locationd_jy62", "selfdrive/locationd", ["./locationd_jy62", "--type=jy62", "--device=/dev/ttyUSB0", "--baud=115200"], only_onroad, enabled=(PC and JY62==2)),
+  # PC 平台没有板载 IMU，由这个进程从 USB 串口读外接的 ESP32-S3 + LSM6DS3，
+  # 发布标准 accelerometer/gyroscope 消息交给上面的原版 locationd
+  PythonProcess("sensord_usbimu", "system.sensord.sensord_usbimu", only_onroad, enabled=(PC and USB_IMU)),
   #PythonProcess("locationd", "selfdrive.locationd.locationd", only_onroad),
   NativeProcess("_pandad", "selfdrive/pandad", ["./pandad"], always_run, enabled=False),
   PythonProcess("calibrationd", "selfdrive.locationd.calibrationd", only_onroad),

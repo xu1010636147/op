@@ -29,7 +29,7 @@
   "AutoTurnInNotRoadEdge": 1,
   "ContinuousLaneChange": 1,
   "ContinuousLaneChangeCnt": 4,
-  "ContinuousLaneChangeInterval": 1,
+  "ContinuousLaneChangeInterval": 2,
   "AutoTurnLeft": 1,
   "AutoUpHighwayRoadLimit": 0,
   "AutoUpHighwayRoadLimit40KMH": 0,

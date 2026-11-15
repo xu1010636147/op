@@ -92,14 +92,13 @@ tools/op.sh build
 #测试
 # 启动OP,ROAD_CAM指定摄像头,NO_DM驾驶监控开关(注意安全驾驶，关闭驾驶监控仅用测试，正常驾驶请打开驾驶监控功能)
 USE_WEBCAM=1 ROAD_CAM=0 NO_DM=0 system/manager/manager.py
-带JY62陀螺仪的启动方式
-USE_WEBCAM=1 ROAD_CAM=0 NO_DM=0 JY62=1 system/manager/manager.py  #使用sensor_jy62
-USE_WEBCAM=1 ROAD_CAM=0 NO_DM=0 JY62=2 system/manager/manager.py  #使用locationd_jy62
+带外接陀螺仪的启动方式（ESP32-S3 + LSM6DS3，走 USB 串口，默认设备 /dev/ttyACM0）
+USE_WEBCAM=1 ROAD_CAM=0 NO_DM=0 USB_IMU=1 system/manager/manager.py  #使用外接IMU
+USE_WEBCAM=1 ROAD_CAM=0 NO_DM=0 USB_IMU=1 USB_IMU_DEV=/dev/ttyUSB0 system/manager/manager.py  #设备不在默认路径时
 
 #通过C++的USB摄像头采集
 USE_USBCAM=1 system/manager/manager.py
-USE_USBCAM=1 JY62=1 system/manager/manager.py  #使用sensor_jy62
-USE_USBCAM=1 JY62=2 system/manager/manager.py  #使用locationd_jy62
+USE_USBCAM=1 USB_IMU=1 system/manager/manager.py  #使用外接IMU
 
 #如果只是测试一下摄像头显示，使用下面的命令
 USE_WEBCAM=1 ROAD_CAM=0 NO_DM=0 selfdrive/debug/uiview.py
@@ -108,7 +107,7 @@ USE_WEBCAM=1 ROAD_CAM=0 NO_DM=0 selfdrive/debug/uiview.py
 #通过C++的USB摄像头测试
 USE_USBCAM=1 selfdrive/debug/uiview.py
 
-需要访问ttyUSB0设备，需要先创建权限，让当前用户获得串口（/dev/ttyUSB0、/dev/ttyACM0等）访问权限
+需要访问串口设备（/dev/ttyACM0、/dev/ttyUSB0 等），需要先创建权限，让当前用户获得访问权限
 sudo usermod -a -G dialout $LOGNAME
 newgrp dialout
 exec su -l $LOGNAME
@@ -116,7 +115,7 @@ exec su -l $LOGNAME
 #========================================================
 #开机自动运行openpilot
 *可执行一键配置脚本./config_autostart.sh 删除开机自动执行./remove_autostart.sh
-*带JY62陀螺仪的一键配置脚本./config_jy62_autostart.sh 删除开机自动执行./remove_jy62_autostart.sh
+*带外接陀螺仪的一键配置脚本./config_autostart_usbimu.sh 删除开机自动执行./remove_autostart_usbimu.sh
 
 或手动分步执行下面的步骤
 #增加快捷栏图标

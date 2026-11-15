@@ -193,6 +193,8 @@ class AmapNaviServ:
 
     self.clients = {}  # 保存多个客户端
     self.client_queues = {}  # {ip: Queue()}
+    self.client_active_timeout = 3.0  # 客户端超过此秒数无数据则判定离线
+    self.client_worker_idle = 10      # worker 连续空闲此秒数后回收线程与队列
     self.clients_copy = {}
     self.active_clients = {}
 
@@ -596,7 +598,7 @@ class AmapNaviServ:
         print(f"_data_deal_thread error: {e}")
         time.sleep(1)
   # ----------------------
-  # LANE 接收线程（修改：初始化 client_active）
+  # LANE 接收线程
   # ----------------------
   def _lane_recv_thread(self):
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
@@ -669,7 +671,7 @@ class AmapNaviServ:
           time.sleep(1)
 
   # ----------------------
-  # UDP 接收线程（修改：初始化 client_active）
+  # UDP 接收线程
   # ----------------------
   def _udp_recv_thread(self):
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
@@ -684,11 +686,7 @@ class AmapNaviServ:
           # 为新客户端创建队列和处理线程
           with lock:
             if ip not in self.client_queues:
-              q = queue.Queue()
-              self.client_queues[ip] = q
-              if not hasattr(self, "client_active"):
-                self.client_active = {}
-              self.client_active[ip] = True
+              self.client_queues[ip] = queue.Queue()
               threading.Thread(target=self._client_worker, args=(ip,), daemon=True).start()
 
             self.client_queues[ip].put((data, addr))
@@ -699,25 +697,24 @@ class AmapNaviServ:
           time.sleep(1)
 
   # ----------------------
-  # 每客户端数据处理线程（修改：支持主动退出）
+  # 每客户端数据处理线程（连续空闲超时后自行回收）
   # ----------------------
   def _client_worker(self, ip):
     q = self.client_queues[ip]
+    idle = 0
     while True:
       try:
-        # 使用超时获取，定期检查线程是否仍然活跃
-        try:
-          data, addr = q.get(timeout=1)
-          self._process_single_packet(data, addr)
-        except queue.Empty:
-          # 检查线程是否需要退出
+        data, addr = q.get(timeout=1)
+        idle = 0
+        self._process_single_packet(data, addr)
+      except queue.Empty:
+        # 连续空闲达到阈值才回收，避免链路抖动导致线程反复创建销毁
+        idle += 1
+        if idle >= self.client_worker_idle:
           with lock:
-            if not self.client_active.get(ip, False):
-              # 删除队列和标记
-              del self.client_queues[ip]
-              del self.client_active[ip]
-              print(f"Client worker {ip} exiting (inactive).")
-              break
+            del self.client_queues[ip]
+          print(f"Client worker {ip} idle {idle}s, exiting.")
+          break
       except Exception as e:
         print(f"Client worker {ip} error: {e}")
 
@@ -1216,22 +1213,19 @@ class AmapNaviServ:
         self.clients[ip] = info
 
   # ----------------------
-  # 清理超过1秒未活跃客户端线程（修改：同时标记 worker 停止）
+  # 清理超时未活跃的客户端（仅更新活跃状态，worker 由自身空闲计数回收）
   # ----------------------
   def _clean_clients_thread(self):
     while True:
       now = time.time()
       with lock:
         # 保留活跃客户端
-        active_clients = {ip: info for ip, info in self.clients.items() if now - info["last_seen"] < 1.0}
+        active_clients = {ip: info for ip, info in self.clients.items()
+                          if now - info["last_seen"] < self.client_active_timeout}
 
-        # 标记超时客户端线程停止，并打印超时信息
-        for ip, info in self.clients.items():
-          if ip not in active_clients and ip in self.client_active:
-            last = info.get("last_seen", 0)
-            dt = now - last
-            print(f"[Client Timeout] ip={ip}, last_seen={last:.3f}, now={now:.3f}, dt={dt:.3f}s")
-            self.client_active[ip] = False
+        # 客户端由在线转为离线时打印一次；self.clients 每轮被收敛，因此天然不刷屏
+        for ip in self.clients.keys() - active_clients.keys():
+          print(f"[Client Offline] ip={ip}, dt={now - self.clients[ip]['last_seen']:.3f}s")
 
         # 更新 clients 列表
         self.clients = active_clients

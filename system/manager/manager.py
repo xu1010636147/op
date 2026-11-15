@@ -184,6 +184,9 @@ def get_default_params():
     ("SteerRatioRate", "100"),
     ("NNFF", "0"),
     ("NNFFLite", "0"),
+    ("BydModifiedStockLong", "0"),
+    ("BydAutoTuning", "0"),
+    ("BydLatUseSiglin", "0"),
 
     # new
     ("SameSpiCamFilter", "1"),
@@ -419,7 +422,7 @@ def main() -> None:
   OPENPILOT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
   supported_path = Params().get_param_path()
 
-  brands = ["hyundai", "gm", "toyota", "mazda", "tesla", "honda", "volkswagen"]
+  brands = ["hyundai", "gm", "toyota", "mazda", "tesla", "honda", "volkswagen", "byd"]
   for brand in brands:
     values_py = os.path.join(OPENPILOT_ROOT, "opendbc", "car", brand, "values.py")
     output_file = os.path.join(supported_path, f"SupportedCars_{brand}" if brand != "hyundai" else "SupportedCars")

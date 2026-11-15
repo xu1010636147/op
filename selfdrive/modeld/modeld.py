@@ -261,7 +261,10 @@ def main(demo=False):
     time.sleep(.1)
 
   vipc_client_main_stream = VisionStreamType.VISION_STREAM_WIDE_ROAD if main_wide_camera else VisionStreamType.VISION_STREAM_ROAD
-  vipc_client_main = VisionIpcClient("camerad", vipc_client_main_stream, True, cl_context)
+  # 双摄时 main 必须按序消费：conflate 会让 main 的 frame_id 跳跃，extra 永远追不上，
+  # 每轮被迫多吃数帧（实测 3 帧 / 150ms），使 vipc_dropped_frames 恒 >0、prepare_only
+  # 恒为真，modelV2 永不发出。单摄无此问题，保留 conflate 以便积压时丢旧帧、保实时。
+  vipc_client_main = VisionIpcClient("camerad", vipc_client_main_stream, not use_extra_client, cl_context)
   vipc_client_extra = VisionIpcClient("camerad", VisionStreamType.VISION_STREAM_WIDE_ROAD, False, cl_context)
   cloudlog.warning(f"vision stream set up, main_wide_camera: {main_wide_camera}, use_extra_client: {use_extra_client}")
 
@@ -338,20 +341,20 @@ def main(demo=False):
       continue
 
     if use_extra_client:
-      # Keep receiving extra frames until frame id matches main camera
-      while True:
-        buf_extra = vipc_client_extra.recv()
-        meta_extra = FrameMeta(vipc_client_extra)
-        if buf_extra is None or meta_main.timestamp_sof < meta_extra.timestamp_sof + 25000000:
-          break
+      # 只取一帧 extra。原逻辑是"一直取到 extra 追上 main"，它依赖真机上两路由同一 ISP
+      # 同步出帧、SOF 有固定相位差，几步即可收敛；但这里两路是独立 USB 摄像头，
+      # camerad 发的又是 frame_id*50ms 的占位时间戳，追赶条件长期不满足，
+      # 每轮要把缓冲里的帧吃干净才靠 recv() 返回 None 退出（实测 3 帧 / 150ms），
+      # 使每轮 165ms > 帧间隔 55ms，触发 prepare_only 自锁。
+      buf_extra = vipc_client_extra.recv()
+      meta_extra = FrameMeta(vipc_client_extra)
 
       if buf_extra is None:
         cloudlog.debug("vipc_client_extra no frame")
         continue
 
-      if abs(meta_main.timestamp_sof - meta_extra.timestamp_sof) > 10000000:
-        cloudlog.error(f"frames out of sync! main: {meta_main.frame_id} ({meta_main.timestamp_sof / 1e9:.5f}),\
-                         extra: {meta_extra.frame_id} ({meta_extra.timestamp_sof / 1e9:.5f})")
+      if abs(meta_main.frame_id - meta_extra.frame_id) > 2:
+        cloudlog.error(f"frames out of sync! main: {meta_main.frame_id}, extra: {meta_extra.frame_id}")
 
     else:
       # Use single camera

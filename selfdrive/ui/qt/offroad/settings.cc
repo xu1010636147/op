@@ -843,6 +843,7 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
     all_items.append(get_list((QString::fromStdString(Params().getParamPath()) + "/SupportedCars_tesla").toStdString().c_str()));
     all_items.append(get_list((QString::fromStdString(Params().getParamPath()) + "/SupportedCars_honda").toStdString().c_str()));
     all_items.append(get_list((QString::fromStdString(Params().getParamPath()) + "/SupportedCars_volkswagen").toStdString().c_str()));
+    all_items.append(get_list((QString::fromStdString(Params().getParamPath()) + "/SupportedCars_byd").toStdString().c_str()));
     QMap<QString, QStringList> car_groups;
     for (const QString& car : all_items) {
       QStringList parts = car.split(" ", QString::SkipEmptyParts);
@@ -879,6 +880,9 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
 
   startToggles->addItem(selectCarBtn);
   startToggles->addItem(new CValueControl("HyundaiCameraSCC", "现代: 摄像头SCC(0)", "1:连接SCC的CAN线到摄像头, 2:同步定速状态, 3:原厂长控，不是用摄像头实现SCC的均设置为0", 0, 3, 1));
+  startToggles->addItem(new ParamControl("BydAutoTuning", tr("BYD Auto Tuning"), tr("Enable automatic torque parameter tuning"), "../assets/offroad/icon_road.png", this));
+  startToggles->addItem(new ParamControl("BydLatUseSiglin", tr("BYD Use Siglin Mode"), tr("Use siglin non-linear torque calculation"), "../assets/offroad/icon_road.png", this));
+  startToggles->addItem(new ParamControl("BydModifiedStockLong", tr("BYD Modified Stock Long"), tr("Enable modified stock longitudinal control"), "../assets/offroad/icon_road.png", this));
   startToggles->addItem(new CValueControl("CanfdHDA2", "CANFD: HDA2 模式", "1:HDA2, 2:HDA2+盲点监测, 一般非CanFD车型设置为0", 0, 2, 1));
   startToggles->addItem(new CValueControl("EnableRadarTracks", "启用雷达追踪(1)", "1:启用雷达追踪, -1,2:禁用 (始终使用HKG SCC雷达)，胜达设置为1, 改变值后需要重启车辆", -1, 3, 1));
   startToggles->addItem(new CValueControl("EnableEscc", "启用ESCC(1)", "1:启用ESCC, 0:禁用, 改变值后需要重启车辆", 0, 1, 1));

@@ -10,23 +10,29 @@ from openpilot.tools.webcam.camera import CameraMJPG
 from openpilot.common.realtime import Ratekeeper
 
 WIDE_CAM = os.getenv("WIDE_CAM")
-USE_CAMPATH = os.getenv("USE_CAMPATH")
 CameraType = namedtuple("CameraType", ["msg_name", "stream_type", "cam_id"])
-if USE_CAMPATH:
-  CAMERAS = [
-    CameraType("roadCameraState", VisionStreamType.VISION_STREAM_ROAD, "pci-0000:c6:00.4-usb-0:1:1.0-video-index0"),
-    # CameraType("driverCameraState", VisionStreamType.VISION_STREAM_DRIVER, os.getenv("DRIVER_CAM", "2")),
-  ]
-else:
-  CAMERAS = [
-    CameraType("roadCameraState", VisionStreamType.VISION_STREAM_ROAD, os.getenv("ROAD_CAM", "0")),
-    # CameraType("driverCameraState", VisionStreamType.VISION_STREAM_DRIVER, os.getenv("DRIVER_CAM", "2")),
-  ]
+
+# 相机分辨率。必须在 create_buffers() 之前确定，而 create_buffers() 必须先于
+# start_listener()，所以这里写成常量而不是从设备读回 —— 否则 camerad 的启动
+# 会被绑在"相机此刻已枚举完成"上，设备刚重枚举的那一瞬间就起不来。
+# 改这里等于改 visionipc 的 buffer 尺寸，两路相机必须一致。
+CAM_W, CAM_H = 1920, 1080
+
+def resolve_cam_device(name):
+  # ROAD_CAM / WIDE_CAM 可写视频编号（"0" → /dev/video0），也可写 by-path 名
+  # （"pci-…" → /dev/v4l/by-path/pci-…）。by-path 与机器插槽绑定，比 /dev/videoN 稳定，
+  # 但换机器或改接线后会失效，需用下面命令重新获取：
+  #   ls /dev/v4l/by-path/ | grep usb-0
+  if name.startswith("pci-"):
+    return f"/dev/v4l/by-path/{name}"
+  return f"/dev/video{name}"
+
+CAMERAS = [
+  CameraType("roadCameraState", VisionStreamType.VISION_STREAM_ROAD, os.getenv("ROAD_CAM", "0")),
+  # CameraType("driverCameraState", VisionStreamType.VISION_STREAM_DRIVER, os.getenv("DRIVER_CAM", "2")),
+]
 if WIDE_CAM:
-  if USE_CAMPATH:
-    CAMERAS.append(CameraType("wideRoadCameraState", VisionStreamType.VISION_STREAM_WIDE_ROAD, "pci-0000:c4:00.3-usb-0:3.4:1.0-video-index0"))
-  else:
-    CAMERAS.append(CameraType("wideRoadCameraState", VisionStreamType.VISION_STREAM_WIDE_ROAD, WIDE_CAM))
+  CAMERAS.append(CameraType("wideRoadCameraState", VisionStreamType.VISION_STREAM_WIDE_ROAD, WIDE_CAM))
 
 class Camerad:
   def __init__(self):
@@ -35,12 +41,9 @@ class Camerad:
 
     self.cameras = []
     for c in CAMERAS:
-      if USE_CAMPATH:
-        cam_device = f"/dev/v4l/by-path/{c.cam_id}"
-      else:
-        cam_device = f"/dev/video{c.cam_id}"
+      cam_device = resolve_cam_device(c.cam_id)
       print(f"opening {c.msg_name} at {cam_device}")
-      cam = CameraMJPG(c.msg_name, c.stream_type, cam_device)
+      cam = CameraMJPG(c.msg_name, c.stream_type, cam_device, CAM_W, CAM_H)
       self.cameras.append(cam)
       self.vipc_server.create_buffers(c.stream_type, 20, cam.W, cam.H)
 

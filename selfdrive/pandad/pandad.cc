@@ -43,6 +43,38 @@
 
 ExitHandler do_exit;
 
+// Why pandad is exiting. Exiting hands the process back to the manager, which restarts it,
+// and every restart re-initializes the panda over USB (libusb_set_configuration in
+// panda_comms.cc, can_reset_communications in panda.cc) - visible in dmesg as the same
+// device enumerating over and over. A transient USB glitch and a runaway restart loop look
+// identical there, so tag each exit with the branch that decided it.
+// No counter: do_exit ends the process, so a process-local count could never outlive the
+// very restart it is meant to measure. Swaglog stamps every line, so the rate is countable.
+enum ExitReason {
+  EXIT_PANDA_DISCONNECTED = 0,  // check_all_connected()
+  EXIT_COMMS_UNHEALTHY,         // process_panda_state()
+  EXIT_NEW_PANDA,               // process_panda_state()
+};
+
+static const char *const exit_reason_names[] = {
+  "panda disconnected",
+  "comms unhealthy",
+  "new panda found",
+};
+
+static void pandad_exit(ExitReason reason, const char *const detail = nullptr) {
+  // check_all_connected() is evaluated from both the main loop and can_send_thread;
+  // the guard keeps a single disconnect from being logged twice.
+  if (!do_exit) {
+    if (detail != nullptr) {
+      LOGE("pandad exit: %s (%s)", exit_reason_names[reason], detail);
+    } else {
+      LOGE("pandad exit: %s", exit_reason_names[reason]);
+    }
+  }
+  do_exit = true;
+}
+
 //new
 static float max_ir_power = MAX_IR_POWER;
 //new
@@ -50,7 +82,7 @@ static float max_ir_power = MAX_IR_POWER;
 bool check_all_connected(const std::vector<Panda *> &pandas) {
   for (const auto& panda : pandas) {
     if (!panda->connected()) {
-      do_exit = true;
+      pandad_exit(EXIT_PANDA_DISCONNECTED);
       return false;
     }
   }
@@ -348,15 +380,13 @@ void process_panda_state(std::vector<Panda *> &pandas, PubMaster *pm, bool engag
       }
 
       if (!comms_healthy) {
-        LOGE("Reconnecting, communication to pandas not healthy");
-        do_exit = true;
+        pandad_exit(EXIT_COMMS_UNHEALTHY);
 
       } else {
         // check for new pandas
         for (std::string &s : Panda::list(true)) {
           if (!std::count(connected_serials.begin(), connected_serials.end(), s)) {
-            LOGW("Reconnecting to new panda: %s", s.c_str());
-            do_exit = true;
+            pandad_exit(EXIT_NEW_PANDA, s.c_str());
             break;
           }
         }

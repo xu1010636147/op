@@ -94,6 +94,30 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>BYD Auto Tuning</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enable automatic torque parameter tuning</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>BYD Use Siglin Mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Use siglin non-linear torque calculation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>BYD Modified Stock Long</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enable modified stock longitudinal control</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>巡航</source>
         <translation type="unfinished"></translation>
     </message>
@@ -421,25 +445,9 @@
         <translation>相机校准参数</translation>
     </message>
     <message>
-        <source>LiveDelay</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>LiveTorqueParameters</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>LiveParameters</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>LiveParametersV2</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>AllLiveParams</source>
         <translation>实时学习参数</translation>
-    </message>    
+    </message>
     <message>
         <source>Select calibration parameter to reset</source>
         <translation>请选择你要重置的校准参数</translation>
@@ -452,23 +460,23 @@
 <context>
     <name>DrawCarrot</name>
     <message>
-        <source>ECO</source>
+        <source>经 济</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>SAFE</source>
+        <source>安 全</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>NORM</source>
+        <source>标 准</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>FAST</source>
+        <source>运 动</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>ERRM</source>
+        <source>错 误</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

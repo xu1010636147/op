@@ -1,8 +1,11 @@
 #include "selfdrive/ui/qt/qt_window.h"
 
+#include <QTimer>
+
 void setMainWindow(QWidget *w) {
   const float scale = util::getenv("SCALE", 1.0f);
-  const QSize sz = QGuiApplication::primaryScreen()->size();
+  const QScreen *screen = QGuiApplication::primaryScreen();
+  const QSize sz = screen->size();
 
   if (Hardware::PC() && scale == 1.0 && !(sz - DEVICE_SCREEN_SIZE).isValid()) {
     w->setMinimumSize(QSize(640, 480)); // allow resize smaller than fullscreen
@@ -12,6 +15,17 @@ void setMainWindow(QWidget *w) {
     w->setFixedSize(DEVICE_SCREEN_SIZE * scale);
   }
   w->show();
+
+  // Mutter/GNOME ignores a position set before show() and places the window itself once
+  // it is mapped (typically on the monitor under the pointer), so pin it to the primary
+  // screen after it has been shown.
+  if (Hardware::PC()) {
+    QTimer::singleShot(200, w, [w]() {
+      if (const QScreen *s = QGuiApplication::primaryScreen()) {
+        w->move(s->geometry().topLeft());
+      }
+    });
+  }
 
 #ifdef QCOM2
   QPlatformNativeInterface *native = QGuiApplication::platformNativeInterface();

@@ -121,6 +121,12 @@ inline static std::unordered_map<std::string, uint32_t> keys = {
     {"UpdaterLastFetchTime", PERSISTENT},
     {"Version", PERSISTENT},
     {"device_go_off_road", CLEAR_ON_MANAGER_START},
+    {"ForceOffroad", CLEAR_ON_MANAGER_START},
+    {"BydModifiedStockLong", PERSISTENT},
+    {"BydAutoTuning", PERSISTENT},
+    {"BydLatUseSiglin", PERSISTENT},
+    {"CameraOffset", PERSISTENT},
+    {"UseRedPanda", PERSISTENT},
 
     // carrot
     {"LongitudinalPersonalityMax", PERSISTENT},

@@ -7,7 +7,7 @@ from tinygrad.engine.realize import lower_schedule
 from tinygrad.helpers import prod, unwrap
 from test.helpers import REAL_DEV
 
-IMAGE_SUPPORTED_DEVICES = ("QCOM", "CL")
+IMAGE_SUPPORTED_DEVICES = ("QCOM", "GPU")
 
 @unittest.skipUnless(REAL_DEV in IMAGE_SUPPORTED_DEVICES, "Images not supported")
 class TestImageCopy(unittest.TestCase):

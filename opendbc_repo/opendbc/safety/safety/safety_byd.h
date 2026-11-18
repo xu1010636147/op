@@ -145,14 +145,15 @@ static bool byd_tx_hook(const CANPacket_t *to_send) {
 static int byd_fwd_hook(int bus, int addr) {
   int bus_fwd = -1; // 初始化转发总线为-1
 
-  if (bus == BYD_CANBUS_ESC) { // if sent from esc
-    bool block_esc_msg = (addr == BYD_CANADDR_ACC_EPS_STATE)
-                      || (addr == BYD_CANADDR_ACC_EPS_STATE_SEAL);
-
-    if (!block_esc_msg) {
-      bus_fwd = BYD_CANBUS_MPC;
-    }
-  } else if (bus == BYD_CANBUS_MPC) { // if sent from mpc
+  if (bus == BYD_CANBUS_ESC) { // 车端 -> 相机侧：全部放行
+    // 0x318(扭矩平台)/0x1FC(Seal) 是 EPS 状态报文（CruiseActivated/主扭矩/转角），
+    // 前视相机做 LKAS/ACC 状态机时必须收到它。dp 原版 safety 的 is_eps 固定为 false，
+    // 就是为了保证这条一直转发。曾经在这里拦过它，结果 openpilot 一启动（继电器打开、
+    // 开始按本 hook 转发）相机会在 1s 内报故障，仪表盘随之显示“巡航系统故障”。
+    // openpilot 并没有发送对应的伪造报文（create_fake_318/create_fake_1FC 未接入），
+    // 所以车端 -> 相机侧不能拦任何报文。
+    bus_fwd = BYD_CANBUS_MPC;
+  } else if (bus == BYD_CANBUS_MPC) { // 相机侧 -> 车端：拦掉 openpilot 要接管的指令
     bool block_mpc_msg = (addr == BYD_CANADDR_ACC_MPC_STATE)
                       || (addr == BYD_CANADDR_ACC_MPC_STATE_SEAL)
                       || (addr == BYD_CANADDR_ACC_CMD);
